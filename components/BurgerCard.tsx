@@ -1,47 +1,87 @@
-"use client"; // <--- Fundamental para que React maneje el click en el cliente
-
+"use client";
 import { Burger } from '@/types';
 import { useCartStore } from '@/store/cartStore';
+import { useState } from 'react';
 
 export default function BurgerCard({ burger }: { burger: Burger }) {
-  // Conectamos este componente con la función de agregar del Store
   const addItem = useCartStore((state) => state.addItem);
+  const [isAdding, setIsAdding] = useState(false);
+
+  const handleAdd = () => {
+    setIsAdding(true);
+    addItem(burger);
+    // Efecto de feedback visual rápido
+    setTimeout(() => setIsAdding(false), 600);
+  };
 
   return (
-    <div className="bg-white border-4 border-yellow-400 rounded-3xl p-6 shadow-xl hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-      {/* Imagen con un contenedor para que no se deforme */}
-      <div className="relative w-full h-44 mb-4">
+    <div className="group relative flex flex-col h-full w-full bg-white border-[3px] border-black rounded-[2rem] overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all duration-200 ease-in-out">
+      
+      {/* 1. Header de la Card: Badge Flotante */}
+      <div className="absolute top-3 left-3 z-10">
+        <span className="bg-[#D32F2F] text-white text-[9px] md:text-[10px] font-black uppercase px-2 py-1 rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+          {burger.categoria}
+        </span>
+      </div>
+
+      {/* 2. Contenedor de Imagen: Aspecto Pro (Cuadrado) */}
+      <div className="relative aspect-square w-full bg-[#F8F8F8] border-b-[3px] border-black overflow-hidden flex items-center justify-center p-6">
         <img 
           src={burger.imagen} 
           alt={burger.nombre} 
-          className="w-full h-full object-contain"
+          className={`w-full h-full object-contain transition-all duration-500 ease-out 
+            ${isAdding ? 'scale-75 rotate-12 opacity-50' : 'group-hover:scale-110 group-hover:-rotate-3'}
+          `}
         />
-      </div>
-
-      {/* Título estilo "Fast Food" */}
-      <h3 className="text-2xl font-black text-red-600 uppercase italic leading-tight mb-2">
-        {burger.nombre}
-      </h3>
-      
-      {/* Descripción */}
-      <p className="text-gray-700 text-sm font-medium h-10 overflow-hidden mb-4">
-        {burger.descripcion}
-      </p>
-
-      <div className="flex justify-between items-center border-t-2 border-dashed border-gray-200 pt-4">
-        {/* Precio destacado */}
-        <span className="text-2xl font-black text-black">
-          ${burger.precio.toLocaleString('es-AR')}
-        </span>
         
-        {/* Botón con acción de Zustand */}
-        <button 
-          onClick={() => addItem(burger)}
-          className="bg-red-600 hover:bg-yellow-400 text-white hover:text-black font-extrabold py-3 px-6 rounded-2xl shadow-lg active:scale-90 transition-all duration-150 uppercase tracking-tighter"
-        >
-          ¡Lo quiero!
-        </button>
+        {/* Overlay de "Añadido" (Feedback visual) */}
+        <div className={`absolute inset-0 flex items-center justify-center bg-[#FFCA28]/40 backdrop-blur-[2px] transition-opacity duration-300 ${isAdding ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+          <span className="text-black font-black text-4xl rotate-12">¡LISTO!</span>
+        </div>
       </div>
+
+      {/* 3. Cuerpo: Información compacta */}
+      <div className="p-3 md:p-4 flex flex-col flex-grow bg-white">
+        <div className="mb-2">
+          <h3 className="text-sm md:text-lg font-black text-black uppercase leading-tight line-clamp-2 italic tracking-tighter">
+            {burger.nombre}
+          </h3>
+          <div className="w-8 h-1 bg-[#FFCA28] mt-1 group-hover:w-full transition-all duration-500" />
+        </div>
+        
+        <p className="text-[10px] md:text-xs text-stone-500 font-bold leading-tight line-clamp-2 mb-4">
+          {burger.descripcion}
+        </p>
+
+        {/* 4. Footer: Precio y Acción */}
+        <div className="mt-auto flex items-center justify-between gap-2">
+          <div className="flex flex-col">
+            <span className="text-[9px] font-black text-stone-400 uppercase leading-none">Total</span>
+            <span className="text-sm md:text-xl font-black text-black tracking-tighter">
+              ${burger.precio.toLocaleString('es-AR')}
+            </span>
+          </div>
+
+          <button 
+            onClick={handleAdd}
+            disabled={isAdding}
+            className={`
+              relative overflow-hidden
+              flex-shrink-0 px-4 py-2 md:px-6 md:py-3 rounded-xl border-[3px] border-black font-black uppercase text-[10px] md:text-xs italic transition-all
+              ${isAdding 
+                ? 'bg-green-500 text-white translate-y-1 shadow-none' 
+                : 'bg-[#FFCA28] text-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[1px] active:translate-y-[1px] hover:bg-black hover:text-white'
+              }
+            `}
+          >
+            <span className={isAdding ? 'hidden' : 'block'}>Agregar +</span>
+            <span className={isAdding ? 'block' : 'hidden'}>✔</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Brillo de hover (Efecto Moderno) */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
     </div>
   );
 }

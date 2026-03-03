@@ -1,26 +1,95 @@
 @import "tailwindcss";
 
+/* Variables de marca */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --krusty-red: #D32F2F;
+  --krusty-yellow: #FFCA28;
+  --krusty-stone: #F5F5F4;
+  --krusty-black: #1A1A1A;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* 1. Reset y Fondo */
+body {
+  background-color: #F5F5F4; /* Fallback */
+  background-color: var(--krusty-stone);
+  color: var(--krusty-black);
+  
+  /* Textura de mantel de Krusty Burger */
+  background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+  background-size: 24px 24px;
+  
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* 2. Estilo de Títulos Simpson */
+h1, h2, h3, h4 {
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+}
+
+/* 3. Utilidades (no-scrollbar) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 4. Efecto Sticker (Bordes negros gruesos) */
+.sticker {
+  border: 4px solid black;
+  box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+  transition: all 0.15s ease-out;
+}
+
+.sticker:active {
+  box-shadow: 0px 0px 0px 0px rgba(0, 0, 0, 1);
+  transform: translate(4px, 4px);
+}
+
+/* 5. Scrollbar Custom Estilo Springfield */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--krusty-stone);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--krusty-black);
+  border-radius: 20px;
+  border: 3px solid var(--krusty-stone);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--krusty-red);
+}
+
+/* 6. Selección de texto */
+::selection {
+  background-color: var(--krusty-yellow);
+  color: var(--krusty-red);
+}
+
+/* 7. Animación de entrada */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-fade-up {
+  animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
