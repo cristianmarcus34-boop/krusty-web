@@ -11,43 +11,48 @@ export default function SeguimientoPedido() {
     useEffect(() => {
         if (!id) return;
 
+        // Convertimos el ID a número para las consultas (tu DB usa int)
+        const pedidoIdNum = parseInt(id as string);
+
         // 1. Carga inicial del pedido
         const fetchPedido = async () => {
             const { data, error } = await supabase
                 .from('pedidos')
                 .select('*')
-                .eq('id', id)
+                .eq('id', pedidoIdNum)
                 .single();
 
-            if (data) setPedido(data);
+            if (data) {
+                setPedido(data);
+            }
             setLoading(false);
         };
 
         fetchPedido();
 
-        // 2. Suscripción Realtime sin filtro inicial (más robusta)
+        // 2. Suscripción Realtime (Escucha Global dentro de la tabla)
+        // Eliminamos el filter del objeto de configuración para evitar bugs de tipos int vs string
         const channel = supabase
-            .channel(`cambios_pedido_${id}`)
+            .channel(`seguimiento_realtime_${id}`)
             .on(
                 'postgres_changes',
                 { 
                     event: 'UPDATE', 
                     schema: 'public', 
                     table: 'pedidos' 
-                    // Quitamos el filter de aquí para que no haya errores de formato
                 },
                 (payload) => {
-                    console.log("📦 Cambio detectado en la tabla:", payload);
+                    console.log("📦 Cambio detectado en DB:", payload);
                     
-                    // Validamos manualmente si el cambio pertenece a este pedido
+                    // Verificación manual de ID (Robusta entre PC y Móvil)
                     if (payload.new && payload.new.id.toString() === id.toString()) {
-                        console.log("✅ Actualizando estado del pedido actual...");
+                        console.log("✅ ¡Es nuestro pedido! Actualizando estado...");
                         setPedido(payload.new);
                     }
                 }
             )
             .subscribe((status) => {
-                console.log(`📡 Estado de conexión Realtime:`, status);
+                console.log(`📡 Estado Realtime (${id}):`, status);
             });
 
         return () => {
@@ -120,7 +125,7 @@ export default function SeguimientoPedido() {
                 {/* TARJETA DETALLE */}
                 <div className="bg-white border-[6px] border-black p-8 rounded-[3rem] shadow-[10px_10px_0px_0px_black] text-center mb-8 relative">
                     <div className="mb-4">
-                        <span className="text-7xl inline-block transition-transform duration-500 hover:scale-110">
+                        <span className="text-7xl inline-block transition-transform duration-500">
                             {pedido.estado === 'pendiente' && '📩'}
                             {pedido.estado === 'en cocina' && '👨‍🍳'}
                             {pedido.estado === 'en camino' && '🛵'}
@@ -148,7 +153,7 @@ export default function SeguimientoPedido() {
                     <p className="text-[10px] font-black uppercase text-[#FFCA28] mb-2 tracking-widest">Resumen para:</p>
                     <p className="font-black italic text-2xl uppercase leading-none mb-4">{pedido.cliente_nombre}</p>
                     <div className="pt-4 border-t border-white/20 text-xs font-bold space-y-2">
-                        <p className="flex justify-between"><span>UBICACIÓN:</span> <span className="text-[#FFCA28]">{pedido.direccion}</span></p>
+                        <p className="flex justify-between"><span>UBICACIÓN:</span> <span className="text-[#FFCA28] text-right ml-2">{pedido.direccion}</span></p>
                         <p className="flex justify-between"><span>PAGO:</span> <span className="text-[#FFCA28]">{pedido.metodo_pago}</span></p>
                         <p className="text-[#FFCA28] text-2xl font-black mt-4 text-right italic leading-none pt-2">TOTAL: ${pedido.total}</p>
                     </div>
