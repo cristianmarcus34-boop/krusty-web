@@ -11,7 +11,7 @@ export default function SeguimientoPedido() {
     useEffect(() => {
         if (!id) return;
 
-        // 1. Cargar datos iniciales
+        // 1. Carga inicial del pedido
         const fetchPedido = async () => {
             const { data, error } = await supabase
                 .from('pedidos')
@@ -25,38 +25,32 @@ export default function SeguimientoPedido() {
 
         fetchPedido();
 
-        // 2. CONFIGURACIÓN DE REALTIME MEJORADA
-        // Usamos un nombre de canal bien específico para evitar colisiones
-        const channelId = `order_track_${id}`;
-        
+        // 2. Suscripción Realtime sin filtro inicial (más robusta)
         const channel = supabase
-            .channel(channelId)
+            .channel(`cambios_pedido_${id}`)
             .on(
                 'postgres_changes',
                 { 
                     event: 'UPDATE', 
                     schema: 'public', 
-                    table: 'pedidos', 
-                    filter: `id=eq.${id}` 
+                    table: 'pedidos' 
+                    // Quitamos el filter de aquí para que no haya errores de formato
                 },
                 (payload) => {
-                    console.log("✅ ¡Cambio detectado en tiempo real!", payload.new);
-                    // Sincronizamos el estado con los nuevos datos
-                    setPedido(payload.new);
+                    console.log("📦 Cambio detectado en la tabla:", payload);
+                    
+                    // Validamos manualmente si el cambio pertenece a este pedido
+                    if (payload.new && payload.new.id.toString() === id.toString()) {
+                        console.log("✅ Actualizando estado del pedido actual...");
+                        setPedido(payload.new);
+                    }
                 }
             )
             .subscribe((status) => {
-                console.log(`📡 Suscripción de pedido ${id}:`, status);
-                
-                // Si la conexión falla, intentamos reconectar o verificar permisos
-                if (status === 'CHANNEL_ERROR') {
-                    console.error("❌ Error de conexión Realtime. Verifica RLS en Supabase.");
-                }
+                console.log(`📡 Estado de conexión Realtime:`, status);
             });
 
-        // 3. Limpieza: Cerramos el canal cuando el usuario se va
         return () => {
-            console.log("🔌 Cerrando conexión Realtime");
             supabase.removeChannel(channel);
         };
     }, [id]);
@@ -95,7 +89,7 @@ export default function SeguimientoPedido() {
                     </p>
                     <div className="flex items-center gap-2">
                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                         <p className="text-[10px] font-bold text-stone-400 uppercase italic">Vivo</p>
+                         <p className="text-[10px] font-bold text-stone-400 uppercase italic tracking-tighter">En Vivo</p>
                     </div>
                 </div>
 
@@ -103,7 +97,7 @@ export default function SeguimientoPedido() {
                 <div className="relative mb-12 px-4 mt-8">
                     <div className="absolute top-4 left-0 w-full h-2 bg-stone-300 -translate-y-1/2 rounded-full border-2 border-black"></div>
                     <div
-                        className="absolute top-4 left-0 h-2 bg-green-500 -translate-y-1/2 rounded-full border-2 border-black transition-all duration-1000 ease-out"
+                        className="absolute top-4 left-0 h-2 bg-green-500 -translate-y-1/2 rounded-full border-2 border-black transition-all duration-1000 ease-out shadow-[0px_0px_8px_rgba(34,197,94,0.5)]"
                         style={{ width: `${(indiceActual / (estados.length - 1)) * 100}%` }}
                     ></div>
 
@@ -126,7 +120,7 @@ export default function SeguimientoPedido() {
                 {/* TARJETA DETALLE */}
                 <div className="bg-white border-[6px] border-black p-8 rounded-[3rem] shadow-[10px_10px_0px_0px_black] text-center mb-8 relative">
                     <div className="mb-4">
-                        <span className="text-7xl inline-block">
+                        <span className="text-7xl inline-block transition-transform duration-500 hover:scale-110">
                             {pedido.estado === 'pendiente' && '📩'}
                             {pedido.estado === 'en cocina' && '👨‍🍳'}
                             {pedido.estado === 'en camino' && '🛵'}
