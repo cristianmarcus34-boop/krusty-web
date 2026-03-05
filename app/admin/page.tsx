@@ -164,16 +164,27 @@ export default function AdminPage() {
     }
   };
 
-  // NUEVOS MANEJADORES DE PEDIDOS
+  // --- MANEJADORES DE PEDIDOS (ACTUALIZADO) ---
   const cambiarEstadoPedido = async (id: number, nuevoEstado: string) => {
-    const { error } = await supabase.from('pedidos').update({ estado: nuevoEstado }).eq('id', id);
-    if (!error) fetchPedidos();
+    try {
+      const { error } = await supabase
+        .from('pedidos')
+        .update({ estado: nuevoEstado })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Actualización optimista para feedback instantáneo
+      setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
+    } catch (err: any) {
+      alert("Error al actualizar estado: " + err.message);
+    }
   };
 
   const eliminarPedido = async (id: number) => {
     if (confirm("¿Estás seguro de eliminar este pedido del historial?")) {
       const { error } = await supabase.from('pedidos').delete().eq('id', id);
-      if (!error) fetchPedidos();
+      if (!error) setPedidos(prev => prev.filter(p => p.id !== id));
     }
   };
 
@@ -189,7 +200,7 @@ export default function AdminPage() {
       case 'en cocina': return 'bg-orange-500 text-white';
       case 'en camino': return 'bg-blue-500 text-white';
       case 'entregado': return 'bg-green-600 text-white opacity-50';
-      default: return 'bg-stone-200';
+      default: return 'bg-stone-200 text-black';
     }
   };
 
@@ -225,6 +236,7 @@ export default function AdminPage() {
       </header>
 
       <main className="max-w-7xl mx-auto p-3 md:p-8">
+        {/* Radar animado */}
         <div className="mb-6 flex justify-center">
             <div className="bg-black text-white text-[10px] font-black px-6 py-2 rounded-full uppercase tracking-widest animate-pulse border-2 border-[#FFCA28] flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
@@ -245,7 +257,7 @@ export default function AdminPage() {
                     {pedido.estado}
                   </div>
 
-                  {/* Botón de Borrar (Solo accesible para limpiar historial o pedidos cancelados) */}
+                  {/* Borrar Pedido */}
                   <button onClick={() => eliminarPedido(pedido.id)} className="absolute -top-3 -left-2 bg-white text-black border-2 border-black w-8 h-8 rounded-full font-black text-xs hover:bg-red-500 hover:text-white transition-colors shadow-md z-10">✕</button>
 
                   <div className="mb-4 mt-2">
@@ -275,7 +287,7 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* CONTROL DE FLUJO PROFESIONAL */}
+                  {/* CONTROL DE FLUJO */}
                   <div className="flex flex-col gap-2">
                     <div className="grid grid-cols-2 gap-2">
                       <button 
@@ -303,9 +315,9 @@ export default function AdminPage() {
             )}
           </div>
         ) : (
-          /* INVENTARIO COMPLETO (Sigue igual) */
+          /* INVENTARIO */
           <div className="space-y-6">
-            <div className="bg-black text-white p-6 rounded-[2rem] border-4 border-black flex justify-between items-center shadow-[6px_6px_0px_0px_black]">
+            <div className="bg-black text-white p-6 rounded-[2rem] border-4 border-black flex flex-col md:flex-row justify-between items-center gap-4 shadow-[6px_6px_0px_0px_black]">
               <div>
                 <h2 className="text-2xl font-black uppercase italic text-[#FFCA28]">Menú del Día</h2>
                 <p className="text-xs font-bold text-stone-400">Edita fotos, precios y stock en tiempo real</p>
@@ -318,13 +330,13 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 gap-6">
               {productos.map((prod) => (
                 <div key={prod.id} className={`flex flex-col md:flex-row gap-6 bg-white border-4 p-5 rounded-[2.5rem] shadow-[4px_4px_0px_0px_black] transition-all ${editandoId === prod.id ? 'border-[#D32F2F] ring-4 ring-red-100' : 'border-black'}`}>
-                  <div className="w-full md:w-40 relative group overflow-hidden rounded-3xl border-4 border-black aspect-square md:aspect-auto">
+                  <div className="w-full md:w-40 relative group overflow-hidden rounded-3xl border-4 border-black aspect-square">
                     {isUploading && (
                       <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
                         <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                       </div>
                     )}
-                    <img src={prod.imagen} className="w-full h-32 md:h-full object-cover bg-stone-100" alt="" />
+                    <img src={prod.imagen} className="w-full h-full object-cover bg-stone-100" alt="" />
                     <label className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
                       <span className="text-white font-black text-[10px] uppercase text-center px-2">Cambiar Foto</span>
                       <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileUpload(e, true, prod.id)} disabled={isUploading} />
@@ -343,6 +355,7 @@ export default function AdminPage() {
                       className="w-full text-sm font-bold bg-stone-50 p-3 rounded-xl h-20 resize-none border-2 border-stone-200 focus:border-black outline-none"
                     />
                   </div>
+
                   <div className="w-full md:w-56 flex flex-col justify-between gap-3">
                     <div className="flex items-center bg-white p-3 rounded-xl border-4 border-black">
                       <span className="font-black text-2xl">$</span>
@@ -372,7 +385,7 @@ export default function AdminPage() {
         )}
       </main>
 
-      {/* MODAL NUEVO PRODUCTO (Sigue igual) */}
+      {/* MODAL NUEVO PRODUCTO */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
           <div className="bg-[#FFCA28] border-[10px] border-black p-8 rounded-[3.5rem] w-full max-w-lg shadow-[10px_10px_0px_0px_black]">

@@ -118,7 +118,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
       localStorage.setItem('pedido_id', pedidoGuardado.id);
 
       // 3. Generamos el link de seguimiento
-      const linkSeguimiento = `${window.location.origin}/pedido/${pedidoGuardado.id}`;
+      const linkSeguimiento = `https://krusty-web.vercel.app/pedido/${pedidoGuardado.id}`;
 
       const numeroTelefono = "5491138305837";
       const mensaje = encodeURIComponent(
