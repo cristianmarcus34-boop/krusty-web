@@ -11,7 +11,7 @@ export default function SeguimientoPedido() {
     useEffect(() => {
         if (!id) return;
 
-        // 1. Función para cargar el pedido inicial
+        // 1. Cargar datos iniciales
         const fetchPedido = async () => {
             const { data, error } = await supabase
                 .from('pedidos')
@@ -19,36 +19,44 @@ export default function SeguimientoPedido() {
                 .eq('id', id)
                 .single();
 
-            if (data) {
-                setPedido(data);
-            }
+            if (data) setPedido(data);
             setLoading(false);
         };
 
         fetchPedido();
 
-        // 2. SUSCRIPCIÓN EN TIEMPO REAL (El corazón del seguimiento)
+        // 2. CONFIGURACIÓN DE REALTIME MEJORADA
+        // Usamos un nombre de canal bien específico para evitar colisiones
+        const channelId = `order_track_${id}`;
+        
         const channel = supabase
-            .channel(`pedido-seguimiento-${id}`) // Nombre de canal único
+            .channel(channelId)
             .on(
                 'postgres_changes',
                 { 
                     event: 'UPDATE', 
                     schema: 'public', 
                     table: 'pedidos', 
-                    filter: `id=eq.${id}` // Escuchamos solo ESTE pedido
+                    filter: `id=eq.${id}` 
                 },
                 (payload) => {
-                    console.log("🔔 Cambio detectado en tiempo real:", payload.new);
-                    setPedido(payload.new); // Actualizamos el estado visual al instante
+                    console.log("✅ ¡Cambio detectado en tiempo real!", payload.new);
+                    // Sincronizamos el estado con los nuevos datos
+                    setPedido(payload.new);
                 }
             )
             .subscribe((status) => {
-                console.log("Estado de la conexión Realtime:", status);
+                console.log(`📡 Suscripción de pedido ${id}:`, status);
+                
+                // Si la conexión falla, intentamos reconectar o verificar permisos
+                if (status === 'CHANNEL_ERROR') {
+                    console.error("❌ Error de conexión Realtime. Verifica RLS en Supabase.");
+                }
             });
 
-        // Limpieza al desmontar el componente
+        // 3. Limpieza: Cerramos el canal cuando el usuario se va
         return () => {
+            console.log("🔌 Cerrando conexión Realtime");
             supabase.removeChannel(channel);
         };
     }, [id]);
@@ -56,7 +64,7 @@ export default function SeguimientoPedido() {
     if (loading) return (
         <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center font-black italic uppercase p-4 text-center">
             <div className="w-12 h-12 border-4 border-black border-t-white rounded-full animate-spin mb-4"></div>
-            Buscando tu hamburguesa en la cocina...
+            Buscando tu hamburguesa...
         </div>
     );
 
@@ -67,7 +75,6 @@ export default function SeguimientoPedido() {
         </div>
     );
 
-    // Lógica para la barra de progreso
     const estados = ['pendiente', 'en cocina', 'en camino', 'entregado'];
     const indiceActual = estados.indexOf(pedido.estado);
 
@@ -75,7 +82,7 @@ export default function SeguimientoPedido() {
         <div className="min-h-screen bg-stone-100 p-4 font-sans text-black">
             <div className="max-w-lg mx-auto pt-6">
 
-                {/* Header con Estética Krusty */}
+                {/* Header Krusty */}
                 <div className="bg-[#D32F2F] border-[6px] border-black p-6 rounded-[2.5rem] shadow-[8px_8px_0px_0px_black] text-white text-center mb-8">
                     <h1 className="text-4xl font-black italic uppercase tracking-tighter drop-shadow-[2px_2px_0px_black]">
                         Tu Pedido
@@ -86,21 +93,20 @@ export default function SeguimientoPedido() {
                     <p className="font-black text-[10px] uppercase bg-black text-white px-3 py-1 rounded-full">
                         Orden: #{pedido.id.toString().slice(-4)}
                     </p>
-                    <p className="text-[10px] font-bold text-stone-400 uppercase italic">Actualización automática activa</p>
+                    <div className="flex items-center gap-2">
+                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                         <p className="text-[10px] font-bold text-stone-400 uppercase italic">Vivo</p>
+                    </div>
                 </div>
 
-                {/* BARRA DE PROGRESO VISUAL */}
+                {/* BARRA DE PROGRESO */}
                 <div className="relative mb-12 px-4 mt-8">
-                    {/* Línea de fondo */}
                     <div className="absolute top-4 left-0 w-full h-2 bg-stone-300 -translate-y-1/2 rounded-full border-2 border-black"></div>
-                    
-                    {/* Línea de progreso (Verde Krusty) */}
                     <div
                         className="absolute top-4 left-0 h-2 bg-green-500 -translate-y-1/2 rounded-full border-2 border-black transition-all duration-1000 ease-out"
                         style={{ width: `${(indiceActual / (estados.length - 1)) * 100}%` }}
                     ></div>
 
-                    {/* Círculos de estado */}
                     <div className="relative flex justify-between">
                         {estados.map((est, index) => (
                             <div key={est} className="flex flex-col items-center">
@@ -117,10 +123,10 @@ export default function SeguimientoPedido() {
                     </div>
                 </div>
 
-                {/* TARJETA DE ESTADO DETALLADA */}
-                <div className="bg-white border-[6px] border-black p-8 rounded-[3rem] shadow-[10px_10px_0px_0px_black] text-center mb-8 relative overflow-hidden">
+                {/* TARJETA DETALLE */}
+                <div className="bg-white border-[6px] border-black p-8 rounded-[3rem] shadow-[10px_10px_0px_0px_black] text-center mb-8 relative">
                     <div className="mb-4">
-                        <span className="text-7xl animate-bounce inline-block">
+                        <span className="text-7xl inline-block">
                             {pedido.estado === 'pendiente' && '📩'}
                             {pedido.estado === 'en cocina' && '👨‍🍳'}
                             {pedido.estado === 'en camino' && '🛵'}
@@ -143,7 +149,7 @@ export default function SeguimientoPedido() {
                     </p>
                 </div>
 
-                {/* RESUMEN BREVE */}
+                {/* RESUMEN */}
                 <div className="bg-black text-white p-6 rounded-[2rem] border-4 border-black shadow-[6px_6px_0px_0px_#D32F2F]">
                     <p className="text-[10px] font-black uppercase text-[#FFCA28] mb-2 tracking-widest">Resumen para:</p>
                     <p className="font-black italic text-2xl uppercase leading-none mb-4">{pedido.cliente_nombre}</p>
@@ -153,11 +159,6 @@ export default function SeguimientoPedido() {
                         <p className="text-[#FFCA28] text-2xl font-black mt-4 text-right italic leading-none pt-2">TOTAL: ${pedido.total}</p>
                     </div>
                 </div>
-                
-                <p className="text-center mt-8 text-[10px] font-black uppercase text-stone-400">
-                    Krusty Burger Corp. © 2024
-                </p>
-
             </div>
         </div>
     );
