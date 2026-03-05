@@ -1,11 +1,16 @@
 "use client";
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function GraciasPage() {
+  const [ultimoPedidoId, setUltimoPedidoId] = useState<string | null>(null);
   
   useEffect(() => {
-    // Sonido de Krusty al llegar
+    // 1. Recuperar el último ID guardado (necesitarás asegurarte de guardarlo en el CartDrawer)
+    const savedId = localStorage.getItem('ultimo_pedido_id');
+    if (savedId) setUltimoPedidoId(savedId);
+
+    // 2. Sonido de Krusty al llegar
     const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3');
     sound.volume = 0.3;
     sound.play().catch(() => {});
@@ -32,17 +37,29 @@ export default function GraciasPage() {
           <p className="text-lg font-black uppercase italic tracking-tight text-green-700">
             ¡Ujuuu! Ya estamos cocinando.
           </p>
-          <p className="text-[10px] font-bold text-stone-500 mt-2 uppercase">
-            Recuerda enviar el mensaje de WhatsApp que se abrió automáticamente.
+          <p className="text-[10px] font-bold text-stone-500 mt-2 uppercase italic leading-tight">
+            No olvides enviar el mensaje de WhatsApp para que recibamos tu ubicación exacta.
           </p>
         </div>
 
-        <Link 
-          href="/"
-          className="inline-block w-full bg-[#D32F2F] text-white border-4 border-black p-4 rounded-xl font-black uppercase italic text-xl shadow-[6px_6px_0px_0px_black] active:shadow-none active:translate-y-1 transition-all"
-        >
-          PEDIR OTRA MÁS 🍔
-        </Link>
+        <div className="space-y-4">
+          {/* BOTÓN NUEVO: Seguir Pedido */}
+          {ultimoPedidoId && (
+            <Link 
+              href={`/pedido/${ultimoPedidoId}`}
+              className="inline-block w-full bg-black text-[#FFCA28] border-4 border-black p-4 rounded-xl font-black uppercase italic text-xl shadow-[6px_6px_0px_0px_#D32F2F] active:shadow-none active:translate-y-1 transition-all"
+            >
+              📍 Ver Seguimiento Realtime
+            </Link>
+          )}
+
+          <Link 
+            href="/"
+            className="inline-block w-full bg-[#D32F2F] text-white border-4 border-black p-4 rounded-xl font-black uppercase italic text-xl shadow-[6px_6px_0px_0px_black] active:shadow-none active:translate-y-1 transition-all"
+          >
+            PEDIR OTRA MÁS 🍔
+          </Link>
+        </div>
 
         <p className="mt-6 text-[10px] font-black uppercase text-stone-400">
           "Krusty Burger: El sabor que te deja pidiendo más... ¡o pidiendo un médico!"

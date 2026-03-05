@@ -1,5 +1,6 @@
+"use client";
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware'; // Para que no se borre al refrescar
+import { persist } from 'zustand/middleware';
 import { Burger } from '@/types';
 
 interface CartItem extends Burger {
@@ -30,13 +31,17 @@ export const useCartStore = create<CartState>()(
         return { items: [...state.items, { ...burger, quantity: 1 }] };
       }),
 
-      decreaseQuantity: (id) => set((state) => ({
-        items: state.items.map(i => 
-          i.id === id && i.quantity > 1 
-            ? { ...i, quantity: i.quantity - 1 } 
-            : i
-        )
-      })),
+      // Lógica Pro: Si es 1 y resta, se elimina. Si es > 1, resta.
+      decreaseQuantity: (id) => set((state) => {
+        const item = state.items.find(i => i.id === id);
+        if (item && item.quantity > 1) {
+          return {
+            items: state.items.map(i => i.id === id ? { ...i, quantity: i.quantity - 1 } : i)
+          };
+        }
+        // Si la cantidad era 1, filtramos (eliminamos) el producto
+        return { items: state.items.filter(i => i.id !== id) };
+      }),
 
       removeItem: (id) => set((state) => ({
         items: state.items.filter(i => i.id !== id)
@@ -44,8 +49,11 @@ export const useCartStore = create<CartState>()(
 
       clearCart: () => set({ items: [] }),
 
-      total: () => get().items.reduce((acc, item) => acc + (item.precio * item.quantity), 0),
+      total: () => {
+        const currentItems = get().items;
+        return currentItems.reduce((acc, item) => acc + (Number(item.precio) * item.quantity), 0);
+      },
     }),
-    { name: 'krusty-cart-storage' } // Nombre de la cookie/localstorage
+    { name: 'krusty-cart-storage' }
   )
 );

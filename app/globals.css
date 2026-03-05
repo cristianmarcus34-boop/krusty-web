@@ -10,11 +10,10 @@
 
 /* 1. Reset y Fondo */
 body {
-  background-color: #F5F5F4; /* Fallback */
   background-color: var(--krusty-stone);
   color: var(--krusty-black);
   
-  /* Textura de mantel de Krusty Burger */
+  /* Textura de mantel de Krusty Burger mejorada */
   background-image: radial-gradient(#d1d5db 1px, transparent 1px);
   background-size: 24px 24px;
   
@@ -78,7 +77,9 @@ h1, h2, h3, h4 {
   color: var(--krusty-red);
 }
 
-/* 7. Animación de entrada */
+/* 7. Animaciones de la App */
+
+/* Animación de entrada general */
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -92,4 +93,52 @@ h1, h2, h3, h4 {
 
 .animate-fade-up {
   animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* NUEVO: Animación para el icono de la StatusBar (Rebote suave) */
+@keyframes bounce-short {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+.animate-bounce-short {
+  display: inline-block;
+  animation: bounce-short 2s ease-in-out infinite;
+}
+
+/* NUEVO: Brillo sutil para el botón de seguimiento */
+@keyframes shimer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.shimer-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimer-effect::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  animation: shimer 2s infinite;
+}
+
+/* Estilo para los badges de estado en el Admin (opcional si los usas ahí) */
+.status-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  border: 2px solid black;
+  box-shadow: 2px 2px 0px 0px black;
 }
