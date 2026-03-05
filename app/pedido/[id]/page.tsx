@@ -4,24 +4,26 @@ import { supabase } from '@/lib/supabase';
 import { useParams } from 'next/navigation';
 
 export default function SeguimientoPedido() {
-    const { id } = useParams();
+    const params = useParams();
+    const id = params?.id; // Obtenemos el ID con seguridad
     const [pedido, setPedido] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (!id) return;
 
-        // Convertimos el ID a número para las consultas (tu DB usa int)
-        const pedidoIdNum = parseInt(id as string);
-
-        // 1. Carga inicial del pedido
+        // 1. CARGA INICIAL (Volvemos a lo seguro)
         const fetchPedido = async () => {
+            console.log("🔍 Buscando pedido ID:", id);
             const { data, error } = await supabase
                 .from('pedidos')
                 .select('*')
-                .eq('id', pedidoIdNum)
+                .eq('id', id) 
                 .single();
 
+            if (error) {
+                console.error("❌ Error cargando pedido:", error.message);
+            }
             if (data) {
                 setPedido(data);
             }
@@ -30,29 +32,25 @@ export default function SeguimientoPedido() {
 
         fetchPedido();
 
-        // 2. Suscripción Realtime (Escucha Global dentro de la tabla)
-        // Eliminamos el filter del objeto de configuración para evitar bugs de tipos int vs string
+        // 2. SUSCRIPCIÓN SIN FILTROS (Para que no falle por tipos de datos)
         const channel = supabase
-            .channel(`seguimiento_realtime_${id}`)
+            .channel('cambios-globales')
             .on(
                 'postgres_changes',
-                { 
-                    event: 'UPDATE', 
-                    schema: 'public', 
-                    table: 'pedidos' 
-                },
+                { event: 'UPDATE', schema: 'public', table: 'pedidos' },
                 (payload) => {
-                    console.log("📦 Cambio detectado en DB:", payload);
+                    console.log("🔔 Cambio detectado en la DB:", payload);
                     
-                    // Verificación manual de ID (Robusta entre PC y Móvil)
-                    if (payload.new && payload.new.id.toString() === id.toString()) {
-                        console.log("✅ ¡Es nuestro pedido! Actualizando estado...");
+                    // Comparamos el ID que cambió con el ID de nuestra URL
+                    // Usamos == para que compare "31" con 31 sin problemas
+                    if (payload.new && payload.new.id == id) {
+                        console.log("✅ Actualizando UI del pedido...");
                         setPedido(payload.new);
                     }
                 }
             )
             .subscribe((status) => {
-                console.log(`📡 Estado Realtime (${id}):`, status);
+                console.log("📡 Estado suscripción:", status);
             });
 
         return () => {
@@ -63,14 +61,14 @@ export default function SeguimientoPedido() {
     if (loading) return (
         <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center font-black italic uppercase p-4 text-center">
             <div className="w-12 h-12 border-4 border-black border-t-white rounded-full animate-spin mb-4"></div>
-            Buscando tu hamburguesa...
+            Cocinando tu seguimiento...
         </div>
     );
 
     if (!pedido) return (
         <div className="min-h-screen bg-white flex flex-col items-center justify-center font-black italic uppercase p-4 text-center">
             <span className="text-6xl mb-4">🤡</span>
-            Pedido no encontrado
+            Pedido #{id} no encontrado
         </div>
     );
 
@@ -90,7 +88,7 @@ export default function SeguimientoPedido() {
 
                 <div className="flex justify-between items-end mb-4 px-2">
                     <p className="font-black text-[10px] uppercase bg-black text-white px-3 py-1 rounded-full">
-                        Orden: #{pedido.id.toString().slice(-4)}
+                        Orden: #{pedido.id}
                     </p>
                     <div className="flex items-center gap-2">
                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
