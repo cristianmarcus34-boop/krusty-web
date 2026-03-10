@@ -82,21 +82,25 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
       alert("🤡 ¡Krusty dice que faltan datos!");
       return;
     }
+    
     setIsSending(true);
+
     try {
+      // 1. Guardar datos de cliente para el futuro
       localStorage.setItem('krusty-customer-v5', JSON.stringify(customer));
       
       const direccionCompleta = customer.tipoEntrega === 'Delivery' 
         ? `${customer.calleAltura.toUpperCase()} (${customer.barrio})` 
         : 'RETIRA EN LOCAL';
 
+      // Corregido el link de Maps
       const linkMaps = `https://www.google.com/maps/search/${encodeURIComponent(customer.calleAltura + " " + customer.barrio + " Buenos Aires")}`;
 
       const detallePago = customer.metodoPago === 'Efectivo' 
         ? `${customer.metodoPago} (Paga con: $${montoEfectivo || montoTotalFinal}${vuelto > 0 ? ` | Vuelto: $${vuelto}` : ' - Justo'})`
         : customer.metodoPago;
 
-      // 1. Insertamos en Supabase
+      // 2. Insertamos en Supabase
       const { data: pedidoGuardado, error } = await supabase
         .from('pedidos')
         .insert([{
@@ -114,11 +118,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
 
       if (error) throw error;
 
-      // 2. IMPORTANTE: GUARDAR ID PARA LA BARRA DE ESTADO
-      localStorage.setItem('pedido_id', pedidoGuardado.id);
+      // 3. CLAVE: Guardamos el ID con el nombre que espera la página de Gracias
+      localStorage.setItem('ultimo_pedido_id', pedidoGuardado.id.toString());
+      localStorage.setItem('pedido_id', pedidoGuardado.id.toString());
 
-      // 3. Generamos el link de seguimiento
-      const linkSeguimiento = `https://krusty-web.vercel.app/pedido/${pedidoGuardado.id}`;
+      // 4. Link de seguimiento dinámico
+      const baseUrl = window.location.origin;
+      const linkSeguimiento = `${baseUrl}/pedido/${pedidoGuardado.id}`;
 
       const numeroTelefono = "5491138305837";
       const mensaje = encodeURIComponent(
@@ -142,14 +148,18 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
         `🤡 _¡Gracias por elegir al payaso!_`
       );
 
+      // 5. Finalizar proceso: WhatsApp y Redirección
       clearCart();
       onClose();
+      
+      // Abrir WhatsApp en pestaña nueva
       window.open(`https://wa.me/${numeroTelefono}?text=${mensaje}`, "_blank");
       
-      router.push(`/pedido/${pedidoGuardado.id}`);
+      // Redirigir a la página del Ticket (Gracias)
+      router.push('/gracias');
 
     } catch (e) {
-      console.error(e);
+      console.error("Error en checkout:", e);
       alert("❌ Error procesando el pedido.");
     } finally {
       setIsSending(false);
@@ -158,14 +168,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
 
   return (
     <>
-      {/* Overlay Backdrop */}
       <div className={`fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm transition-all duration-500 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={onClose} />
 
-      {/* Main Drawer Container */}
       <div className={`fixed right-0 top-0 h-full w-full sm:w-[480px] bg-white z-[70] border-l-[6px] border-black transform transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full bg-[#FBFBFB]">
           
-          {/* Header */}
           <div className="p-6 border-b-[6px] border-black bg-[#D32F2F] text-white shrink-0">
             <div className="flex justify-between items-start">
               <div className="relative">
@@ -180,10 +187,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
             </div>
           </div>
 
-          {/* Content Area */}
           <div className="flex-1 overflow-y-auto p-5 space-y-8 no-scrollbar">
-            
-            {/* Cart Items */}
             <div className="space-y-3">
               {items.length === 0 ? (
                 <div className="text-center py-20">
@@ -208,7 +212,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
               )}
             </div>
 
-            {/* Customer Form */}
             {items.length > 0 && (
               <div className="space-y-4 animate-fade-up">
                 <div className="flex gap-2">
@@ -224,7 +227,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   <input type="tel" placeholder="TELÉFONO" className="w-full border-[3px] border-black p-3 rounded-xl font-bold text-xs outline-none focus:bg-yellow-50" value={customer.telefono} onChange={(e) => setCustomer({...customer, telefono: e.target.value.replace(/\D/g, '')})} />
 
                   {customer.tipoEntrega === 'Delivery' && (
-                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-3">
                       <select 
                         className="w-full border-[3px] border-black p-3 rounded-xl font-bold text-xs uppercase outline-none bg-white cursor-pointer"
                         value={customer.barrio}
@@ -247,7 +250,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   )}
                 </div>
 
-                {/* Pago */}
                 <div className="space-y-3">
                   <div className="grid grid-cols-3 gap-2">
                     {['Efectivo', 'Transferencia', 'QR'].map((pago) => (
@@ -255,7 +257,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                     ))}
                   </div>
                   {customer.metodoPago === 'Efectivo' && (
-                    <div className="bg-[#E8F5E9] border-[3px] border-black p-4 rounded-2xl animate-in zoom-in-95">
+                    <div className="bg-[#E8F5E9] border-[3px] border-black p-4 rounded-2xl">
                       <p className="text-[10px] font-black uppercase text-green-800 mb-1 italic">¿Con cuánto pagás?</p>
                       <input type="number" className="w-full border-2 border-black p-2 rounded-lg font-black outline-none focus:ring-2 ring-green-500" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} placeholder={montoTotalFinal.toString()} />
                       {vuelto > 0 && (
@@ -268,12 +270,11 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   )}
                 </div>
 
-                <textarea placeholder="¿NOTAS PARA LA COCINA O REPARTIDOR?" className="w-full border-[3px] border-black p-3 rounded-xl font-bold uppercase text-[10px] h-20 resize-none outline-none focus:bg-yellow-50" value={customer.notes} onChange={(e) => setCustomer({...customer, notes: e.target.value})} />
+                <textarea placeholder="¿NOTAS PARA LA COCINA?" className="w-full border-[3px] border-black p-3 rounded-xl font-bold uppercase text-[10px] h-20 resize-none outline-none focus:bg-yellow-50" value={customer.notes} onChange={(e) => setCustomer({...customer, notes: e.target.value})} />
               </div>
             )}
           </div>
 
-          {/* Footer Totals & Checkout */}
           <div className="p-6 border-t-[6px] border-black bg-white shrink-0">
             <div className="space-y-1 mb-4 px-2">
               <div className="flex justify-between items-center text-stone-500 font-bold text-[10px] uppercase">
@@ -303,7 +304,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   : 'bg-[#FFCA28] text-black shadow-[6px_6px_0px_0px_black] active:shadow-none active:translate-y-1 hover:bg-[#FFD54F]'
                 }`}
             >
-              {isSending ? 'ENVIANDO...' : (isFormValid ? '¡PEDIR AHORA! 🍔' : 'FALTAN DATOS')}
+              {isSending ? 'PROCESANDO...' : (isFormValid ? '¡PEDIR AHORA! 🍔' : 'FALTAN DATOS')}
             </button>
           </div>
         </div>

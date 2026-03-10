@@ -3,7 +3,6 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-// 1. CONFIGURACIÓN Y LISTA BLANCA
 const ADMIN_EMAILS = ['cristianmarcus34@gmail.com', 'marianajuarez99@gmail.com'];
 const BUCKET_NAME = 'krusty_imagenes';
 
@@ -18,6 +17,7 @@ export default function AdminPage() {
   const [isUploading, setIsUploading] = useState(false);
   const isSaving = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const channelRef = useRef<any>(null); // Referencia persistente para el canal
   const router = useRouter();
 
   const [nuevoProducto, setNuevoProducto] = useState({
@@ -26,15 +26,13 @@ export default function AdminPage() {
 
   const listaCategorias = ['burgers', 'bebidas', 'postres', 'combos'];
 
-  // --- SONIDO DE NOTIFICACIÓN ---
   const playNotification = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0; 
-      audioRef.current.play().catch(() => console.warn("Audio bloqueado"));
+      audioRef.current.play().catch(() => console.warn("Audio bloqueado por el navegador"));
     }
   }, []);
 
-  // --- FETCH DE DATOS ---
   const fetchPedidos = useCallback(async () => {
     const { data } = await supabase
       .from('pedidos')
@@ -44,85 +42,90 @@ export default function AdminPage() {
   }, []);
 
   const fetchProductos = useCallback(async () => {
+    // Si el usuario está editando un campo, evitamos el refresh para no borrar lo que escribe
     if (isSaving.current || editandoId !== null) return;
     const { data } = await supabase.from('productos').select('*').order('categoria', { ascending: true });
     if (data) setProductos(data);
   }, [editandoId]);
 
-  // --- EFECTO INICIAL Y REALTIME REFORZADO ---
+  // 1. EFECTO DE AUTENTICACIÓN Y CARGA INICIAL
   useEffect(() => {
     audioRef.current = new Audio('/sounds/nuevopedido_finmario.mp3');
     audioRef.current.volume = 0.6;
 
-    const initPanel = async () => {
+    const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session || !ADMIN_EMAILS.includes(session.user.email || '')) {
         await supabase.auth.signOut();
         router.push('/admin/login');
         return;
       }
-
       await Promise.all([fetchPedidos(), fetchProductos()]);
-      
-      const channel = supabase.channel('admin_realtime_v2')
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos' }, (payload) => {
-          console.log("🆕 Nuevo pedido recibido:", payload.new);
+      setLoading(false);
+    };
+
+    checkAuth();
+  }, [router, fetchPedidos, fetchProductos]);
+
+  // 2. EFECTO DE REALTIME (ESTABLE Y PERSISTENTE)
+  useEffect(() => {
+    if (loading) return;
+
+    // Configuramos el canal una sola vez
+    channelRef.current = supabase.channel('admin_live_v5')
+      .on(
+        'postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'pedidos' }, 
+        (payload) => {
+          console.log("🔥 Nuevo pedido en Realtime");
           playNotification();
           setPedidos(current => [payload.new, ...current]);
-        })
-        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'pedidos' }, (payload) => {
-          console.log("🔄 Actualización detectada en DB:", payload.new);
-          // Sincronizamos la lista local con lo que dice la DB
+        }
+      )
+      .on(
+        'postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'pedidos' }, 
+        (payload) => {
           setPedidos(current => 
-            current.map(p => p.id === payload.new.id ? payload.new : p)
+            current.map(p => String(p.id) === String(payload.new.id) ? payload.new : p)
           );
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, () => {
-            if (editandoId === null && !isSaving.current) fetchProductos();
-        })
-        .subscribe((status) => console.log("📡 Estado Admin Realtime:", status));
-        
-      setLoading(false);
-      return () => { supabase.removeChannel(channel); };
-    };
-    
-    initPanel();
-  }, [router, fetchPedidos, fetchProductos, editandoId, playNotification]);
+        }
+      )
+      .on(
+        'postgres_changes', 
+        { event: '*', schema: 'public', table: 'productos' }, 
+        () => {
+          // Solo refrescar si el admin no está tocando nada en el Menú
+          if (editandoId === null && !isSaving.current) fetchProductos();
+        }
+      )
+      .subscribe();
 
-  // --- MANEJADORES DE PEDIDOS (EL CAMBIO CLAVE) ---
-  const cambiarEstadoPedido = async (id: number, nuevoEstado: string) => {
+    return () => {
+      if (channelRef.current) supabase.removeChannel(channelRef.current);
+    };
+  }, [loading, fetchProductos, playNotification]); // Quitamos editandoId de aquí para que no se reinicie el canal
+
+  const cambiarEstadoPedido = async (id: any, nuevoEstado: string) => {
     try {
-      console.log(`🚀 Actualizando Pedido #${id} a ${nuevoEstado}...`);
-      
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('pedidos')
         .update({ estado: nuevoEstado })
-        .eq('id', id)
-        .select(); // IMPORTANTE: .select() asegura que el cambio se emita al Realtime
-
+        .eq('id', id);
       if (error) throw error;
-      
-      if (data) {
-        console.log("✅ Cambio exitoso en base de datos.");
-        // Actualizamos localmente para feedback inmediato
-        setPedidos(prev => prev.map(p => p.id === id ? { ...p, estado: nuevoEstado } : p));
-      }
     } catch (err: any) {
-      console.error("❌ Error al cambiar estado:", err.message);
       alert("Error: " + err.message);
     }
   };
 
-  const eliminarPedido = async (id: number) => {
-    if (confirm("¿Estás seguro de eliminar este pedido?")) {
+  const eliminarPedido = async (id: any) => {
+    if (confirm("¿Eliminar comanda?")) {
       const { error } = await supabase.from('pedidos').delete().eq('id', id);
-      if (!error) setPedidos(prev => prev.filter(p => p.id !== id));
+      if (!error) setPedidos(prev => prev.filter(p => String(p.id) !== String(id)));
     }
   };
 
-  // --- MANEJADORES DE PRODUCTOS E IMÁGENES ---
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEditing: boolean = false, prodId?: number) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -136,21 +139,16 @@ export default function AdminPage() {
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-
-      if (isEditing && prodId) {
-        handleLocalChange(prodId, 'imagen', publicUrl);
-      } else {
-        setNuevoProducto(prev => ({ ...prev, imagen: publicUrl }));
-      }
+      setNuevoProducto(prev => ({ ...prev, imagen: publicUrl }));
     } catch (error: any) {
-      alert("❌ Error: " + error.message);
+      alert("Error carga imagen: " + error.message);
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleLocalChange = (id: number, campo: string, valor: any) => {
-    setEditandoId(id);
+    setEditandoId(id); // Esto bloquea los refrescos automáticos de Realtime
     setProductos(prev => prev.map(p => p.id === id ? { ...p, [campo]: valor } : p));
   };
 
@@ -164,17 +162,20 @@ export default function AdminPage() {
         descripcion: producto.descripcion,
         imagen: producto.imagen
       }).eq('id', producto.id);
+      
       if (error) throw error;
-      alert("✅ ¡Producto actualizado!");
       setEditandoId(null);
+      alert("✅ Guardado");
     } catch (error: any) {
       alert("❌ Error: " + error.message);
-    } finally { isSaving.current = false; }
+    } finally { 
+      isSaving.current = false; 
+    }
   };
 
   const handleAddProducto = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nuevoProducto.imagen) return alert("Sube una imagen.");
+    if (!nuevoProducto.imagen) return alert("Sube una imagen primero.");
     const { error } = await supabase.from('productos').insert([nuevoProducto]);
     if (error) alert(error.message);
     else {
@@ -184,16 +185,9 @@ export default function AdminPage() {
     }
   };
 
-  const eliminarProducto = async (id: number) => {
-    if (confirm("¿Eliminar del menú?")) {
-      const { error } = await supabase.from('productos').delete().eq('id', id);
-      if (!error) setProductos(prev => prev.filter(p => p.id !== id));
-    }
-  };
-
   const getEstadoEstilo = (estado: string) => {
     switch (estado) {
-      case 'pendiente': return 'bg-[#D32F2F] text-white';
+      case 'pendiente': return 'bg-[#D32F2F] text-white animate-pulse';
       case 'en cocina': return 'bg-orange-500 text-white';
       case 'en camino': return 'bg-blue-500 text-white';
       case 'entregado': return 'bg-green-600 text-white opacity-50';
@@ -203,122 +197,130 @@ export default function AdminPage() {
 
   if (loading) return (
     <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center p-4">
-      <div className="w-12 h-12 border-4 border-black border-t-white rounded-full animate-spin mb-4"></div>
-      <p className="font-black italic text-xl uppercase text-center tracking-tighter">Conectando con la cocina...</p>
+      <div className="w-16 h-16 border-8 border-black border-t-white rounded-full animate-spin mb-4"></div>
+      <p className="font-black italic text-2xl uppercase text-black">Cargando Admin...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-stone-100 pb-10 font-sans text-black">
-      {/* HEADER */}
-      <header className="sticky top-0 z-50 bg-stone-100 border-b-4 border-black p-4 shadow-sm">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3">
-          <div className="flex items-center gap-4">
-            <button onClick={() => router.push('/')} className="bg-white border-4 border-black p-2 rounded-xl shadow-[3px_3px_0px_0px_black]">
-              <span className="text-xl font-black">←</span>
-            </button>
-            <h1 className="text-2xl md:text-4xl font-black text-[#D32F2F] italic uppercase drop-shadow-[2px_2px_0px_black]">KRUSTY ADMIN</h1>
+    <div className="min-h-screen bg-stone-200 font-sans text-black">
+      <header className="sticky top-0 z-50 bg-white border-b-8 border-black p-4 md:p-6 shadow-md">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center justify-between w-full md:w-auto gap-4">
+             <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-[#D32F2F] rounded-full border-4 border-black flex items-center justify-center text-white font-black italic">K</div>
+                <h1 className="text-3xl font-black text-[#D32F2F] italic uppercase tracking-tighter drop-shadow-[1px_1px_0px_black]">ADMIN</h1>
+             </div>
+             <button onClick={() => { supabase.auth.signOut(); router.push('/admin/login'); }} className="md:hidden bg-black text-white px-4 py-2 rounded-xl font-black text-[10px]">SALIR</button>
           </div>
           
-          <div className="flex gap-2 w-full md:w-auto">
-            <button onClick={() => setActiveTab('pedidos')} className={`flex-1 px-6 py-2 rounded-xl font-black uppercase italic border-4 border-black transition-all ${activeTab === 'pedidos' ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1' : 'bg-white'}`}>
-              🍔 Comandas
+          <nav className="flex gap-2 w-full md:w-auto">
+            <button onClick={() => setActiveTab('pedidos')} className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-black uppercase italic border-4 border-black transition-all ${activeTab === 'pedidos' ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1' : 'bg-white'}`}>
+              Comandas {pedidos.filter(p => p.estado !== 'entregado').length > 0 && `(${pedidos.filter(p => p.estado !== 'entregado').length})`}
             </button>
-            <button onClick={() => setActiveTab('productos')} className={`flex-1 px-6 py-2 rounded-xl font-black uppercase italic border-4 border-black transition-all ${activeTab === 'productos' ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1' : 'bg-white'}`}>
-              📋 Menú
+            <button onClick={() => setActiveTab('productos')} className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-black uppercase italic border-4 border-black transition-all ${activeTab === 'productos' ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1' : 'bg-white'}`}>
+              Menú
             </button>
-            <button onClick={() => { supabase.auth.signOut(); router.push('/admin/login'); }} className="bg-black text-white px-3 py-2 rounded-xl font-black text-[10px]">SALIR</button>
-          </div>
+          </nav>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         {activeTab === 'pedidos' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {pedidos.map((pedido) => (
-              <div key={pedido.id} className={`relative border-4 border-black p-5 rounded-[2rem] shadow-[8px_8px_0px_0px_black] bg-white ${pedido.estado === 'entregado' ? 'grayscale opacity-60' : ''}`}>
-                
-                <div className={`absolute -top-3 -right-2 px-4 py-1 rounded-xl border-2 border-black font-black text-[10px] uppercase ${getEstadoEstilo(pedido.estado)}`}>
+              <div key={pedido.id} className={`group relative border-4 border-black p-6 rounded-[2.5rem] shadow-[10px_10px_0px_0px_black] transition-all bg-white ${pedido.estado === 'entregado' ? 'grayscale opacity-60' : ''}`}>
+                <div className={`absolute -top-4 right-6 px-4 py-1 rounded-xl border-4 border-black font-black text-xs uppercase z-10 shadow-[4px_4px_0px_0px_black] ${getEstadoEstilo(pedido.estado)}`}>
                   {pedido.estado}
                 </div>
+                <button onClick={() => eliminarPedido(pedido.id)} className="absolute -top-4 -left-2 bg-white text-[#D32F2F] border-4 border-black w-10 h-10 rounded-full font-black hover:scale-110 transition-transform z-10 shadow-[4px_4px_0px_0px_black]">✕</button>
 
-                <button onClick={() => eliminarPedido(pedido.id)} className="absolute -top-3 -left-2 bg-white text-black border-2 border-black w-8 h-8 rounded-full font-black text-xs shadow-md">✕</button>
-
-                <div className="mb-4 mt-2">
-                  <h2 className="text-2xl font-black uppercase italic leading-none">{pedido.cliente_nombre}</h2>
-                  <p className="text-xs font-bold text-stone-500 mt-1">📍 {pedido.direccion}</p>
+                <div className="mb-4">
+                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Cliente:</p>
+                  <h2 className="text-2xl font-black uppercase italic leading-tight text-black">{pedido.cliente_nombre}</h2>
+                  <p className="text-xs font-bold text-stone-500 mt-1 leading-tight">📍 {pedido.direccion}</p>
                 </div>
 
-                <div className="bg-stone-50 p-3 rounded-xl border-2 border-dashed border-stone-300 mb-4">
-                  <p className="font-bold text-sm text-stone-700">{pedido.items_resumen}</p>
+                <div className="bg-stone-100 p-4 rounded-2xl border-4 border-black border-dashed mb-4 max-h-40 overflow-y-auto">
+                   <p className="font-bold text-sm leading-relaxed text-stone-800 whitespace-pre-line">{pedido.items_resumen}</p>
                 </div>
 
-                <div className="flex justify-between items-center mb-6">
-                  <p className="text-3xl font-black italic tracking-tighter">${pedido.total}</p>
-                  <div className="px-3 py-1 rounded-full border-2 border-black font-black text-[10px] uppercase bg-purple-100">
-                    {pedido.tipo_entrega}
+                <div className="flex justify-between items-end mb-6">
+                  <div>
+                    <p className="text-[10px] font-black text-stone-400 uppercase">Pago:</p>
+                    <p className="font-black text-xs italic text-[#D32F2F]">{pedido.metodo_pago}</p>
                   </div>
+                  <p className="text-4xl font-black italic tracking-tighter">${pedido.total}</p>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en cocina')} className="font-black py-2 rounded-xl border-2 border-black text-[10px] uppercase bg-white hover:bg-orange-100">👨‍🍳 Cocina</button>
-                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en camino')} className="font-black py-2 rounded-xl border-2 border-black text-[10px] uppercase bg-white hover:bg-blue-100">🛵 Camino</button>
+                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en cocina')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-orange-400 hover:text-white transition-colors shadow-[4px_4px_0px_0px_black]">👨‍🍳 COCINA</button>
+                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en camino')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-blue-500 hover:text-white transition-colors shadow-[4px_4px_0px_0px_black]">🛵 ENVÍO</button>
                   </div>
                   <button 
                     onClick={() => cambiarEstadoPedido(pedido.id, pedido.estado === 'entregado' ? 'pendiente' : 'entregado')} 
-                    className={`font-black py-3 rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_black] uppercase text-xs ${pedido.estado === 'entregado' ? 'bg-stone-200' : 'bg-green-500 text-white'}`}
+                    className={`font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_black] transition-all uppercase text-xs ${pedido.estado === 'entregado' ? 'bg-stone-300' : 'bg-green-500 text-white'}`}
                   >
-                    {pedido.estado === 'entregado' ? 'Reabrir' : 'Entregado ✅'}
+                    {pedido.estado === 'entregado' ? 'REABRIR COMANDA' : 'ENTREGAR ✅'}
                   </button>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          /* Pestaña de Productos (Inventario) */
-          <div className="grid grid-cols-1 gap-6">
-             <button onClick={() => setShowModal(true)} className="bg-[#D32F2F] text-white border-4 border-black p-6 rounded-3xl font-black uppercase text-xl shadow-[6px_6px_0px_0px_black]">
-               + AGREGAR NUEVO PRODUCTO
-             </button>
-             {productos.map((prod) => (
-               <div key={prod.id} className="flex flex-col md:flex-row gap-6 bg-white border-4 border-black p-5 rounded-[2.5rem] shadow-[4px_4px_0px_0px_black]">
-                 <img src={prod.imagen} className="w-40 h-40 object-cover rounded-3xl border-4 border-black" alt="" />
-                 <div className="flex-1">
-                   <input value={prod.nombre} onChange={(e) => handleLocalChange(prod.id, 'nombre', e.target.value)} className="w-full font-black text-2xl uppercase italic bg-transparent outline-none" />
-                   <textarea value={prod.descripcion} onChange={(e) => handleLocalChange(prod.id, 'descripcion', e.target.value)} className="w-full text-sm font-bold bg-stone-50 p-2 rounded-xl mt-2 h-20 resize-none border-2 border-stone-200" />
-                 </div>
-                 <div className="w-40 flex flex-col justify-between gap-2">
-                   <div className="bg-white border-4 border-black p-2 rounded-xl flex items-center">
-                     <span className="font-black">$</span>
-                     <input type="number" value={prod.precio} onChange={(e) => handleLocalChange(prod.id, 'precio', e.target.value)} className="w-full text-right font-black text-xl outline-none" />
-                   </div>
-                   <button onClick={() => guardarCambiosEnDB(prod)} disabled={editandoId !== prod.id} className={`py-3 rounded-xl border-4 border-black font-black uppercase text-xs ${editandoId === prod.id ? 'bg-green-500 text-white' : 'bg-stone-100 opacity-50'}`}>GUARDAR</button>
-                   <button onClick={() => eliminarProducto(prod.id)} className="py-2 border-2 border-black rounded-xl text-red-600 font-bold text-xs">ELIMINAR</button>
-                 </div>
-               </div>
-             ))}
+          <div className="space-y-8">
+              <button onClick={() => setShowModal(true)} className="w-full bg-[#D32F2F] text-white border-8 border-black p-8 rounded-[3rem] font-black uppercase text-2xl italic shadow-[10px_10px_0px_0px_black] hover:-translate-y-2 transition-transform">
+                + AGREGAR AL MENÚ 🔥
+              </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {productos.map((prod) => (
+                  <div key={prod.id} className="bg-white border-4 border-black p-6 rounded-[3rem] shadow-[8px_8px_0px_0px_black] flex flex-col sm:flex-row gap-6">
+                    <div className="w-full sm:w-32 h-32 shrink-0">
+                        <img src={prod.imagen} className="w-full h-full object-cover rounded-2xl border-4 border-black" alt="" />
+                    </div>
+                    <div className="flex-1 space-y-3">
+                      <input value={prod.nombre} onChange={(e) => handleLocalChange(prod.id, 'nombre', e.target.value)} className="w-full font-black text-xl uppercase italic bg-transparent border-b-2 border-black focus:border-[#D32F2F] outline-none" />
+                      <div className="flex gap-2">
+                         <span className="font-black text-xl">$</span>
+                         <input type="number" value={prod.precio} onChange={(e) => handleLocalChange(prod.id, 'precio', e.target.value)} className="w-full font-black text-xl outline-none" />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <button onClick={() => guardarCambiosEnDB(prod)} disabled={editandoId !== prod.id} className={`flex-1 py-3 rounded-xl border-4 border-black font-black uppercase text-[10px] ${editandoId === prod.id ? 'bg-green-500 text-white shadow-[3px_3px_0px_0px_black]' : 'bg-stone-100 opacity-40'}`}>GUARDAR</button>
+                        <button onClick={async () => { if (confirm("¿Borrar?")) { const { error } = await supabase.from('productos').delete().eq('id', prod.id); if (!error) setProductos(prev => prev.filter(p => p.id !== prod.id)); } }} className="px-4 border-4 border-black rounded-xl text-red-600 font-black text-[10px]">BORRAR</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
           </div>
         )}
       </main>
 
-      {/* MODAL SIMPLIFICADO */}
+      {/* MODAL NUEVO PRODUCTO */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80">
-          <div className="bg-[#FFCA28] border-[8px] border-black p-8 rounded-[3rem] w-full max-w-lg">
-            <h2 className="text-3xl font-black uppercase italic mb-6 text-center">NUEVO ITEM</h2>
-            <form onSubmit={handleAddProducto} className="space-y-4">
-              <input required placeholder="NOMBRE" className="w-full border-4 border-black p-3 rounded-xl font-black" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({...nuevoProducto, nombre: e.target.value})} />
-              <div className="flex gap-2">
-                <input required type="number" placeholder="PRECIO" className="w-1/2 border-4 border-black p-3 rounded-xl font-black" value={nuevoProducto.precio} onChange={(e) => setNuevoProducto({...nuevoProducto, precio: Number(e.target.value)})} />
-                <select className="w-1/2 border-4 border-black p-3 rounded-xl font-black" value={nuevoProducto.categoria} onChange={(e) => setNuevoProducto({...nuevoProducto, categoria: e.target.value})}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
+          <div className="bg-[#FFCA28] border-[10px] border-black p-8 rounded-[4rem] w-full max-w-lg">
+            <h2 className="text-4xl font-black uppercase italic mb-8 text-center">NUEVO ITEM</h2>
+            <form onSubmit={handleAddProducto} className="space-y-5">
+              <input required placeholder="NOMBRE" className="w-full border-4 border-black p-4 rounded-2xl font-black uppercase italic outline-none focus:bg-white" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({...nuevoProducto, nombre: e.target.value})} />
+              <div className="flex gap-3">
+                <input required type="number" placeholder="PRECIO" className="flex-1 border-4 border-black p-4 rounded-2xl font-black outline-none" value={nuevoProducto.precio || ''} onChange={(e) => setNuevoProducto({...nuevoProducto, precio: Number(e.target.value)})} />
+                <select className="flex-1 border-4 border-black p-4 rounded-2xl font-black bg-white outline-none" value={nuevoProducto.categoria} onChange={(e) => setNuevoProducto({...nuevoProducto, categoria: e.target.value})}>
                   {listaCategorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
-              <input type="file" onChange={handleFileUpload} className="w-full font-bold text-xs" />
-              <textarea placeholder="DESCRIPCIÓN" className="w-full border-4 border-black p-3 rounded-xl font-black h-24" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} />
-              <button type="submit" className="w-full bg-green-500 text-white border-4 border-black py-4 rounded-2xl font-black shadow-[4px_4px_0px_0px_black]">CREAR PRODUCTO 🔥</button>
-              <button type="button" onClick={() => setShowModal(false)} className="w-full text-center font-black uppercase text-xs underline">Cerrar</button>
+              <div className="bg-white border-4 border-black p-4 rounded-2xl text-center">
+                 <input type="file" onChange={handleFileUpload} className="w-full text-xs font-black" />
+                 {isUploading && <p className="text-[10px] font-bold text-red-600 animate-pulse mt-2 uppercase">Subiendo...</p>}
+                 {nuevoProducto.imagen && <p className="text-[10px] font-bold text-green-600 mt-2 uppercase">✅ Imagen lista</p>}
+              </div>
+              <textarea placeholder="DESCRIPCIÓN" className="w-full border-4 border-black p-4 rounded-2xl font-black h-24 resize-none outline-none focus:bg-white" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} />
+              <div className="pt-4 space-y-3">
+                <button type="submit" disabled={isUploading} className="w-full bg-[#D32F2F] text-white border-4 border-black py-5 rounded-[2rem] font-black text-xl italic shadow-[6px_6px_0px_0px_black]">CREAR ITEM 🔥</button>
+                <button type="button" onClick={() => setShowModal(false)} className="w-full text-center font-black uppercase text-xs underline">Cerrar</button>
+              </div>
             </form>
           </div>
         </div>
