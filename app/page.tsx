@@ -11,9 +11,16 @@ export default function Home() {
   const [categoriaActual, setCategoriaActual] = useState('todos');
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [showScrollHint, setShowScrollHint] = useState(true); // Estado para el aviso de scroll
+  const [showScrollHint, setShowScrollHint] = useState(true);
   
+  // ESTADOS PARA EL SEGUIMIENTO DEL CLIENTE
+  const [pedidoActivoId, setPedidoActivoId] = useState<string | null>(null);
+  const [estadoPedido, setEstadoPedido] = useState<string>('pendiente');
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null); 
+  const estadoAnteriorRef = useRef<string>('pendiente'); // Rastrea cambios de estado
+
   const categorias = ['todos', 'burgers', 'bebidas', 'postres', 'combos'];
 
   const fetchProductos = useCallback(async () => {
@@ -37,23 +44,73 @@ export default function Home() {
     if (session) setIsAdmin(true);
   }, []);
 
-  // Función para detectar si el usuario ya scrolleó las categorías
   const handleScroll = () => {
     if (scrollRef.current && scrollRef.current.scrollLeft > 20) {
       setShowScrollHint(false);
     }
   };
 
+  // Sincronizar el ref con el estado para la comparación en el Realtime
+  useEffect(() => {
+    estadoAnteriorRef.current = estadoPedido;
+  }, [estadoPedido]);
+
   useEffect(() => {
     fetchProductos();
     checkAdminSession();
 
-    const channel = supabase
+    const savedId = localStorage.getItem('ultimo_pedido_id');
+    
+    if (savedId) {
+      setPedidoActivoId(savedId);
+
+      const fetchEstadoInicial = async () => {
+        const { data } = await supabase
+          .from('pedidos')
+          .select('estado')
+          .eq('id', savedId)
+          .single();
+        if (data) {
+          setEstadoPedido(data.estado);
+          estadoAnteriorRef.current = data.estado;
+        }
+      };
+      fetchEstadoInicial();
+
+      const orderChannel = supabase
+        .channel(`seguimiento-home-${savedId}`)
+        .on('postgres_changes', 
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'pedidos', 
+            filter: `id=eq.${savedId}` 
+          }, 
+          (payload) => {
+            const nuevoEstado = payload.new.estado;
+            
+            // LÓGICA DE SONIDO: Solo suena si pasa de "algo" a "en camino"
+            if (nuevoEstado === 'en camino' && estadoAnteriorRef.current !== 'en camino') {
+              if (audioRef.current) {
+                audioRef.current.currentTime = 0; 
+                audioRef.current.play().catch(e => console.log("Reproducción automática bloqueada:", e));
+              }
+            }
+
+            setEstadoPedido(nuevoEstado);
+          }
+        )
+        .subscribe();
+
+      return () => { supabase.removeChannel(orderChannel); };
+    }
+
+    const menuChannel = supabase
       .channel('menu-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, () => fetchProductos())
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { supabase.removeChannel(menuChannel); };
   }, [fetchProductos, checkAdminSession]);
 
   const filtrados = categoriaActual === 'todos'
@@ -68,6 +125,11 @@ export default function Home() {
         backgroundSize: '20px 20px'
       }}
     >
+      {/* AUDIO INVISIBLE - Ruta: public/sounds/correcaminos-bip.mp3 */}
+      <audio ref={audioRef} preload="auto">
+        <source src="/sounds/correcaminos-bip.mp3" type="audio/mpeg" />
+      </audio>
+
       {/* BOTÓN FLOTANTE ADMIN */}
       {isAdmin && (
         <div className="fixed bottom-6 left-6 z-[100]">
@@ -76,6 +138,51 @@ export default function Home() {
               <span className="text-lg">⚙️</span> VOLVER AL PANEL
             </button>
           </Link>
+        </div>
+      )}
+
+      {/* BOTÓN FLOTANTE SEGUIMIENTO CLIENTE */}
+      {pedidoActivoId && (
+        <div className="fixed bottom-6 right-6 z-[100] group animate-in fade-in slide-in-from-right-10 duration-500">
+          <Link href={`/pedido/${pedidoActivoId}`}>
+            <button className={`bg-[#D32F2F] text-white border-4 border-black px-6 py-4 rounded-2xl shadow-[6px_6px_0px_0px_black] flex items-center gap-4 hover:scale-105 active:translate-y-1 active:shadow-none transition-all relative ${estadoPedido === 'en camino' ? 'animate-pulse' : ''}`}>
+              
+              <span className="absolute -top-2 -left-2 flex h-6 w-6">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75 border-2 border-black"></span>
+                <span className="relative inline-flex rounded-full h-6 w-6 bg-green-500 border-2 border-black"></span>
+              </span>
+
+              <span className="text-3xl animate-bounce-slow">
+                {estadoPedido === 'pendiente' && '📩'}
+                {estadoPedido === 'en cocina' && '👨‍🍳'}
+                {estadoPedido === 'en camino' && '🛵'}
+                {estadoPedido === 'entregado' && '🍔'}
+              </span>
+
+              <div className="text-left">
+                <p className="text-[9px] font-black uppercase leading-tight text-[#FFCA28] opacity-90">
+                  {estadoPedido === 'entregado' ? '¡Orden lista!' : 'Estado de tu pedido:'}
+                </p>
+                <p className="text-sm font-black italic uppercase leading-none tracking-tighter">
+                  {estadoPedido === 'pendiente' && 'Recibido'}
+                  {estadoPedido === 'en cocina' && 'En Parrilla'}
+                  {estadoPedido === 'en camino' && 'En Camino'}
+                  {estadoPedido === 'entregado' && '¡Entregado!'}
+                </p>
+              </div>
+            </button>
+          </Link>
+
+          <button 
+            onClick={(e) => {
+              e.preventDefault();
+              localStorage.removeItem('ultimo_pedido_id');
+              setPedidoActivoId(null);
+            }}
+            className="absolute -top-3 -right-3 bg-black text-white w-8 h-8 rounded-full text-[10px] font-black border-2 border-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+          >
+            X
+          </button>
         </div>
       )}
 
@@ -99,11 +206,9 @@ export default function Home() {
         </div>
       </header>
 
-      {/* 2. CATEGORÍAS CON AVISO DE SCROLL */}
+      {/* 2. CATEGORÍAS */}
       <div className="sticky top-0 z-40 bg-[#F5F5F4]/90 backdrop-blur-md pt-4 pb-2 mb-8 border-b-2 border-dashed border-black/10">
         <div className="relative max-w-7xl mx-auto">
-          
-          {/* Contenedor con scroll y máscara de desvanecimiento a la derecha */}
           <div className="relative group">
             <div 
               ref={scrollRef}
@@ -128,7 +233,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Aviso visual solo para celulares (hidden en md) */}
             {showScrollHint && (
               <div className="md:hidden absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none animate-pulse">
                 <div className="bg-black text-white text-[10px] font-black px-2 py-1 rounded-lg border-2 border-white shadow-lg flex items-center gap-1">
@@ -136,11 +240,6 @@ export default function Home() {
                 </div>
               </div>
             )}
-          </div>
-          
-          {/* Pequeña línea indicadora estética */}
-          <div className="flex justify-center mt-1 md:hidden">
-             <div className="w-12 h-1 bg-black/10 rounded-full"></div>
           </div>
         </div>
       </div>
@@ -179,7 +278,14 @@ export default function Home() {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Efecto de desvanecimiento a la derecha para indicar más contenido */
+        @keyframes bounce-slow {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-8px); }
+        }
+        .animate-bounce-slow {
+          animation: bounce-slow 1.5s infinite ease-in-out;
+        }
+
         @media (max-width: 768px) {
           .mask-fade-right {
             mask-image: linear-gradient(to right, black 85%, transparent 100%);

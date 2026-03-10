@@ -13,11 +13,10 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editandoId, setEditandoId] = useState<number | null>(null);
-  
+
   const [isUploading, setIsUploading] = useState(false);
   const isSaving = useRef(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const channelRef = useRef<any>(null); // Referencia persistente para el canal
   const router = useRouter();
 
   const [nuevoProducto, setNuevoProducto] = useState({
@@ -26,13 +25,7 @@ export default function AdminPage() {
 
   const listaCategorias = ['burgers', 'bebidas', 'postres', 'combos'];
 
-  const playNotification = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0; 
-      audioRef.current.play().catch(() => console.warn("Audio bloqueado por el navegador"));
-    }
-  }, []);
-
+  // --- FUNCIONES DE CARGA ---
   const fetchPedidos = useCallback(async () => {
     const { data } = await supabase
       .from('pedidos')
@@ -42,13 +35,19 @@ export default function AdminPage() {
   }, []);
 
   const fetchProductos = useCallback(async () => {
-    // Si el usuario está editando un campo, evitamos el refresh para no borrar lo que escribe
     if (isSaving.current || editandoId !== null) return;
     const { data } = await supabase.from('productos').select('*').order('categoria', { ascending: true });
     if (data) setProductos(data);
   }, [editandoId]);
 
-  // 1. EFECTO DE AUTENTICACIÓN Y CARGA INICIAL
+  const playNotification = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(() => console.warn("Audio bloqueado. Interactúa con la página primero."));
+    }
+  }, []);
+
+  // --- 1. CARGA INICIAL Y CONFIGURACIÓN DE AUDIO ---
   useEffect(() => {
     audioRef.current = new Audio('/sounds/nuevopedido_finmario.mp3');
     audioRef.current.volume = 0.6;
@@ -67,45 +66,46 @@ export default function AdminPage() {
     checkAuth();
   }, [router, fetchPedidos, fetchProductos]);
 
-  // 2. EFECTO DE REALTIME (ESTABLE Y PERSISTENTE)
+  // --- 2. REALTIME (Sincronización en tiempo real) ---
   useEffect(() => {
     if (loading) return;
 
-    // Configuramos el canal una sola vez
-    channelRef.current = supabase.channel('admin_live_v5')
+    const channel = supabase
+      .channel('admin-realtime')
       .on(
-        'postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'pedidos' }, 
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'pedidos' },
         (payload) => {
-          console.log("🔥 Nuevo pedido en Realtime");
+          console.log("🔥 NUEVO PEDIDO:", payload.new);
           playNotification();
-          setPedidos(current => [payload.new, ...current]);
+          setPedidos((current) => [payload.new, ...current]);
         }
       )
       .on(
-        'postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'pedidos' }, 
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'pedidos' },
         (payload) => {
-          setPedidos(current => 
-            current.map(p => String(p.id) === String(payload.new.id) ? payload.new : p)
+          // Actualización blindada: comparamos IDs como strings para evitar errores de tipo
+          setPedidos((current) =>
+            current.map((p) => String(p.id) === String(payload.new.id) ? payload.new : p)
           );
         }
       )
       .on(
-        'postgres_changes', 
-        { event: '*', schema: 'public', table: 'productos' }, 
-        () => {
-          // Solo refrescar si el admin no está tocando nada en el Menú
-          if (editandoId === null && !isSaving.current) fetchProductos();
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'pedidos' },
+        (payload) => {
+          setPedidos((current) => current.filter((p) => String(p.id) !== String(payload.old.id)));
         }
       )
       .subscribe();
 
     return () => {
-      if (channelRef.current) supabase.removeChannel(channelRef.current);
+      supabase.removeChannel(channel);
     };
-  }, [loading, fetchProductos, playNotification]); // Quitamos editandoId de aquí para que no se reinicie el canal
+  }, [loading, playNotification]);
 
+  // --- ACCIONES DE DB ---
   const cambiarEstadoPedido = async (id: any, nuevoEstado: string) => {
     try {
       const { error } = await supabase
@@ -121,23 +121,19 @@ export default function AdminPage() {
   const eliminarPedido = async (id: any) => {
     if (confirm("¿Eliminar comanda?")) {
       const { error } = await supabase.from('pedidos').delete().eq('id', id);
-      if (!error) setPedidos(prev => prev.filter(p => String(p.id) !== String(id)));
+      if (error) alert("Error al eliminar");
     }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       setIsUploading(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
       const filePath = `productos/${fileName}`;
-
       const { error: uploadError } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file);
       if (uploadError) throw uploadError;
-
       const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
       setNuevoProducto(prev => ({ ...prev, imagen: publicUrl }));
     } catch (error: any) {
@@ -148,7 +144,7 @@ export default function AdminPage() {
   };
 
   const handleLocalChange = (id: number, campo: string, valor: any) => {
-    setEditandoId(id); // Esto bloquea los refrescos automáticos de Realtime
+    setEditandoId(id);
     setProductos(prev => prev.map(p => p.id === id ? { ...p, [campo]: valor } : p));
   };
 
@@ -162,14 +158,13 @@ export default function AdminPage() {
         descripcion: producto.descripcion,
         imagen: producto.imagen
       }).eq('id', producto.id);
-      
       if (error) throw error;
       setEditandoId(null);
       alert("✅ Guardado");
     } catch (error: any) {
       alert("❌ Error: " + error.message);
-    } finally { 
-      isSaving.current = false; 
+    } finally {
+      isSaving.current = false;
     }
   };
 
@@ -204,16 +199,16 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-stone-200 font-sans text-black">
+      {/* HEADER */}
       <header className="sticky top-0 z-50 bg-white border-b-8 border-black p-4 md:p-6 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center justify-between w-full md:w-auto gap-4">
-             <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-[#D32F2F] rounded-full border-4 border-black flex items-center justify-center text-white font-black italic">K</div>
-                <h1 className="text-3xl font-black text-[#D32F2F] italic uppercase tracking-tighter drop-shadow-[1px_1px_0px_black]">ADMIN</h1>
-             </div>
-             <button onClick={() => { supabase.auth.signOut(); router.push('/admin/login'); }} className="md:hidden bg-black text-white px-4 py-2 rounded-xl font-black text-[10px]">SALIR</button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#D32F2F] rounded-full border-4 border-black flex items-center justify-center text-white font-black italic">K</div>
+              <h1 className="text-3xl font-black text-[#D32F2F] italic uppercase tracking-tighter">ADMIN</h1>
+            </div>
+            <button onClick={() => { supabase.auth.signOut(); router.push('/admin/login'); }} className="md:hidden bg-black text-white px-4 py-2 rounded-xl font-black text-[10px]">SALIR</button>
           </div>
-          
           <nav className="flex gap-2 w-full md:w-auto">
             <button onClick={() => setActiveTab('pedidos')} className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-black uppercase italic border-4 border-black transition-all ${activeTab === 'pedidos' ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1' : 'bg-white'}`}>
               Comandas {pedidos.filter(p => p.estado !== 'entregado').length > 0 && `(${pedidos.filter(p => p.estado !== 'entregado').length})`}
@@ -225,24 +220,28 @@ export default function AdminPage() {
         </div>
       </header>
 
+      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         {activeTab === 'pedidos' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {pedidos.map((pedido) => (
-              <div key={pedido.id} className={`group relative border-4 border-black p-6 rounded-[2.5rem] shadow-[10px_10px_0px_0px_black] transition-all bg-white ${pedido.estado === 'entregado' ? 'grayscale opacity-60' : ''}`}>
+              <div key={pedido.id} className={`group relative border-4 border-black p-6 rounded-[2.5rem] bg-white transition-all 
+                ${pedido.estado === 'entregado' ? 'grayscale opacity-60 shadow-[4px_4px_0px_0px_black]' : 'shadow-[10px_10px_0px_0px_black]'} 
+                ${pedido.estado === 'pendiente' ? 'border-[#D32F2F] ring-4 ring-[#FFCA28] ring-inset' : 'border-black'}`}>
+
                 <div className={`absolute -top-4 right-6 px-4 py-1 rounded-xl border-4 border-black font-black text-xs uppercase z-10 shadow-[4px_4px_0px_0px_black] ${getEstadoEstilo(pedido.estado)}`}>
                   {pedido.estado}
                 </div>
-                <button onClick={() => eliminarPedido(pedido.id)} className="absolute -top-4 -left-2 bg-white text-[#D32F2F] border-4 border-black w-10 h-10 rounded-full font-black hover:scale-110 transition-transform z-10 shadow-[4px_4px_0px_0px_black]">✕</button>
+                <button onClick={() => eliminarPedido(pedido.id)} className="absolute -top-4 -left-2 bg-white text-[#D32F2F] border-4 border-black w-10 h-10 rounded-full font-black shadow-[4px_4px_0px_0px_black] hover:bg-red-50">✕</button>
 
                 <div className="mb-4">
-                  <p className="text-[10px] font-black text-stone-400 uppercase tracking-widest">Cliente:</p>
-                  <h2 className="text-2xl font-black uppercase italic leading-tight text-black">{pedido.cliente_nombre}</h2>
-                  <p className="text-xs font-bold text-stone-500 mt-1 leading-tight">📍 {pedido.direccion}</p>
+                  <p className="text-[10px] font-black text-stone-400 uppercase">Cliente:</p>
+                  <h2 className="text-2xl font-black uppercase italic leading-tight">{pedido.cliente_nombre}</h2>
+                  <p className="text-xs font-bold text-stone-500 italic">📍 {pedido.direccion}</p>
                 </div>
 
-                <div className="bg-stone-100 p-4 rounded-2xl border-4 border-black border-dashed mb-4 max-h-40 overflow-y-auto">
-                   <p className="font-bold text-sm leading-relaxed text-stone-800 whitespace-pre-line">{pedido.items_resumen}</p>
+                <div className="bg-stone-100 p-4 rounded-2xl border-4 border-black border-dashed mb-4 max-h-40 overflow-y-auto no-scrollbar">
+                  <p className="font-bold text-sm text-stone-800 whitespace-pre-line leading-relaxed">{pedido.items_resumen}</p>
                 </div>
 
                 <div className="flex justify-between items-end mb-6">
@@ -255,14 +254,14 @@ export default function AdminPage() {
 
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en cocina')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-orange-400 hover:text-white transition-colors shadow-[4px_4px_0px_0px_black]">👨‍🍳 COCINA</button>
-                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en camino')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-blue-500 hover:text-white transition-colors shadow-[4px_4px_0px_0px_black]">🛵 ENVÍO</button>
+                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en cocina')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-orange-400 shadow-[4px_4px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all">👨‍🍳 COCINA</button>
+                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en camino')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-blue-500 shadow-[4px_4px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all">🛵 ENVÍO</button>
                   </div>
-                  <button 
-                    onClick={() => cambiarEstadoPedido(pedido.id, pedido.estado === 'entregado' ? 'pendiente' : 'entregado')} 
-                    className={`font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_black] transition-all uppercase text-xs ${pedido.estado === 'entregado' ? 'bg-stone-300' : 'bg-green-500 text-white'}`}
+                  <button
+                    onClick={() => cambiarEstadoPedido(pedido.id, pedido.estado === 'entregado' ? 'pendiente' : 'entregado')}
+                    className={`font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_black] transition-all uppercase text-xs active:translate-y-1 active:shadow-none ${pedido.estado === 'entregado' ? 'bg-stone-300' : 'bg-green-500 text-white'}`}
                   >
-                    {pedido.estado === 'entregado' ? 'REABRIR COMANDA' : 'ENTREGAR ✅'}
+                    {pedido.estado === 'entregado' ? 'REABRIR' : 'ENTREGAR ✅'}
                   </button>
                 </div>
               </div>
@@ -270,30 +269,30 @@ export default function AdminPage() {
           </div>
         ) : (
           <div className="space-y-8">
-              <button onClick={() => setShowModal(true)} className="w-full bg-[#D32F2F] text-white border-8 border-black p-8 rounded-[3rem] font-black uppercase text-2xl italic shadow-[10px_10px_0px_0px_black] hover:-translate-y-2 transition-transform">
-                + AGREGAR AL MENÚ 🔥
-              </button>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {productos.map((prod) => (
-                  <div key={prod.id} className="bg-white border-4 border-black p-6 rounded-[3rem] shadow-[8px_8px_0px_0px_black] flex flex-col sm:flex-row gap-6">
-                    <div className="w-full sm:w-32 h-32 shrink-0">
-                        <img src={prod.imagen} className="w-full h-full object-cover rounded-2xl border-4 border-black" alt="" />
+            <button onClick={() => setShowModal(true)} className="w-full bg-[#D32F2F] text-white border-8 border-black p-8 rounded-[3rem] font-black uppercase text-2xl italic shadow-[10px_10px_0px_0px_black] hover:-translate-y-2 transition-transform">
+              + AGREGAR AL MENÚ 🔥
+            </button>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {productos.map((prod) => (
+                <div key={prod.id} className="bg-white border-4 border-black p-6 rounded-[3rem] shadow-[8px_8px_0px_0px_black] flex flex-col sm:flex-row gap-6">
+                  <div className="w-full sm:w-32 h-32 shrink-0">
+                    <img src={prod.imagen} className="w-full h-full object-cover rounded-2xl border-4 border-black" alt={prod.nombre} />
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <input value={prod.nombre} onChange={(e) => handleLocalChange(prod.id, 'nombre', e.target.value)} className="w-full font-black text-xl uppercase italic bg-transparent border-b-2 border-black focus:border-[#D32F2F] outline-none" />
+                    <div className="flex gap-2">
+                      <span className="font-black text-xl">$</span>
+                      <input type="number" value={prod.precio} onChange={(e) => handleLocalChange(prod.id, 'precio', e.target.value)} className="w-full font-black text-xl outline-none" />
                     </div>
-                    <div className="flex-1 space-y-3">
-                      <input value={prod.nombre} onChange={(e) => handleLocalChange(prod.id, 'nombre', e.target.value)} className="w-full font-black text-xl uppercase italic bg-transparent border-b-2 border-black focus:border-[#D32F2F] outline-none" />
-                      <div className="flex gap-2">
-                         <span className="font-black text-xl">$</span>
-                         <input type="number" value={prod.precio} onChange={(e) => handleLocalChange(prod.id, 'precio', e.target.value)} className="w-full font-black text-xl outline-none" />
-                      </div>
-                      <div className="flex gap-2 pt-2">
-                        <button onClick={() => guardarCambiosEnDB(prod)} disabled={editandoId !== prod.id} className={`flex-1 py-3 rounded-xl border-4 border-black font-black uppercase text-[10px] ${editandoId === prod.id ? 'bg-green-500 text-white shadow-[3px_3px_0px_0px_black]' : 'bg-stone-100 opacity-40'}`}>GUARDAR</button>
-                        <button onClick={async () => { if (confirm("¿Borrar?")) { const { error } = await supabase.from('productos').delete().eq('id', prod.id); if (!error) setProductos(prev => prev.filter(p => p.id !== prod.id)); } }} className="px-4 border-4 border-black rounded-xl text-red-600 font-black text-[10px]">BORRAR</button>
-                      </div>
+                    <div className="flex gap-2 pt-2">
+                      <button onClick={() => guardarCambiosEnDB(prod)} disabled={editandoId !== prod.id} className={`flex-1 py-3 rounded-xl border-4 border-black font-black uppercase text-[10px] ${editandoId === prod.id ? 'bg-green-500 text-white shadow-[3px_3px_0px_0px_black]' : 'bg-stone-100 opacity-40'}`}>GUARDAR</button>
+                      <button onClick={async () => { if (confirm("¿Borrar?")) { const { error } = await supabase.from('productos').delete().eq('id', prod.id); if (!error) setProductos(prev => prev.filter(p => p.id !== prod.id)); } }} className="px-4 border-4 border-black rounded-xl text-red-600 font-black text-[10px]">BORRAR</button>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </main>
@@ -301,24 +300,24 @@ export default function AdminPage() {
       {/* MODAL NUEVO PRODUCTO */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-          <div className="bg-[#FFCA28] border-[10px] border-black p-8 rounded-[4rem] w-full max-w-lg">
+          <div className="bg-[#FFCA28] border-[10px] border-black p-8 rounded-[4rem] w-full max-w-lg animate-in zoom-in-95 duration-300">
             <h2 className="text-4xl font-black uppercase italic mb-8 text-center">NUEVO ITEM</h2>
             <form onSubmit={handleAddProducto} className="space-y-5">
-              <input required placeholder="NOMBRE" className="w-full border-4 border-black p-4 rounded-2xl font-black uppercase italic outline-none focus:bg-white" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({...nuevoProducto, nombre: e.target.value})} />
+              <input required placeholder="NOMBRE" className="w-full border-4 border-black p-4 rounded-2xl font-black uppercase italic outline-none focus:bg-white" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })} />
               <div className="flex gap-3">
-                <input required type="number" placeholder="PRECIO" className="flex-1 border-4 border-black p-4 rounded-2xl font-black outline-none" value={nuevoProducto.precio || ''} onChange={(e) => setNuevoProducto({...nuevoProducto, precio: Number(e.target.value)})} />
-                <select className="flex-1 border-4 border-black p-4 rounded-2xl font-black bg-white outline-none" value={nuevoProducto.categoria} onChange={(e) => setNuevoProducto({...nuevoProducto, categoria: e.target.value})}>
+                <input required type="number" placeholder="PRECIO" className="flex-1 border-4 border-black p-4 rounded-2xl font-black outline-none" value={nuevoProducto.precio || ''} onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: Number(e.target.value) })} />
+                <select className="flex-1 border-4 border-black p-4 rounded-2xl font-black bg-white outline-none" value={nuevoProducto.categoria} onChange={(e) => setNuevoProducto({ ...nuevoProducto, categoria: e.target.value })}>
                   {listaCategorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
               <div className="bg-white border-4 border-black p-4 rounded-2xl text-center">
-                 <input type="file" onChange={handleFileUpload} className="w-full text-xs font-black" />
-                 {isUploading && <p className="text-[10px] font-bold text-red-600 animate-pulse mt-2 uppercase">Subiendo...</p>}
-                 {nuevoProducto.imagen && <p className="text-[10px] font-bold text-green-600 mt-2 uppercase">✅ Imagen lista</p>}
+                <input type="file" onChange={handleFileUpload} className="w-full text-xs font-black cursor-pointer" />
+                {isUploading && <p className="text-[10px] font-bold text-red-600 animate-pulse mt-2 uppercase">Subiendo a Krusty Cloud...</p>}
+                {nuevoProducto.imagen && <p className="text-[10px] font-bold text-green-600 mt-2 uppercase">✅ Imagen lista</p>}
               </div>
-              <textarea placeholder="DESCRIPCIÓN" className="w-full border-4 border-black p-4 rounded-2xl font-black h-24 resize-none outline-none focus:bg-white" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({...nuevoProducto, descripcion: e.target.value})} />
+              <textarea placeholder="DESCRIPCIÓN" className="w-full border-4 border-black p-4 rounded-2xl font-black h-24 resize-none outline-none focus:bg-white" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({ ...nuevoProducto, descripcion: e.target.value })} />
               <div className="pt-4 space-y-3">
-                <button type="submit" disabled={isUploading} className="w-full bg-[#D32F2F] text-white border-4 border-black py-5 rounded-[2rem] font-black text-xl italic shadow-[6px_6px_0px_0px_black]">CREAR ITEM 🔥</button>
+                <button type="submit" disabled={isUploading} className="w-full bg-[#D32F2F] text-white border-4 border-black py-5 rounded-[2rem] font-black text-xl italic shadow-[6px_6px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all">CREAR 🔥</button>
                 <button type="button" onClick={() => setShowModal(false)} className="w-full text-center font-black uppercase text-xs underline">Cerrar</button>
               </div>
             </form>

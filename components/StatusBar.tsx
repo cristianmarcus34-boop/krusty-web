@@ -1,87 +1,112 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 
 export default function StatusBar() {
   const [pedido, setPedido] = useState<any>(null);
   const [visible, setVisible] = useState(false);
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
+    // 1. FUNCIÓN DE VERIFICACIÓN (Polling de seguridad)
     const checkPedido = async () => {
       const id = localStorage.getItem('pedido_id');
-      
+
       if (!id) {
-        setPedido(null);
-        setVisible(false);
+        if (visible) setVisible(false);
         return;
       }
 
-      // Evitamos re-consultas innecesarias si el ID es el mismo
-      if (pedido && pedido.id === id) return;
-
+      // Usamos .maybeSingle() para evitar el error 406 si el pedido no existe
       const { data, error } = await supabase
         .from('pedidos')
         .select('id, estado')
         .eq('id', id)
-        .single();
+        .maybeSingle();
 
+      if (error) {
+        console.error("❌ Error StatusBar:", error.message);
+        return;
+      }
+
+      // Lógica de visibilidad
       if (data && data.estado !== 'entregado') {
         setPedido(data);
         setVisible(true);
       } else {
         setVisible(false);
-        // Si el estado es entregado, limpiamos localStorage
-        if (data?.estado === 'entregado') localStorage.removeItem('pedido_id');
+        setPedido(null);
+        // Si el pedido no existe en DB o ya se entregó, limpiamos rastro
+        if (!data || data.estado === 'entregado') {
+          localStorage.removeItem('pedido_id');
+        }
       }
     };
 
-    // Ejecutar al montar
+    // Ejecución inicial
     checkPedido();
 
-    // Listener para detectar cambios en localStorage (cuando el CartDrawer guarda el ID)
-    const interval = setInterval(checkPedido, 3000);
+    // 2. INTERVALO (Detecta si el usuario hizo un pedido nuevo en otra pestaña)
+    const interval = setInterval(checkPedido, 5000);
 
-    // Suscripción Realtime para cambios de estado (Admin -> Cliente)
-    const id = localStorage.getItem('pedido_id');
-    let channel: any;
-    
-    if (id) {
-      channel = supabase
-        .channel(`status-bar-${id}`)
-        .on('postgres_changes', 
-          { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `id=eq.${id}` }, 
+    // 3. SUSCRIPCIÓN REALTIME (Actualización instantánea)
+    const currentId = localStorage.getItem('pedido_id');
+
+    if (currentId) {
+      console.log(`📡 Escuchando cambios para pedido: ${currentId}`);
+
+      channelRef.current = supabase
+        .channel(`status-bar-${currentId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'pedidos',
+            filter: `id=eq.${currentId}`
+          },
           (payload) => {
+            console.log("🔔 Cambio de estado detectado:", payload.new.estado);
+
             if (payload.new.estado === 'entregado') {
               setVisible(false);
+              setPedido(null);
               localStorage.removeItem('pedido_id');
             } else {
               setPedido(payload.new);
+              setVisible(true);
             }
           }
-        ).subscribe();
+        )
+        .subscribe();
     }
 
+    // LIMPIEZA AL DESMONTAR
     return () => {
       clearInterval(interval);
-      if (channel) supabase.removeChannel(channel);
+      if (channelRef.current) {
+        console.log("🧹 Limpiando canal StatusBar");
+        supabase.removeChannel(channelRef.current);
+      }
     };
-  }, [pedido]);
+  }, []); // <--- VACÍO: Evita el bucle infinito de re-suscripciones
 
+  // Si no hay pedido activo, no renderizamos nada
   if (!pedido || !visible) return null;
 
   return (
-    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] w-[92%] max-w-[400px] transition-all duration-500 transform ${visible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] w-[92%] max-w-[400px]">
       <Link href={`/pedido/${pedido.id}`}>
-        <div className="bg-black border-[4px] border-[#FFCA28] p-4 rounded-[2.5rem] shadow-[0_8px_0_0_#D32F2F] flex items-center justify-between group active:scale-95 transition-transform">
-          
+        <div className="bg-black border-[4px] border-[#FFCA28] p-4 rounded-[2.5rem] shadow-[0_8px_0_0_#D32F2F] flex items-center justify-between group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-5">
+
           <div className="flex items-center gap-4">
             <div className="text-3xl animate-bounce-short">
               {pedido.estado === 'pendiente' && '📩'}
               {pedido.estado === 'en cocina' && '👨‍🍳'}
               {pedido.estado === 'en camino' && '🛵'}
             </div>
-            
+
             <div>
               <p className="text-[9px] font-black uppercase text-[#FFCA28] tracking-widest leading-none mb-1">
                 TU PEDIDO ESTÁ:
@@ -94,7 +119,7 @@ export default function StatusBar() {
             </div>
           </div>
 
-          <div className="bg-[#FFCA28] text-black px-4 py-2 rounded-2xl font-black text-[10px] uppercase italic border-2 border-black group-hover:bg-white transition-colors">
+          <div className="bg-[#FFCA28] text-black px-4 py-2 rounded-2xl font-black text-[10px] uppercase italic border-2 border-black group-hover:bg-white transition-colors shadow-[2px_2px_0_0_#000] shimer-effect">
             VER ➜
           </div>
         </div>

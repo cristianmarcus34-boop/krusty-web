@@ -94,7 +94,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
         : 'RETIRA EN LOCAL';
 
       // Corregido el link de Maps
-      const linkMaps = `https://www.google.com/maps/search/${encodeURIComponent(customer.calleAltura + " " + customer.barrio + " Buenos Aires")}`;
+      const linkMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.calleAltura + " " + customer.barrio + " Buenos Aires")}`;
 
       const detallePago = customer.metodoPago === 'Efectivo' 
         ? `${customer.metodoPago} (Paga con: $${montoEfectivo || montoTotalFinal}${vuelto > 0 ? ` | Vuelto: $${vuelto}` : ' - Justo'})`
