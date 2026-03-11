@@ -13,6 +13,8 @@ const ZONAS_REPARTO = [
   { nombre: "Florencio Varela", costo: 2000 },
 ];
 
+const ALIAS_TRANSFERENCIA = "krustyburger2025";
+
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -21,6 +23,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
   
   const [isSending, setIsSending] = useState(false);
   const [montoEfectivo, setMontoEfectivo] = useState<string>(''); 
+  const [copied, setCopied] = useState(false);
 
   const [customer, setCustomer] = useState({
     nombre: '',
@@ -57,11 +60,15 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
     }
   };
 
-  const validatePhone = (phone: string) => /^[0-9]{8,15}$/.test(phone.replace(/\s/g, ''));
+  const handleCopyAlias = () => {
+    navigator.clipboard.writeText(ALIAS_TRANSFERENCIA);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const isFormValid = useMemo(() => {
     const hasName = customer.nombre.trim().length > 2;
-    const hasValidPhone = validatePhone(customer.telefono);
+    const hasValidPhone = /^[0-9]{8,15}$/.test(customer.telefono.replace(/\s/g, ''));
     if (customer.tipoEntrega === 'Retiro') return hasName && hasValidPhone;
     return hasName && hasValidPhone && customer.barrio !== '' && customer.calleAltura.trim().length > 4;
   }, [customer]);
@@ -86,21 +93,22 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
     setIsSending(true);
 
     try {
-      // 1. Guardar datos de cliente para el futuro
       localStorage.setItem('krusty-customer-v5', JSON.stringify(customer));
       
       const direccionCompleta = customer.tipoEntrega === 'Delivery' 
         ? `${customer.calleAltura.toUpperCase()} (${customer.barrio})` 
         : 'RETIRA EN LOCAL';
 
-      // Corregido el link de Maps
-      const linkMaps = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(customer.calleAltura + " " + customer.barrio + " Buenos Aires")}`;
+      const queryMaps = encodeURIComponent(`${customer.calleAltura}, ${customer.barrio}, Buenos Aires`);
+      const linkMaps = `https://www.google.com/maps/search/?api=1&query=${queryMaps}`;
 
-      const detallePago = customer.metodoPago === 'Efectivo' 
-        ? `${customer.metodoPago} (Paga con: $${montoEfectivo || montoTotalFinal}${vuelto > 0 ? ` | Vuelto: $${vuelto}` : ' - Justo'})`
-        : customer.metodoPago;
+      let detallePago = customer.metodoPago;
+      if (customer.metodoPago === 'Efectivo') {
+        detallePago = `Efectivo (Paga con: $${montoEfectivo || montoTotalFinal}${vuelto > 0 ? ` | Vuelto: $${vuelto}` : ' - Justo'})`;
+      } else if (customer.metodoPago === 'Transferencia') {
+        detallePago = `Transferencia (Alias: ${ALIAS_TRANSFERENCIA})`;
+      }
 
-      // 2. Insertamos en Supabase
       const { data: pedidoGuardado, error } = await supabase
         .from('pedidos')
         .insert([{
@@ -118,15 +126,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
 
       if (error) throw error;
 
-      // 3. CLAVE: Guardamos el ID con el nombre que espera la página de Gracias
       localStorage.setItem('ultimo_pedido_id', pedidoGuardado.id.toString());
       localStorage.setItem('pedido_id', pedidoGuardado.id.toString());
 
-      // 4. Link de seguimiento dinámico
+      const numeroTelefono = "5491138305837";
       const baseUrl = window.location.origin;
       const linkSeguimiento = `${baseUrl}/pedido/${pedidoGuardado.id}`;
 
-      const numeroTelefono = "5491138305837";
       const mensaje = encodeURIComponent(
         `🤡 *NUEVO PEDIDO - KRUSTY BURGER*\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
@@ -145,17 +151,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
         `💵 *SUBTOTAL:* $${subtotal.toLocaleString('es-AR')}\n` +
         `🛵 *ENVÍO:* ${costoEnvio === 0 ? 'GRATIS' : `$${costoEnvio.toLocaleString('es-AR')}`}\n` +
         `💰 *TOTAL: $${montoTotalFinal.toLocaleString('es-AR')}*\n\n` +
+        (customer.metodoPago === 'Transferencia' ? `🏦 *ALIAS PARA TRANSFERIR:* ${ALIAS_TRANSFERENCIA}\n⚠️ _Por favor enviá el comprobante por acá._\n\n` : '') +
         `🤡 _¡Gracias por elegir al payaso!_`
       );
 
-      // 5. Finalizar proceso: WhatsApp y Redirección
       clearCart();
       onClose();
-      
-      // Abrir WhatsApp en pestaña nueva
       window.open(`https://wa.me/${numeroTelefono}?text=${mensaje}`, "_blank");
-      
-      // Redirigir a la página del Ticket (Gracias)
       router.push('/gracias');
 
     } catch (e) {
@@ -168,44 +170,48 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
 
   return (
     <>
-      <div className={`fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm transition-all duration-500 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={onClose} />
+      <div className={`fixed inset-0 bg-stone-900/40 z-[60] backdrop-blur-md transition-all duration-500 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} onClick={onClose} />
 
-      <div className={`fixed right-0 top-0 h-full w-full sm:w-[480px] bg-white z-[70] border-l-[6px] border-black transform transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        <div className="flex flex-col h-full bg-[#FBFBFB]">
+      <div className={`fixed right-0 top-0 h-full w-full sm:w-[450px] bg-white z-[70] shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className="flex flex-col h-full bg-white">
           
-          <div className="p-6 border-b-[6px] border-black bg-[#D32F2F] text-white shrink-0">
-            <div className="flex justify-between items-start">
-              <div className="relative">
-                <h2 className="text-3xl font-black italic tracking-tighter drop-shadow-[3px_3px_0px_black] uppercase leading-none">Mi Carrito</h2>
-                {items.length > 0 && (
-                  <button onClick={handleContinueShopping} className="mt-3 flex items-center gap-1 text-[10px] font-black uppercase bg-black px-3 py-2 rounded-lg border-2 border-white shadow-[2px_2px_0px_black]">
-                    ← Agregar más cosas
-                  </button>
-                )}
+          {/* HEADER - Más limpio y moderno */}
+          <div className="p-6 bg-white border-b border-stone-100 shrink-0">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-black text-stone-900 tracking-tighter uppercase">Tu Pedido</h2>
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+                  {items.length} {items.length === 1 ? 'producto' : 'productos'} seleccionado
+                </p>
               </div>
-              <button onClick={onClose} className="bg-black text-white w-10 h-10 rounded-xl border-4 border-white font-black hover:scale-110 transition-transform">✕</button>
+              <button onClick={onClose} className="bg-stone-100 text-stone-400 w-10 h-10 rounded-full flex items-center justify-center hover:bg-stone-200 transition-colors">✕</button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-5 space-y-8 no-scrollbar">
-            <div className="space-y-3">
+          <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+            {/* LISTA DE ITEMS */}
+            <div className="space-y-4">
               {items.length === 0 ? (
-                <div className="text-center py-20">
-                  <span className="text-6xl block mb-4 animate-bounce">🍔</span>
-                  <p className="font-black italic text-stone-400 uppercase">Tu carrito está vacío</p>
+                <div className="text-center py-20 bg-stone-50 rounded-[2.5rem] border border-dashed border-stone-200">
+                  <span className="text-6xl block mb-4">🍔</span>
+                  <p className="font-bold text-stone-400 uppercase text-xs tracking-widest">¿Hambre? Agregá algo rico</p>
+                  <button onClick={onClose} className="mt-4 text-[#D32F2F] font-black text-xs uppercase underline">Ver Menú</button>
                 </div>
               ) : (
                 items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 bg-white border-[3px] border-black p-3 rounded-2xl shadow-[4px_4px_0px_0px_black]">
-                    <img src={item.imagen} className="w-12 h-12 object-cover rounded-lg border-2 border-black shadow-[2px_2px_0px_0px_black]" alt={item.nombre} />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-black text-[10px] uppercase truncate tracking-tight">{item.nombre}</h4>
-                      <p className="font-bold text-[#D32F2F] text-xs">${(item.precio * item.quantity).toLocaleString('es-AR')}</p>
+                  <div key={item.id} className="flex items-center gap-4 p-2 bg-white group">
+                    <div className="relative w-16 h-16 shrink-0 rounded-2xl overflow-hidden border border-stone-100 shadow-sm">
+                      <img src={item.imagen} className="w-full h-full object-cover" alt={item.nombre} />
                     </div>
-                    <div className="flex items-center border-2 border-black rounded-lg bg-stone-50 shrink-0 shadow-[2px_2px_0px_0px_black]">
-                      <button onClick={() => decreaseQuantity(item.id)} className="px-2 py-1 font-black border-r-2 border-black hover:bg-red-50">–</button>
-                      <span className="px-3 font-black text-xs">{item.quantity}</span>
-                      <button onClick={() => addItem(item)} className="px-2 py-1 font-black hover:bg-green-50">+</button>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm text-stone-900 truncate uppercase tracking-tight">{item.nombre}</h4>
+                      <p className="font-black text-[#D32F2F] text-xs mt-0.5">${(item.precio * item.quantity).toLocaleString('es-AR')}</p>
+                    </div>
+                    {/* CONTROLES DE CANTIDAD MODERNOS */}
+                    <div className="flex items-center bg-stone-100 rounded-xl p-1 shrink-0">
+                      <button onClick={() => decreaseQuantity(item.id)} className="w-7 h-7 flex items-center justify-center font-bold text-stone-500 hover:bg-white hover:rounded-lg transition-all">–</button>
+                      <span className="px-2 font-black text-xs text-stone-900">{item.quantity}</span>
+                      <button onClick={() => addItem(item)} className="w-7 h-7 flex items-center justify-center font-bold text-stone-500 hover:bg-white hover:rounded-lg transition-all">+</button>
                     </div>
                   </div>
                 ))
@@ -213,102 +219,119 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
             </div>
 
             {items.length > 0 && (
-              <div className="space-y-4 animate-fade-up">
-                <div className="flex gap-2">
+              <div className="space-y-6 animate-in fade-in duration-500">
+                {/* SELECTOR ENTREGA */}
+                <div className="flex p-1 bg-stone-100 rounded-2xl">
                   {['Delivery', 'Retiro'].map((tipo) => (
-                    <button key={tipo} onClick={() => setCustomer({...customer, tipoEntrega: tipo})} className={`flex-1 py-3 rounded-xl border-[3px] border-black font-black uppercase text-[10px] transition-all ${customer.tipoEntrega === tipo ? 'bg-[#FFCA28] shadow-[3px_3px_0px_black] -translate-y-0.5' : 'bg-white hover:bg-stone-50'}`}>
-                      {tipo === 'Delivery' ? '🛵 Envío' : '🏠 Retiro'}
+                    <button 
+                      key={tipo} 
+                      onClick={() => setCustomer({...customer, tipoEntrega: tipo})} 
+                      className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${customer.tipoEntrega === tipo ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
+                    >
+                      {tipo === 'Delivery' ? '🛵 Delivery' : '🏠 Retiro'}
                     </button>
                   ))}
                 </div>
 
-                <div className="grid gap-3">
-                  <input type="text" placeholder="TU NOMBRE" className="w-full border-[3px] border-black p-3 rounded-xl font-bold uppercase text-xs outline-none focus:bg-yellow-50 focus:border-[#FFCA28] transition-colors" value={customer.nombre} onChange={(e) => setCustomer({...customer, nombre: e.target.value})} />
-                  <input type="tel" placeholder="TELÉFONO" className="w-full border-[3px] border-black p-3 rounded-xl font-bold text-xs outline-none focus:bg-yellow-50" value={customer.telefono} onChange={(e) => setCustomer({...customer, telefono: e.target.value.replace(/\D/g, '')})} />
+                {/* FORMULARIO */}
+                <div className="space-y-3">
+                  <div className="relative group">
+                    <input type="text" placeholder="TU NOMBRE" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold uppercase text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.nombre} onChange={(e) => setCustomer({...customer, nombre: e.target.value})} />
+                  </div>
+                  <div className="relative group">
+                    <input type="tel" placeholder="TELÉFONO (SIN 0 NI 15)" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.telefono} onChange={(e) => setCustomer({...customer, telefono: e.target.value.replace(/\D/g, '')})} />
+                  </div>
 
                   {customer.tipoEntrega === 'Delivery' && (
-                    <div className="space-y-3">
-                      <select 
-                        className="w-full border-[3px] border-black p-3 rounded-xl font-bold text-xs uppercase outline-none bg-white cursor-pointer"
-                        value={customer.barrio}
-                        onChange={(e) => setCustomer({...customer, barrio: e.target.value})}
-                      >
-                        <option value="">¿EN QUÉ BARRIO ESTÁS? 📍</option>
+                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                      <select className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none cursor-pointer appearance-none" value={customer.barrio} onChange={(e) => setCustomer({...customer, barrio: e.target.value})}>
+                        <option value="">📍 SELECCIONÁ TU BARRIO</option>
                         {ZONAS_REPARTO.map(zona => (
                           <option key={zona.nombre} value={zona.nombre}>{zona.nombre} (+${zona.costo})</option>
                         ))}
                       </select>
-
-                      <input 
-                        type="text" 
-                        placeholder="CALLE Y ALTURA (EJ: RIVADAVIA 1234)" 
-                        className="w-full border-[3px] border-black p-3 rounded-xl font-bold text-xs uppercase outline-none focus:bg-yellow-50" 
-                        value={customer.calleAltura} 
-                        onChange={(e) => setCustomer({...customer, calleAltura: e.target.value})} 
-                      />
+                      <input type="text" placeholder="CALLE Y ALTURA" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.calleAltura} onChange={(e) => setCustomer({...customer, calleAltura: e.target.value})} />
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-3">
+                {/* MÉTODOS DE PAGO */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-black uppercase text-stone-400 tracking-[0.2em] px-1">Método de Pago</p>
                   <div className="grid grid-cols-3 gap-2">
                     {['Efectivo', 'Transferencia', 'QR'].map((pago) => (
-                      <button key={pago} onClick={() => setCustomer({...customer, metodoPago: pago})} className={`py-2 rounded-lg border-2 border-black font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago ? 'bg-black text-white shadow-[2px_2px_0px_0px_#FFCA28]' : 'bg-white shadow-[2px_2px_0px_0px_black]'}`}>{pago}</button>
+                      <button key={pago} onClick={() => setCustomer({...customer, metodoPago: pago})} className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago ? 'bg-stone-900 text-white border-stone-900 shadow-lg' : 'bg-white border-stone-100 text-stone-400'}`}>{pago}</button>
                     ))}
                   </div>
+
+                  {/* BLOQUES DINÁMICOS DE PAGO */}
+                  {customer.metodoPago === 'Transferencia' && (
+                    <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem] animate-in fade-in zoom-in-95 duration-300">
+                      <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">Copiá nuestro Alias</p>
+                      <div onClick={handleCopyAlias} className="flex items-center justify-between bg-white p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all active:scale-95 group border border-blue-100">
+                        <span className="font-black text-blue-900 text-sm">{ALIAS_TRANSFERENCIA}</span>
+                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${copied ? 'bg-emerald-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
+                          {copied ? '¡Copiado!' : 'Copiar'}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
                   {customer.metodoPago === 'Efectivo' && (
-                    <div className="bg-[#E8F5E9] border-[3px] border-black p-4 rounded-2xl">
-                      <p className="text-[10px] font-black uppercase text-green-800 mb-1 italic">¿Con cuánto pagás?</p>
-                      <input type="number" className="w-full border-2 border-black p-2 rounded-lg font-black outline-none focus:ring-2 ring-green-500" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} placeholder={montoTotalFinal.toString()} />
+                    <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-[2rem] animate-in fade-in zoom-in-95 duration-300">
+                      <p className="text-[9px] font-black uppercase text-emerald-400 mb-3 tracking-wider">¿Con cuánto pagás?</p>
+                      <input type="number" className="w-full bg-white p-4 rounded-2xl font-black text-emerald-900 border border-emerald-100 outline-none focus:ring-2 focus:ring-emerald-200" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} placeholder={`$${montoTotalFinal}`} />
                       {vuelto > 0 && (
-                        <div className="mt-2 flex justify-between items-center bg-white/50 p-2 rounded-lg border-2 border-dashed border-green-600">
-                          <span className="text-[10px] font-black text-green-700 uppercase italic">Tu Vuelto:</span>
-                          <span className="text-sm font-black text-green-800 italic">${vuelto.toLocaleString('es-AR')}</span>
+                        <div className="mt-4 flex justify-between items-center px-2">
+                          <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Tu Vuelto:</span>
+                          <span className="text-lg font-black text-emerald-700">${vuelto.toLocaleString('es-AR')}</span>
                         </div>
                       )}
                     </div>
                   )}
                 </div>
 
-                <textarea placeholder="¿NOTAS PARA LA COCINA?" className="w-full border-[3px] border-black p-3 rounded-xl font-bold uppercase text-[10px] h-20 resize-none outline-none focus:bg-yellow-50" value={customer.notes} onChange={(e) => setCustomer({...customer, notes: e.target.value})} />
+                <textarea placeholder="¿Alguna aclaración? (Sin cebolla, puerta roja, etc.)" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs h-24 resize-none outline-none focus:bg-white transition-all" value={customer.notes} onChange={(e) => setCustomer({...customer, notes: e.target.value})} />
               </div>
             )}
           </div>
 
-          <div className="p-6 border-t-[6px] border-black bg-white shrink-0">
-            <div className="space-y-1 mb-4 px-2">
-              <div className="flex justify-between items-center text-stone-500 font-bold text-[10px] uppercase">
-                <span>Subtotal:</span>
+          {/* FOOTER - RESUMEN Y BOTÓN */}
+          <div className="p-6 bg-white border-t border-stone-100 shrink-0">
+            <div className="space-y-2 mb-6">
+              <div className="flex justify-between items-center text-stone-400 font-bold text-[11px] uppercase tracking-tighter">
+                <span>Subtotal</span>
                 <span>${subtotal.toLocaleString('es-AR')}</span>
               </div>
-              
-              {customer.tipoEntrega === 'Delivery' && (
-                <div className="flex justify-between items-center text-green-600 font-black text-[10px] uppercase">
-                  <span>Costo de Envío:</span>
-                  <span>{costoEnvio === 0 ? 'GRATIS' : `+$${costoEnvio.toLocaleString('es-AR')}`}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between items-end pt-2 border-t border-black/5">
-                <span className="font-black italic text-xs text-black uppercase leading-none">Total:</span>
-                <span className="text-4xl font-black italic tracking-tighter leading-none">${montoTotalFinal.toLocaleString('es-AR')}</span>
+              <div className="flex justify-between items-center text-stone-400 font-bold text-[11px] uppercase tracking-tighter">
+                <span>Costo de Envío</span>
+                <span className={costoEnvio === 0 ? 'text-emerald-500' : ''}>{costoEnvio === 0 ? '¡GRATIS!' : `$${costoEnvio.toLocaleString('es-AR')}`}</span>
+              </div>
+              <div className="flex justify-between items-end pt-3">
+                <span className="font-black text-stone-900 uppercase tracking-tighter">Total Final</span>
+                <span className="text-4xl font-black text-stone-950 tracking-tighter">${montoTotalFinal.toLocaleString('es-AR')}</span>
               </div>
             </div>
             
             <button 
               disabled={items.length === 0 || isSending}
               onClick={handleCheckout}
-              className={`w-full py-5 rounded-[2rem] border-[4px] border-black font-black uppercase italic text-xl transition-all
+              className={`w-full py-5 rounded-[2rem] font-black uppercase text-sm tracking-[0.2em] transition-all duration-300 shadow-xl active:scale-95
                 ${!isFormValid || items.length === 0 
-                  ? 'bg-stone-100 text-stone-300 border-stone-200 cursor-not-allowed' 
-                  : 'bg-[#FFCA28] text-black shadow-[6px_6px_0px_0px_black] active:shadow-none active:translate-y-1 hover:bg-[#FFD54F]'
+                  ? 'bg-stone-100 text-stone-300 cursor-not-allowed shadow-none' 
+                  : 'bg-[#FFCA28] text-stone-950 shadow-[#FFCA28]/20 hover:bg-[#D32F2F] hover:text-white hover:shadow-[#D32F2F]/20'
                 }`}
             >
-              {isSending ? 'PROCESANDO...' : (isFormValid ? '¡PEDIR AHORA! 🍔' : 'FALTAN DATOS')}
+              {isSending ? 'PROCESANDO...' : (isFormValid ? 'Confirmar Pedido ➔' : 'Completá tus datos')}
             </button>
           </div>
         </div>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}} />
     </>
   );
 }

@@ -1,18 +1,21 @@
 "use client";
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import html2canvas from 'html2canvas';
 
 export default function GraciasPage() {
   const [pedido, setPedido] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+  const [isDownloading, setIsDownloading] = useState(false);
+  const ticketRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const savedId = localStorage.getItem('ultimo_pedido_id');
     
     if (savedId) {
       const fetchPedido = async () => {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('pedidos')
           .select('*')
           .eq('id', savedId)
@@ -27,147 +30,180 @@ export default function GraciasPage() {
     }
 
     const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3');
-    sound.volume = 0.3;
+    sound.volume = 0.2;
     sound.play().catch(() => {});
   }, []);
 
+  const handleDownloadTicket = async () => {
+    if (ticketRef.current) {
+      setIsDownloading(true);
+      try {
+        const canvas = await html2canvas(ticketRef.current, {
+          scale: 3, // Calidad alta para que no se vea pixelado
+          backgroundColor: "#ffffff",
+          logging: false,
+          useCORS: true,
+          windowWidth: ticketRef.current.scrollWidth,
+          windowHeight: ticketRef.current.scrollHeight,
+        });
+        
+        const image = canvas.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.href = image;
+        link.download = `Ticket-Krusty-${pedido?.id.toString().slice(-6) || 'pedido'}.png`;
+        link.click();
+      } catch (err) {
+        console.error("Error al descargar:", err);
+      } finally {
+        setIsDownloading(false);
+      }
+    }
+  };
+
   if (loading) return (
-    <div className="min-h-screen bg-[#FFCA28] flex items-center justify-center font-black italic uppercase">
-      Imprimiendo Ticket...
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center">
+      <div className="w-12 h-12 border-4 border-stone-200 border-t-[#D32F2F] rounded-full animate-spin mb-4" />
+      <p className="font-black text-[10px] uppercase tracking-[0.3em] text-stone-400">Imprimiendo Ticket...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center p-4 font-mono pb-10">
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 pb-20 overflow-hidden relative">
       
-      {/* TICKET CONTENEDOR */}
-      <div className="max-w-md w-full relative mb-8 drop-shadow-2xl animate-fade-in">
+      {/* CÍRCULOS DE FONDO */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] aspect-square bg-[#FFCA28]/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] aspect-square bg-[#D32F2F]/5 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="max-w-md w-full relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
         
-        {/* Borde zigzag arriba */}
-        <div className="absolute -top-3 left-0 w-full h-4 bg-white" 
-             style={{ clipPath: "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)" }}>
+        {/* BOTÓN DESCARGAR - Fuera del Ticket */}
+        <div className="flex justify-center mb-6">
+          <button 
+            onClick={handleDownloadTicket}
+            disabled={isDownloading}
+            className={`
+              flex items-center gap-2 px-6 py-2 rounded-full border border-stone-200 bg-white text-[10px] font-black uppercase tracking-widest transition-all
+              ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-900 hover:text-white hover:border-stone-900 shadow-sm'}
+            `}
+          >
+            {isDownloading ? (
+              <>
+                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              <>📥 Guardar Comprobante</>
+            )}
+          </button>
         </div>
 
-        <div className="bg-white p-6 sm:p-8 pt-10 text-black border-x-2 border-stone-200">
+        {/* --- LO QUE SE DESCARGA EMPIEZA ACÁ --- */}
+        <div ref={ticketRef} className="relative shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] mb-8">
           
-          {/* Encabezado */}
-          <div className="text-center border-b-2 border-dashed border-stone-300 pb-4 mb-4">
-            <h1 className="text-4xl font-black italic uppercase tracking-tighter text-[#D32F2F] leading-none mb-2">
-              KRUSTY BURGER
-            </h1>
-            <p className="text-[10px] font-bold text-stone-500 uppercase">Ticket de Confirmación</p>
-            <p className="text-[9px] font-bold text-stone-400 mt-1 uppercase">
-              {pedido ? new Date(pedido.created_at).toLocaleString() : '---'}
-            </p>
+          <div className="absolute -top-3 left-0 w-full h-4 bg-white" 
+               style={{ clipPath: "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)" }}>
           </div>
 
-          {/* Estado y ID */}
-          <div className="text-center mb-6">
-            <p className="text-[10px] font-bold text-stone-500 uppercase">Orden:</p>
-            <p className="bg-black text-white text-2xl font-black py-1 inline-block px-4 mb-2">
-              #{pedido?.id.toString().slice(-6) || 'N/A'}
-            </p>
-            <h2 className="text-xl font-black uppercase italic text-green-600 leading-tight">
-              ¡PAGO CONFIRMADO!
-            </h2>
-          </div>
-
-          {/* DETALLE DE PRODUCTOS */}
-          <div className="space-y-2 mb-6 text-xs uppercase font-bold">
-            <div className="border-b border-stone-100 pb-1 mb-2 flex justify-between text-stone-400 text-[9px]">
-              <span>Descripción</span>
-              <span>Total</span>
-            </div>
-            {pedido?.items_resumen?.split(', ').map((item: string, i: number) => (
-              <div key={i} className="flex justify-between items-start gap-4">
-                <span className="leading-tight">{item}</span>
-                <span className="shrink-0">---</span>
+          <div className="bg-white px-8 pt-12 pb-8 text-stone-800">
+            <div className="text-center border-b border-dashed border-stone-200 pb-6 mb-6">
+              <div className="inline-block bg-stone-900 text-white text-[8px] font-black px-3 py-1 rounded-full mb-4 tracking-widest uppercase">
+                Confirmación de Orden
               </div>
-            ))}
-          </div>
-
-          {/* TOTALES */}
-          <div className="border-t-2 border-dashed border-stone-300 pt-4 mb-6 space-y-1">
-            <div className="flex justify-between font-bold text-xs uppercase">
-              <span>Metodo de Pago:</span>
-              <span className="max-w-[150px] text-right">{pedido?.metodo_pago}</span>
-            </div>
-            <div className="flex justify-between font-bold text-xs uppercase">
-              <span>Entrega:</span>
-              <span>{pedido?.tipo_entrega}</span>
-            </div>
-            <div className="flex justify-between items-end pt-4">
-              <span className="font-black text-lg italic uppercase">Total:</span>
-              <span className="text-3xl font-black italic leading-none">
-                ${pedido?.total?.toLocaleString('es-AR')}
-              </span>
-            </div>
-          </div>
-
-          {/* DATOS DE ENTREGA */}
-          <div className="bg-stone-50 p-3 rounded-lg border-2 border-black border-dashed mb-6">
-            <p className="text-[9px] font-black text-stone-400 uppercase mb-1">Dirección de Envío:</p>
-            <p className="text-[11px] font-bold uppercase leading-tight italic">
-              {pedido?.direccion}
-            </p>
-          </div>
-
-          {/* BOTONES DE ACCIÓN */}
-          <div className="space-y-3 relative z-10">
-            {pedido && (
-              <Link 
-                href={`/pedido/${pedido.id}`}
-                className="flex items-center justify-center gap-3 w-full bg-black text-[#FFCA28] p-4 rounded-xl font-black uppercase italic text-sm shadow-[4px_4px_0px_0px_#D32F2F] active:translate-y-1 active:shadow-none transition-all"
-              >
-                📍 SEGUIR MI PEDIDO
-              </Link>
-            )}
-
-            <Link 
-              href="/"
-              className="flex items-center justify-center w-full bg-stone-100 text-stone-500 border-2 border-dashed border-stone-300 p-3 rounded-xl font-black uppercase italic text-[10px] hover:bg-stone-200 transition-all"
-            >
-              ← NUEVA COMPRA
-            </Link>
-          </div>
-
-          {/* Pie del Ticket */}
-          <div className="mt-8 text-center">
-            <div className="border-t-2 border-dashed border-stone-300 pt-4 mb-4">
-              <p className="text-[9px] font-bold text-stone-400 uppercase leading-tight">
-                Krusty te lo agradece<br/>
-                (pero no te devuelve la plata).
+              <h1 className="text-4xl font-black tracking-tighter text-stone-900 leading-none mb-1">
+                Krusty<span className="text-[#D32F2F]">Burger</span>
+              </h1>
+              <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2">
+                {pedido ? new Date(pedido.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }) : '---'}
               </p>
             </div>
-            {/* Código de barras */}
-            <div className="flex justify-center gap-[2px] h-6 opacity-40">
-                {[...Array(25)].map((_, i) => (
-                    <div key={i} className="bg-black" style={{ width: `${Math.random() * 3 + 1}px` }}></div>
+
+            <div className="text-center mb-8">
+              <p className="text-[10px] font-black text-stone-300 uppercase tracking-widest mb-2">ID del Pedido</p>
+              <div className="bg-stone-50 border border-stone-100 rounded-2xl py-3 px-6 inline-block">
+                <span className="text-2xl font-black text-stone-900 tracking-widest">
+                  #{pedido?.id.toString().slice(-6) || '------'}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-8">
+              <div className="flex justify-between text-[9px] font-black text-stone-300 uppercase tracking-widest border-b border-stone-50 pb-2">
+                <span>Items</span>
+                <span>Total</span>
+              </div>
+              {pedido?.items_resumen?.split(', ').map((item: string, i: number) => (
+                <div key={i} className="flex justify-between items-center text-xs font-bold text-stone-600">
+                  <span className="truncate pr-4 uppercase">{item}</span>
+                  <span className="text-stone-200">-----------------</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 space-y-3">
+              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
+                <span>Metodo:</span>
+                <span className="text-stone-800">{pedido?.metodo_pago?.split('(')[0]}</span>
+              </div>
+              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
+                <span>Entrega:</span>
+                <span className="text-stone-800">{pedido?.tipo_entrega}</span>
+              </div>
+              <div className="pt-3 border-t border-stone-200/50 flex justify-between items-end">
+                <span className="font-black text-xs text-stone-900 uppercase">Total:</span>
+                <span className="text-3xl font-black text-stone-900 tracking-tighter">
+                  ${pedido?.total?.toLocaleString('es-AR')}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-stone-50 p-4 rounded-2xl border border-dashed border-stone-200 mb-6">
+              <p className="text-[8px] font-black text-stone-300 uppercase mb-1 tracking-widest">Destino</p>
+              <p className="text-[11px] font-bold uppercase leading-tight text-stone-600">
+                {pedido?.direccion}
+              </p>
+            </div>
+
+            <div className="mt-10 pt-6 border-t border-dashed border-stone-200 text-center">
+               <p className="text-[9px] font-bold text-stone-400 uppercase leading-relaxed mb-4">
+                "Usted es nuestro cliente preferido,<br/>después del Capitán McAllister."
+              </p>
+              <div className="flex justify-center items-end gap-[1.5px] h-10 overflow-hidden px-4 opacity-20">
+                {[...Array(40)].map((_, i) => (
+                  <div key={i} className="bg-stone-950 rounded-full" style={{ width: `${(i % 3 === 0) ? '3.5px' : '1.5px'}`, height: `${60 + Math.random() * 40}%` }}></div>
                 ))}
+              </div>
             </div>
           </div>
 
+          <div className="absolute -bottom-3 left-0 w-full h-4 bg-white" 
+               style={{ clipPath: "polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)" }}>
+          </div>
         </div>
+        {/* --- LO QUE SE DESCARGA TERMINA ACÁ --- */}
 
-        {/* Borde zigzag abajo */}
-        <div className="absolute -bottom-3 left-0 w-full h-4 bg-white" 
-             style={{ clipPath: "polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)" }}>
+        {/* BOTONES DE NAVEGACIÓN (Fuera del ticketRef para que no se descarguen) */}
+        <div className="space-y-4 px-4">
+          {pedido && (
+            <Link 
+              href={`/pedido/${pedido.id}`}
+              className="flex items-center justify-center gap-2 w-full bg-stone-900 text-[#FFCA28] py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-stone-200 hover:scale-[1.02] active:scale-95 transition-all"
+            >
+              📍 Seguir Pedido en Vivo
+            </Link>
+          )}
+          
+          <Link 
+            href="/"
+            className="flex items-center justify-center w-full bg-white text-stone-400 border border-stone-100 py-4 rounded-[2rem] font-bold uppercase text-[10px] tracking-widest hover:bg-stone-50 transition-all"
+          >
+            Volver al Menú
+          </Link>
         </div>
+        
+        <p className="mt-12 text-center text-stone-300 text-[8px] font-black uppercase tracking-[0.4em]">
+          Springfield Digital Systems · Powered by Powa
+        </p>
       </div>
-      
-      <p className="text-black/40 text-[9px] font-black uppercase tracking-[0.2em]">
-        Springfield Digital Systems © 1989
-      </p>
-
-      <style jsx global>{`
-        @keyframes fade-in {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.5s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 }
