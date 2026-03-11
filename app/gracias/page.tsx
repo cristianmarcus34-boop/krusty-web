@@ -12,15 +12,9 @@ export default function GraciasPage() {
 
   useEffect(() => {
     const savedId = localStorage.getItem('ultimo_pedido_id');
-    
     if (savedId) {
       const fetchPedido = async () => {
-        const { data } = await supabase
-          .from('pedidos')
-          .select('*')
-          .eq('id', savedId)
-          .single();
-        
+        const { data } = await supabase.from('pedidos').select('*').eq('id', savedId).single();
         if (data) setPedido(data);
         setLoading(false);
       };
@@ -28,7 +22,6 @@ export default function GraciasPage() {
     } else {
       setLoading(false);
     }
-
     const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3');
     sound.volume = 0.2;
     sound.play().catch(() => {});
@@ -38,33 +31,26 @@ export default function GraciasPage() {
     if (ticketRef.current) {
       setIsDownloading(true);
       try {
+        // SOLUCIÓN DEFINITIVA: Forzamos el renderizado a ignorar colores complejos
         const canvas = await html2canvas(ticketRef.current, {
           scale: 2,
           backgroundColor: "#ffffff",
           useCORS: true,
           logging: false,
+          allowTaint: true,
+          // Eliminamos sombras y efectos que suelen usar funciones 'lab' u 'oklch'
           onclone: (clonedDoc) => {
-            // Buscamos el ticket en el documento clonado
-            const ticket = clonedDoc.querySelector('[data-ticket="true"]') as HTMLElement;
+            const ticket = clonedDoc.getElementById('ticket-download-area');
             if (ticket) {
-              // Limpieza total: recorremos todos los hijos para matar colores "lab/oklch"
-              const elements = ticket.getElementsByTagName("*");
-              for (let i = 0; i < elements.length; i++) {
-                const el = elements[i] as HTMLElement;
-                const style = window.getComputedStyle(el);
-                
-                // Si el color contiene formatos raros, lo pisamos con básico
-                if (style.color.includes('lab') || style.color.includes('oklch')) {
-                  el.style.color = "#1c1917"; 
-                }
-                if (style.backgroundColor.includes('lab') || style.backgroundColor.includes('oklch')) {
-                  el.style.backgroundColor = "transparent";
-                }
-                // Forzamos sombras a nada para evitar errores de renderizado
-                el.style.boxShadow = "none";
+              ticket.style.boxShadow = 'none';
+              ticket.style.transform = 'none';
+              // Limpieza recursiva de colores para html2canvas
+              const allElements = ticket.getElementsByTagName("*");
+              for (let i = 0; i < allElements.length; i++) {
+                const el = allElements[i] as HTMLElement;
+                el.style.color = "#1c1917"; // Forzado a stone-800 sólido
+                el.style.borderColor = "#e7e5e4"; // Forzado a stone-200 sólido
               }
-              // Aseguramos que el contenedor sea blanco puro
-              ticket.style.backgroundColor = "#ffffff";
             }
           }
         });
@@ -76,6 +62,7 @@ export default function GraciasPage() {
         link.click();
       } catch (err) {
         console.error("Error al descargar:", err);
+        alert("Hubo un error al generar la imagen. ¡Intenta de nuevo!");
       } finally {
         setIsDownloading(false);
       }
@@ -83,108 +70,102 @@ export default function GraciasPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center font-sans">
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center">
       <div className="w-12 h-12 border-4 border-stone-200 border-t-[#D32F2F] rounded-full animate-spin mb-4" />
       <p className="font-black text-[10px] uppercase tracking-[0.3em] text-stone-400">Imprimiendo Ticket...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 pb-20 overflow-hidden relative font-sans">
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 pb-20 overflow-hidden relative">
       
-      {/* CÍRCULOS DE FONDO */}
+      {/* FONDO DECORATIVO */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] aspect-square bg-[#FFCA28]/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] aspect-square bg-[#D32F2F]/5 blur-[120px] rounded-full pointer-events-none" />
 
       <div className="max-w-md w-full relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
         
+        {/* BOTÓN DESCARGAR */}
         <div className="flex justify-center mb-6">
           <button 
             onClick={handleDownloadTicket}
             disabled={isDownloading}
-            className={`flex items-center gap-2 px-6 py-2 rounded-full border border-stone-200 bg-white text-[10px] font-black uppercase tracking-widest transition-all ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-900 hover:text-white shadow-sm'}`}
+            className={`
+              flex items-center gap-2 px-6 py-2 rounded-full border border-stone-200 bg-white text-[10px] font-black uppercase tracking-widest transition-all
+              ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-900 hover:text-white shadow-sm'}
+            `}
           >
-            {isDownloading ? 'Procesando...' : '📥 Guardar Comprobante'}
+            {isDownloading ? 'Generando...' : '📥 Guardar Comprobante'}
           </button>
         </div>
 
-        {/* --- TICKET (Capturable) --- */}
-        {/* Agregamos data-ticket="true" para que la función de limpieza lo encuentre fácil */}
-        <div ref={ticketRef} data-ticket="true" className="relative shadow-2xl mb-8 bg-white">
+        {/* CONTENEDOR TICKET (Lo que se descarga) */}
+        <div ref={ticketRef} id="ticket-download-area" className="relative shadow-2xl mb-8 bg-white">
           
+          {/* Zigzag Superior */}
           <div className="absolute -top-3 left-0 w-full h-4 bg-white" 
                style={{ clipPath: "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)" }}>
           </div>
 
-          <div className="bg-white px-8 pt-12 pb-8 text-stone-800">
+          <div className="px-8 pt-12 pb-8 bg-white">
             <div className="text-center border-b border-dashed border-stone-200 pb-6 mb-6">
-              <div className="inline-block bg-stone-900 text-white text-[8px] font-black px-3 py-1 rounded-full mb-4 tracking-widest uppercase">
-                Confirmación de Orden
-              </div>
-              <h1 className="text-4xl font-black tracking-tighter text-stone-900 leading-none mb-1">
+              <h1 className="text-4xl font-black tracking-tighter text-stone-900 leading-none">
                 Krusty<span className="text-[#D32F2F]">Burger</span>
               </h1>
               <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2">
-                {pedido ? new Date(pedido.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }) : '---'}
+                {pedido ? new Date(pedido.created_at).toLocaleDateString('es-AR') : '---'}
               </p>
             </div>
 
             <div className="text-center mb-8">
-              <p className="text-[10px] font-black text-stone-300 uppercase tracking-widest mb-2">ID del Pedido</p>
-              <div className="bg-stone-50 border border-stone-100 rounded-2xl py-3 px-6 inline-block">
-                <span className="text-2xl font-black text-stone-900 tracking-widest">
-                  #{pedido?.id.toString().slice(-6) || '------'}
-                </span>
+              <div className="bg-stone-50 border border-stone-100 rounded-2xl py-3 px-6 inline-block text-stone-900 font-black text-2xl tracking-widest">
+                #{pedido?.id.toString().slice(-6) || '------'}
               </div>
             </div>
 
             <div className="space-y-3 mb-8">
               {pedido?.items_resumen?.split(', ').map((item: string, i: number) => (
-                <div key={i} className="flex justify-between items-center text-xs font-bold text-stone-600">
-                  <span className="truncate pr-4 uppercase">{item}</span>
-                  <span className="text-stone-200">-----------------</span>
+                <div key={i} className="flex justify-between text-xs font-bold text-stone-600 uppercase">
+                  <span>{item}</span>
+                  <span className="text-stone-200">------</span>
                 </div>
               ))}
             </div>
 
-            <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 space-y-3 border border-stone-100">
-              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
+            <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 border border-stone-100">
+              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase mb-2">
                 <span>Metodo:</span>
-                <span className="text-stone-800">{pedido?.metodo_pago?.split('(')[0]}</span>
+                <span className="text-stone-800">{pedido?.metodo_pago}</span>
               </div>
               <div className="pt-3 border-t border-stone-200/50 flex justify-between items-end">
-                <span className="font-black text-xs text-stone-900 uppercase">Total:</span>
+                <span className="font-black text-xs text-stone-900 uppercase tracking-widest">Total:</span>
                 <span className="text-3xl font-black text-stone-900 tracking-tighter">
                   ${pedido?.total?.toLocaleString('es-AR')}
                 </span>
               </div>
             </div>
 
-            <div className="bg-stone-50 p-4 rounded-2xl border border-dashed border-stone-200 mb-6 text-center">
-              <p className="text-[8px] font-black text-stone-300 uppercase mb-1 tracking-widest">Destino</p>
-              <p className="text-[11px] font-bold uppercase leading-tight text-stone-600">
-                {pedido?.direccion}
-              </p>
-            </div>
-
-            <div className="mt-10 pt-6 border-t border-dashed border-stone-200 text-center">
-               <p className="text-[9px] font-bold text-stone-400 uppercase leading-relaxed mb-4">
-                "Usted es nuestro cliente preferido,<br/>después del Capitán McAllister."
-              </p>
+            <div className="mt-6 text-center opacity-30">
+               <div className="flex justify-center items-end gap-[1.5px] h-10 overflow-hidden">
+                {[...Array(30)].map((_, i) => (
+                  <div key={i} className="bg-black" style={{ width: `${(i % 3 === 0) ? '3px' : '1px'}`, height: `${60 + Math.random() * 40}%` }}></div>
+                ))}
+              </div>
             </div>
           </div>
 
+          {/* Zigzag Inferior */}
           <div className="absolute -bottom-3 left-0 w-full h-4 bg-white" 
                style={{ clipPath: "polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)" }}>
           </div>
         </div>
 
-        {/* NAVEGACIÓN */}
+        {/* BOTONES DE NAVEGACIÓN */}
         <div className="space-y-4 px-4">
-          <Link href={`/pedido/${pedido?.id}`} className="flex items-center justify-center w-full bg-stone-900 text-[#FFCA28] py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
-            📍 Seguir Pedido en Vivo
+          <Link href={`/pedido/${pedido?.id}`} className="flex items-center justify-center w-full bg-stone-900 text-[#FFCA28] py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl">
+            📍 Seguir Pedido
           </Link>
-          <Link href="/" className="flex items-center justify-center w-full bg-white text-stone-400 border border-stone-100 py-4 rounded-[2rem] font-bold uppercase text-[10px] tracking-widest hover:bg-stone-50 transition-all">
+          <Link href="/" className="flex items-center justify-center w-full bg-white text-stone-400 border border-stone-100 py-4 rounded-[2rem] font-bold uppercase text-[10px] tracking-widest">
             Volver al Menú
           </Link>
         </div>
