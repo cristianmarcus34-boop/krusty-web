@@ -54,16 +54,26 @@ export default function SeguimientoPedido() {
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `id=eq.${id}` },
                 (payload) => {
-                    // 1. Feedback auditivo
-                    if (payload.new.estado !== pedido?.estado) {
-                        const beep = new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3');
-                        beep.volume = 0.2;
-                        beep.play().catch(() => {});
-                    }
+                    const nuevoEstado = payload.new.estado;
+                    const estadoAnterior = pedido?.estado;
 
-                    // 2. Disparar CONFETTI si el estado cambia a "entregado"
-                    if (payload.new.estado === 'entregado' && pedido?.estado !== 'entregado') {
-                        lanzarConfetti();
+                    if (nuevoEstado !== estadoAnterior) {
+                        // 1. Sonido Correcaminos: SOLO si cambia a "en camino"
+                        if (nuevoEstado === 'en camino') {
+                            const beep = new Audio('/sounds/correcaminos-bip.mp3');
+                            beep.volume = 0.5;
+                            beep.play().catch(() => {});
+                        }
+
+                        // 2. Sonido Yahoo + Confetti: SOLO si cambia a "entregado"
+                        if (nuevoEstado === 'entregado') {
+                            // Asegurate de tener el archivo en public/sounds/yahoo.mp3
+                            const yahoo = new Audio('/sounds/woo-hoo.mp3');
+                            yahoo.volume = 0.5;
+                            yahoo.play().catch(() => console.log("Esperando interacción para sonar Yahoo"));
+                            
+                            lanzarConfetti();
+                        }
                     }
 
                     setPedido(payload.new);
@@ -252,7 +262,7 @@ export default function SeguimientoPedido() {
                 </div>
 
                 <p className="text-center font-black italic uppercase text-[10px] text-stone-400 tracking-widest mb-10">
-                    Springfield OS v5.2 • Agencia Digital Powa
+                    Springfield OS v5.2 • Agencia Powa
                 </p>
             </div>
         </div>
