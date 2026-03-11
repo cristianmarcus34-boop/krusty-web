@@ -39,12 +39,18 @@ export default function GraciasPage() {
       setIsDownloading(true);
       try {
         const canvas = await html2canvas(ticketRef.current, {
-          scale: 3, // Calidad alta para que no se vea pixelado
+          scale: 2, // Calidad óptima
           backgroundColor: "#ffffff",
           logging: false,
           useCORS: true,
-          windowWidth: ticketRef.current.scrollWidth,
-          windowHeight: ticketRef.current.scrollHeight,
+          // Esta función limpia los colores conflictivos de CSS antes de sacar la foto
+          onclone: (clonedDoc) => {
+            const el = clonedDoc.querySelector('[ref="ticketRef"]') as HTMLElement;
+            if (el) {
+              // Forzamos colores sólidos en el clon para evitar errores de funciones de color modernas
+              el.style.color = "#1c1917"; 
+            }
+          }
         });
         
         const image = canvas.toDataURL("image/png");
@@ -61,14 +67,14 @@ export default function GraciasPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center font-sans">
       <div className="w-12 h-12 border-4 border-stone-200 border-t-[#D32F2F] rounded-full animate-spin mb-4" />
       <p className="font-black text-[10px] uppercase tracking-[0.3em] text-stone-400">Imprimiendo Ticket...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 pb-20 overflow-hidden relative">
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 pb-20 overflow-hidden relative font-sans">
       
       {/* CÍRCULOS DE FONDO */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] aspect-square bg-[#FFCA28]/10 blur-[120px] rounded-full pointer-events-none" />
@@ -76,7 +82,7 @@ export default function GraciasPage() {
 
       <div className="max-w-md w-full relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
         
-        {/* BOTÓN DESCARGAR - Fuera del Ticket */}
+        {/* BOTÓN DESCARGAR */}
         <div className="flex justify-center mb-6">
           <button 
             onClick={handleDownloadTicket}
@@ -97,9 +103,10 @@ export default function GraciasPage() {
           </button>
         </div>
 
-        {/* --- LO QUE SE DESCARGA EMPIEZA ACÁ --- */}
-        <div ref={ticketRef} className="relative shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] mb-8">
+        {/* --- TICKET (Capturable) --- */}
+        <div ref={ticketRef} className="relative shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] mb-8 bg-white">
           
+          {/* Zigzag Superior */}
           <div className="absolute -top-3 left-0 w-full h-4 bg-white" 
                style={{ clipPath: "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)" }}>
           </div>
@@ -139,7 +146,7 @@ export default function GraciasPage() {
               ))}
             </div>
 
-            <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 space-y-3">
+            <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 space-y-3 border border-stone-100">
               <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
                 <span>Metodo:</span>
                 <span className="text-stone-800">{pedido?.metodo_pago?.split('(')[0]}</span>
@@ -156,7 +163,7 @@ export default function GraciasPage() {
               </div>
             </div>
 
-            <div className="bg-stone-50 p-4 rounded-2xl border border-dashed border-stone-200 mb-6">
+            <div className="bg-stone-50 p-4 rounded-2xl border border-dashed border-stone-200 mb-6 text-center">
               <p className="text-[8px] font-black text-stone-300 uppercase mb-1 tracking-widest">Destino</p>
               <p className="text-[11px] font-bold uppercase leading-tight text-stone-600">
                 {pedido?.direccion}
@@ -175,13 +182,13 @@ export default function GraciasPage() {
             </div>
           </div>
 
+          {/* Zigzag Inferior */}
           <div className="absolute -bottom-3 left-0 w-full h-4 bg-white" 
                style={{ clipPath: "polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)" }}>
           </div>
         </div>
-        {/* --- LO QUE SE DESCARGA TERMINA ACÁ --- */}
 
-        {/* BOTONES DE NAVEGACIÓN (Fuera del ticketRef para que no se descarguen) */}
+        {/* NAVEGACIÓN */}
         <div className="space-y-4 px-4">
           {pedido && (
             <Link 
