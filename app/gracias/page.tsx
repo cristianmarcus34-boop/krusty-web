@@ -12,9 +12,15 @@ export default function GraciasPage() {
 
   useEffect(() => {
     const savedId = localStorage.getItem('ultimo_pedido_id');
+    
     if (savedId) {
       const fetchPedido = async () => {
-        const { data } = await supabase.from('pedidos').select('*').eq('id', savedId).single();
+        const { data } = await supabase
+          .from('pedidos')
+          .select('*')
+          .eq('id', savedId)
+          .single();
+        
         if (data) setPedido(data);
         setLoading(false);
       };
@@ -22,6 +28,7 @@ export default function GraciasPage() {
     } else {
       setLoading(false);
     }
+
     const sound = new Audio('https://assets.mixkit.co/active_storage/sfx/2017/2017-preview.mp3');
     sound.volume = 0.2;
     sound.play().catch(() => {});
@@ -31,26 +38,17 @@ export default function GraciasPage() {
     if (ticketRef.current) {
       setIsDownloading(true);
       try {
-        // SOLUCIÓN DEFINITIVA: Forzamos el renderizado a ignorar colores complejos
         const canvas = await html2canvas(ticketRef.current, {
-          scale: 2,
+          scale: 2, // Calidad óptima
           backgroundColor: "#ffffff",
-          useCORS: true,
           logging: false,
-          allowTaint: true,
-          // Eliminamos sombras y efectos que suelen usar funciones 'lab' u 'oklch'
+          useCORS: true,
+          // Esta función limpia los colores conflictivos de CSS antes de sacar la foto
           onclone: (clonedDoc) => {
-            const ticket = clonedDoc.getElementById('ticket-download-area');
-            if (ticket) {
-              ticket.style.boxShadow = 'none';
-              ticket.style.transform = 'none';
-              // Limpieza recursiva de colores para html2canvas
-              const allElements = ticket.getElementsByTagName("*");
-              for (let i = 0; i < allElements.length; i++) {
-                const el = allElements[i] as HTMLElement;
-                el.style.color = "#1c1917"; // Forzado a stone-800 sólido
-                el.style.borderColor = "#e7e5e4"; // Forzado a stone-200 sólido
-              }
+            const el = clonedDoc.querySelector('[ref="ticketRef"]') as HTMLElement;
+            if (el) {
+              // Forzamos colores sólidos en el clon para evitar errores de funciones de color modernas
+              el.style.color = "#1c1917"; 
             }
           }
         });
@@ -62,7 +60,6 @@ export default function GraciasPage() {
         link.click();
       } catch (err) {
         console.error("Error al descargar:", err);
-        alert("Hubo un error al generar la imagen. ¡Intenta de nuevo!");
       } finally {
         setIsDownloading(false);
       }
@@ -70,16 +67,16 @@ export default function GraciasPage() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center font-sans">
       <div className="w-12 h-12 border-4 border-stone-200 border-t-[#D32F2F] rounded-full animate-spin mb-4" />
       <p className="font-black text-[10px] uppercase tracking-[0.3em] text-stone-400">Imprimiendo Ticket...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 pb-20 overflow-hidden relative">
+    <div className="min-h-screen bg-stone-50 flex flex-col items-center justify-center p-6 pb-20 overflow-hidden relative font-sans">
       
-      {/* FONDO DECORATIVO */}
+      {/* CÍRCULOS DE FONDO */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] aspect-square bg-[#FFCA28]/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] aspect-square bg-[#D32F2F]/5 blur-[120px] rounded-full pointer-events-none" />
 
@@ -92,63 +89,94 @@ export default function GraciasPage() {
             disabled={isDownloading}
             className={`
               flex items-center gap-2 px-6 py-2 rounded-full border border-stone-200 bg-white text-[10px] font-black uppercase tracking-widest transition-all
-              ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-900 hover:text-white shadow-sm'}
+              ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-900 hover:text-white hover:border-stone-900 shadow-sm'}
             `}
           >
-            {isDownloading ? 'Generando...' : '📥 Guardar Comprobante'}
+            {isDownloading ? (
+              <>
+                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                Procesando...
+              </>
+            ) : (
+              <>📥 Guardar Comprobante</>
+            )}
           </button>
         </div>
 
-        {/* CONTENEDOR TICKET (Lo que se descarga) */}
-        <div ref={ticketRef} id="ticket-download-area" className="relative shadow-2xl mb-8 bg-white">
+        {/* --- TICKET (Capturable) --- */}
+        <div ref={ticketRef} className="relative shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] mb-8 bg-white">
           
           {/* Zigzag Superior */}
           <div className="absolute -top-3 left-0 w-full h-4 bg-white" 
                style={{ clipPath: "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)" }}>
           </div>
 
-          <div className="px-8 pt-12 pb-8 bg-white">
+          <div className="bg-white px-8 pt-12 pb-8 text-stone-800">
             <div className="text-center border-b border-dashed border-stone-200 pb-6 mb-6">
-              <h1 className="text-4xl font-black tracking-tighter text-stone-900 leading-none">
+              <div className="inline-block bg-stone-900 text-white text-[8px] font-black px-3 py-1 rounded-full mb-4 tracking-widest uppercase">
+                Confirmación de Orden
+              </div>
+              <h1 className="text-4xl font-black tracking-tighter text-stone-900 leading-none mb-1">
                 Krusty<span className="text-[#D32F2F]">Burger</span>
               </h1>
               <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2">
-                {pedido ? new Date(pedido.created_at).toLocaleDateString('es-AR') : '---'}
+                {pedido ? new Date(pedido.created_at).toLocaleDateString('es-AR', { day: '2-digit', month: 'long', year: 'numeric' }) : '---'}
               </p>
             </div>
 
             <div className="text-center mb-8">
-              <div className="bg-stone-50 border border-stone-100 rounded-2xl py-3 px-6 inline-block text-stone-900 font-black text-2xl tracking-widest">
-                #{pedido?.id.toString().slice(-6) || '------'}
+              <p className="text-[10px] font-black text-stone-300 uppercase tracking-widest mb-2">ID del Pedido</p>
+              <div className="bg-stone-50 border border-stone-100 rounded-2xl py-3 px-6 inline-block">
+                <span className="text-2xl font-black text-stone-900 tracking-widest">
+                  #{pedido?.id.toString().slice(-6) || '------'}
+                </span>
               </div>
             </div>
 
             <div className="space-y-3 mb-8">
+              <div className="flex justify-between text-[9px] font-black text-stone-300 uppercase tracking-widest border-b border-stone-50 pb-2">
+                <span>Items</span>
+                <span>Total</span>
+              </div>
               {pedido?.items_resumen?.split(', ').map((item: string, i: number) => (
-                <div key={i} className="flex justify-between text-xs font-bold text-stone-600 uppercase">
-                  <span>{item}</span>
-                  <span className="text-stone-200">------</span>
+                <div key={i} className="flex justify-between items-center text-xs font-bold text-stone-600">
+                  <span className="truncate pr-4 uppercase">{item}</span>
+                  <span className="text-stone-200">-----------------</span>
                 </div>
               ))}
             </div>
 
-            <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 border border-stone-100">
-              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase mb-2">
+            <div className="bg-stone-50 rounded-[2rem] p-6 mb-8 space-y-3 border border-stone-100">
+              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
                 <span>Metodo:</span>
-                <span className="text-stone-800">{pedido?.metodo_pago}</span>
+                <span className="text-stone-800">{pedido?.metodo_pago?.split('(')[0]}</span>
+              </div>
+              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
+                <span>Entrega:</span>
+                <span className="text-stone-800">{pedido?.tipo_entrega}</span>
               </div>
               <div className="pt-3 border-t border-stone-200/50 flex justify-between items-end">
-                <span className="font-black text-xs text-stone-900 uppercase tracking-widest">Total:</span>
+                <span className="font-black text-xs text-stone-900 uppercase">Total:</span>
                 <span className="text-3xl font-black text-stone-900 tracking-tighter">
                   ${pedido?.total?.toLocaleString('es-AR')}
                 </span>
               </div>
             </div>
 
-            <div className="mt-6 text-center opacity-30">
-               <div className="flex justify-center items-end gap-[1.5px] h-10 overflow-hidden">
-                {[...Array(30)].map((_, i) => (
-                  <div key={i} className="bg-black" style={{ width: `${(i % 3 === 0) ? '3px' : '1px'}`, height: `${60 + Math.random() * 40}%` }}></div>
+            <div className="bg-stone-50 p-4 rounded-2xl border border-dashed border-stone-200 mb-6 text-center">
+              <p className="text-[8px] font-black text-stone-300 uppercase mb-1 tracking-widest">Destino</p>
+              <p className="text-[11px] font-bold uppercase leading-tight text-stone-600">
+                {pedido?.direccion}
+              </p>
+            </div>
+
+            <div className="mt-10 pt-6 border-t border-dashed border-stone-200 text-center">
+               <p className="text-[9px] font-bold text-stone-400 uppercase leading-relaxed mb-4">
+                "Usted es nuestro cliente preferido,<br/>después del Capitán McAllister."
+              </p>
+              <div className="flex justify-center items-end gap-[1.5px] h-10 overflow-hidden px-4 opacity-20">
+                {[...Array(40)].map((_, i) => (
+                  <div key={i} className="bg-stone-950 rounded-full" style={{ width: `${(i % 3 === 0) ? '3.5px' : '1.5px'}`, height: `${60 + Math.random() * 40}%` }}></div>
                 ))}
               </div>
             </div>
@@ -160,15 +188,28 @@ export default function GraciasPage() {
           </div>
         </div>
 
-        {/* BOTONES DE NAVEGACIÓN */}
+        {/* NAVEGACIÓN */}
         <div className="space-y-4 px-4">
-          <Link href={`/pedido/${pedido?.id}`} className="flex items-center justify-center w-full bg-stone-900 text-[#FFCA28] py-5 rounded-[2rem] font-black uppercase text-xs tracking-widest shadow-xl">
-            📍 Seguir Pedido
-          </Link>
-          <Link href="/" className="flex items-center justify-center w-full bg-white text-stone-400 border border-stone-100 py-4 rounded-[2rem] font-bold uppercase text-[10px] tracking-widest">
+          {pedido && (
+            <Link 
+              href={`/pedido/${pedido.id}`}
+              className="flex items-center justify-center gap-2 w-full bg-stone-900 text-[#FFCA28] py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-stone-200 hover:scale-[1.02] active:scale-95 transition-all"
+            >
+              📍 Seguir Pedido en Vivo
+            </Link>
+          )}
+          
+          <Link 
+            href="/"
+            className="flex items-center justify-center w-full bg-white text-stone-400 border border-stone-100 py-4 rounded-[2rem] font-bold uppercase text-[10px] tracking-widest hover:bg-stone-50 transition-all"
+          >
             Volver al Menú
           </Link>
         </div>
+        
+        <p className="mt-12 text-center text-stone-300 text-[8px] font-black uppercase tracking-[0.4em]">
+          Springfield Digital Systems · Powered by Powa
+        </p>
       </div>
     </div>
   );
