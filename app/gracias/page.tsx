@@ -39,16 +39,32 @@ export default function GraciasPage() {
       setIsDownloading(true);
       try {
         const canvas = await html2canvas(ticketRef.current, {
-          scale: 2, // Calidad óptima
+          scale: 2,
           backgroundColor: "#ffffff",
-          logging: false,
           useCORS: true,
-          // Esta función limpia los colores conflictivos de CSS antes de sacar la foto
+          logging: false,
           onclone: (clonedDoc) => {
-            const el = clonedDoc.querySelector('[ref="ticketRef"]') as HTMLElement;
-            if (el) {
-              // Forzamos colores sólidos en el clon para evitar errores de funciones de color modernas
-              el.style.color = "#1c1917"; 
+            // Buscamos el ticket en el documento clonado
+            const ticket = clonedDoc.querySelector('[data-ticket="true"]') as HTMLElement;
+            if (ticket) {
+              // Limpieza total: recorremos todos los hijos para matar colores "lab/oklch"
+              const elements = ticket.getElementsByTagName("*");
+              for (let i = 0; i < elements.length; i++) {
+                const el = elements[i] as HTMLElement;
+                const style = window.getComputedStyle(el);
+                
+                // Si el color contiene formatos raros, lo pisamos con básico
+                if (style.color.includes('lab') || style.color.includes('oklch')) {
+                  el.style.color = "#1c1917"; 
+                }
+                if (style.backgroundColor.includes('lab') || style.backgroundColor.includes('oklch')) {
+                  el.style.backgroundColor = "transparent";
+                }
+                // Forzamos sombras a nada para evitar errores de renderizado
+                el.style.boxShadow = "none";
+              }
+              // Aseguramos que el contenedor sea blanco puro
+              ticket.style.backgroundColor = "#ffffff";
             }
           }
         });
@@ -82,31 +98,20 @@ export default function GraciasPage() {
 
       <div className="max-w-md w-full relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-700">
         
-        {/* BOTÓN DESCARGAR */}
         <div className="flex justify-center mb-6">
           <button 
             onClick={handleDownloadTicket}
             disabled={isDownloading}
-            className={`
-              flex items-center gap-2 px-6 py-2 rounded-full border border-stone-200 bg-white text-[10px] font-black uppercase tracking-widest transition-all
-              ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-900 hover:text-white hover:border-stone-900 shadow-sm'}
-            `}
+            className={`flex items-center gap-2 px-6 py-2 rounded-full border border-stone-200 bg-white text-[10px] font-black uppercase tracking-widest transition-all ${isDownloading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-900 hover:text-white shadow-sm'}`}
           >
-            {isDownloading ? (
-              <>
-                <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                Procesando...
-              </>
-            ) : (
-              <>📥 Guardar Comprobante</>
-            )}
+            {isDownloading ? 'Procesando...' : '📥 Guardar Comprobante'}
           </button>
         </div>
 
         {/* --- TICKET (Capturable) --- */}
-        <div ref={ticketRef} className="relative shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] mb-8 bg-white">
+        {/* Agregamos data-ticket="true" para que la función de limpieza lo encuentre fácil */}
+        <div ref={ticketRef} data-ticket="true" className="relative shadow-2xl mb-8 bg-white">
           
-          {/* Zigzag Superior */}
           <div className="absolute -top-3 left-0 w-full h-4 bg-white" 
                style={{ clipPath: "polygon(0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%)" }}>
           </div>
@@ -134,10 +139,6 @@ export default function GraciasPage() {
             </div>
 
             <div className="space-y-3 mb-8">
-              <div className="flex justify-between text-[9px] font-black text-stone-300 uppercase tracking-widest border-b border-stone-50 pb-2">
-                <span>Items</span>
-                <span>Total</span>
-              </div>
               {pedido?.items_resumen?.split(', ').map((item: string, i: number) => (
                 <div key={i} className="flex justify-between items-center text-xs font-bold text-stone-600">
                   <span className="truncate pr-4 uppercase">{item}</span>
@@ -150,10 +151,6 @@ export default function GraciasPage() {
               <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
                 <span>Metodo:</span>
                 <span className="text-stone-800">{pedido?.metodo_pago?.split('(')[0]}</span>
-              </div>
-              <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase">
-                <span>Entrega:</span>
-                <span className="text-stone-800">{pedido?.tipo_entrega}</span>
               </div>
               <div className="pt-3 border-t border-stone-200/50 flex justify-between items-end">
                 <span className="font-black text-xs text-stone-900 uppercase">Total:</span>
@@ -174,15 +171,9 @@ export default function GraciasPage() {
                <p className="text-[9px] font-bold text-stone-400 uppercase leading-relaxed mb-4">
                 "Usted es nuestro cliente preferido,<br/>después del Capitán McAllister."
               </p>
-              <div className="flex justify-center items-end gap-[1.5px] h-10 overflow-hidden px-4 opacity-20">
-                {[...Array(40)].map((_, i) => (
-                  <div key={i} className="bg-stone-950 rounded-full" style={{ width: `${(i % 3 === 0) ? '3.5px' : '1.5px'}`, height: `${60 + Math.random() * 40}%` }}></div>
-                ))}
-              </div>
             </div>
           </div>
 
-          {/* Zigzag Inferior */}
           <div className="absolute -bottom-3 left-0 w-full h-4 bg-white" 
                style={{ clipPath: "polygon(0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%)" }}>
           </div>
@@ -190,26 +181,13 @@ export default function GraciasPage() {
 
         {/* NAVEGACIÓN */}
         <div className="space-y-4 px-4">
-          {pedido && (
-            <Link 
-              href={`/pedido/${pedido.id}`}
-              className="flex items-center justify-center gap-2 w-full bg-stone-900 text-[#FFCA28] py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-stone-200 hover:scale-[1.02] active:scale-95 transition-all"
-            >
-              📍 Seguir Pedido en Vivo
-            </Link>
-          )}
-          
-          <Link 
-            href="/"
-            className="flex items-center justify-center w-full bg-white text-stone-400 border border-stone-100 py-4 rounded-[2rem] font-bold uppercase text-[10px] tracking-widest hover:bg-stone-50 transition-all"
-          >
+          <Link href={`/pedido/${pedido?.id}`} className="flex items-center justify-center w-full bg-stone-900 text-[#FFCA28] py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
+            📍 Seguir Pedido en Vivo
+          </Link>
+          <Link href="/" className="flex items-center justify-center w-full bg-white text-stone-400 border border-stone-100 py-4 rounded-[2rem] font-bold uppercase text-[10px] tracking-widest hover:bg-stone-50 transition-all">
             Volver al Menú
           </Link>
         </div>
-        
-        <p className="mt-12 text-center text-stone-300 text-[8px] font-black uppercase tracking-[0.4em]">
-          Springfield Digital Systems · Powered by Powa
-        </p>
       </div>
     </div>
   );
