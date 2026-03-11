@@ -50,16 +50,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
   const subtotal = total();
   const montoTotalFinal = subtotal + costoEnvio;
 
-  const handleContinueShopping = (e?: React.MouseEvent) => {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    onClose();
-    if (pathname === '/') {
-      document.getElementById('productos')?.scrollIntoView({ behavior: 'smooth' });
-    } else {
-      router.push('/#productos');
-    }
-  };
-
   const handleCopyAlias = () => {
     navigator.clipboard.writeText(ALIAS_TRANSFERENCIA);
     setCopied(true);
@@ -126,8 +116,13 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
 
       if (error) throw error;
 
-      localStorage.setItem('ultimo_pedido_id', pedidoGuardado.id.toString());
-      localStorage.setItem('pedido_id', pedidoGuardado.id.toString());
+      // --- CAMBIO AQUÍ: GUARDAMOS OBJETO CON FECHA ---
+      const infoPedido = {
+        id: pedidoGuardado.id,
+        fecha: new Date().getTime() // Guardamos milisegundos para comparar después
+      };
+      localStorage.setItem('ultimo_pedido_krusty', JSON.stringify(infoPedido));
+      // ----------------------------------------------
 
       const numeroTelefono = "5491138305837";
       const baseUrl = window.location.origin;
@@ -175,7 +170,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
       <div className={`fixed right-0 top-0 h-full w-full sm:w-[450px] bg-white z-[70] shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
         <div className="flex flex-col h-full bg-white">
           
-          {/* HEADER - Más limpio y moderno */}
           <div className="p-6 bg-white border-b border-stone-100 shrink-0">
             <div className="flex justify-between items-center">
               <div>
@@ -189,7 +183,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
-            {/* LISTA DE ITEMS */}
             <div className="space-y-4">
               {items.length === 0 ? (
                 <div className="text-center py-20 bg-stone-50 rounded-[2.5rem] border border-dashed border-stone-200">
@@ -207,7 +200,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                       <h4 className="font-bold text-sm text-stone-900 truncate uppercase tracking-tight">{item.nombre}</h4>
                       <p className="font-black text-[#D32F2F] text-xs mt-0.5">${(item.precio * item.quantity).toLocaleString('es-AR')}</p>
                     </div>
-                    {/* CONTROLES DE CANTIDAD MODERNOS */}
                     <div className="flex items-center bg-stone-100 rounded-xl p-1 shrink-0">
                       <button onClick={() => decreaseQuantity(item.id)} className="w-7 h-7 flex items-center justify-center font-bold text-stone-500 hover:bg-white hover:rounded-lg transition-all">–</button>
                       <span className="px-2 font-black text-xs text-stone-900">{item.quantity}</span>
@@ -220,7 +212,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
 
             {items.length > 0 && (
               <div className="space-y-6 animate-in fade-in duration-500">
-                {/* SELECTOR ENTREGA */}
                 <div className="flex p-1 bg-stone-100 rounded-2xl">
                   {['Delivery', 'Retiro'].map((tipo) => (
                     <button 
@@ -233,14 +224,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   ))}
                 </div>
 
-                {/* FORMULARIO */}
                 <div className="space-y-3">
-                  <div className="relative group">
-                    <input type="text" placeholder="TU NOMBRE" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold uppercase text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.nombre} onChange={(e) => setCustomer({...customer, nombre: e.target.value})} />
-                  </div>
-                  <div className="relative group">
-                    <input type="tel" placeholder="TELÉFONO (SIN 0 NI 15)" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.telefono} onChange={(e) => setCustomer({...customer, telefono: e.target.value.replace(/\D/g, '')})} />
-                  </div>
+                  <input type="text" placeholder="TU NOMBRE" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold uppercase text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.nombre} onChange={(e) => setCustomer({...customer, nombre: e.target.value})} />
+                  <input type="tel" placeholder="TELÉFONO (SIN 0 NI 15)" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.telefono} onChange={(e) => setCustomer({...customer, telefono: e.target.value.replace(/\D/g, '')})} />
 
                   {customer.tipoEntrega === 'Delivery' && (
                     <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
@@ -255,7 +241,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   )}
                 </div>
 
-                {/* MÉTODOS DE PAGO */}
                 <div className="space-y-4">
                   <p className="text-[10px] font-black uppercase text-stone-400 tracking-[0.2em] px-1">Método de Pago</p>
                   <div className="grid grid-cols-3 gap-2">
@@ -264,7 +249,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                     ))}
                   </div>
 
-                  {/* BLOQUES DINÁMICOS DE PAGO */}
                   {customer.metodoPago === 'Transferencia' && (
                     <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem] animate-in fade-in zoom-in-95 duration-300">
                       <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">Copiá nuestro Alias</p>
@@ -296,7 +280,6 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
             )}
           </div>
 
-          {/* FOOTER - RESUMEN Y BOTÓN */}
           <div className="p-6 bg-white border-t border-stone-100 shrink-0">
             <div className="space-y-2 mb-6">
               <div className="flex justify-between items-center text-stone-400 font-bold text-[11px] uppercase tracking-tighter">
