@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 const ZONAS_REPARTO = [
   { nombre: "Villa La Florida (Cerca - hasta 10 cuadras)", costo: 0 },
@@ -14,10 +14,10 @@ const ZONAS_REPARTO = [
 ];
 
 const ALIAS_TRANSFERENCIA = "krustyburger2025";
+const DIRECCION_LOCAL = "CALLE 853 1149, VILLA LA FLORIDA"; 
 
 export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) {
   const router = useRouter();
-  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const { items, total, clearCart, addItem, decreaseQuantity } = useCartStore();
   
@@ -87,10 +87,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
       
       const direccionCompleta = customer.tipoEntrega === 'Delivery' 
         ? `${customer.calleAltura.toUpperCase()} (${customer.barrio})` 
-        : 'RETIRA EN LOCAL';
-
-      const queryMaps = encodeURIComponent(`${customer.calleAltura}, ${customer.barrio}, Buenos Aires`);
-      const linkMaps = `https://www.google.com/maps/search/?api=1&query=${queryMaps}`;
+        : `🏠 RETIRO POR LOCAL (${DIRECCION_LOCAL})`;
 
       let detallePago = customer.metodoPago;
       if (customer.metodoPago === 'Efectivo') {
@@ -98,6 +95,14 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
       } else if (customer.metodoPago === 'Transferencia') {
         detallePago = `Transferencia (Alias: ${ALIAS_TRANSFERENCIA})`;
       }
+
+      // 1. Mejoramos el resumen para la Base de Datos incluyendo extras
+      const itemsResumenDB = items.map(i => {
+        const extras = i.extrasElegidos?.length 
+          ? ` (+${i.extrasElegidos.map(e => e.nombre).join(', ')})` 
+          : '';
+        return `${i.quantity}x ${i.nombre}${extras}`;
+      }).join(', ');
 
       const { data: pedidoGuardado, error } = await supabase
         .from('pedidos')
@@ -109,25 +114,21 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
           tipo_entrega: customer.tipoEntrega,
           total: montoTotalFinal,
           estado: 'pendiente',
-          items_resumen: items.map(i => `${i.quantity}x ${i.nombre}`).join(', ')
+          items_resumen: itemsResumenDB
         }])
         .select()
         .single();
 
       if (error) throw error;
 
-      // --- CAMBIO AQUÍ: GUARDAMOS OBJETO CON FECHA ---
-      const infoPedido = {
-        id: pedidoGuardado.id,
-        fecha: new Date().getTime() // Guardamos milisegundos para comparar después
-      };
+      const infoPedido = { id: pedidoGuardado.id, fecha: new Date().getTime() };
       localStorage.setItem('ultimo_pedido_krusty', JSON.stringify(infoPedido));
-      // ----------------------------------------------
 
       const numeroTelefono = "5491138305837";
       const baseUrl = window.location.origin;
       const linkSeguimiento = `${baseUrl}/pedido/${pedidoGuardado.id}`;
 
+      // 2. Mensaje de WhatsApp mejorado con estructura de extras
       const mensaje = encodeURIComponent(
         `🤡 *NUEVO PEDIDO - KRUSTY BURGER*\n` +
         `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
@@ -137,16 +138,20 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
         `📞 *TEL:* ${customer.telefono}\n` +
         `🚀 *MODO:* ${customer.tipoEntrega.toUpperCase()}\n` +
         `📍 *DIR:* ${direccionCompleta}\n` +
-        `🗺️ *MAPA:* ${linkMaps}\n` +
         `💳 *PAGO:* ${detallePago}\n` +
         (customer.notes ? `📝 *NOTAS:* ${customer.notes}\n` : '') +
         `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-        items.map((item) => `🍔 *${item.quantity}x* ${item.nombre.toUpperCase()} - $${(item.precio * item.quantity).toLocaleString('es-AR')}`).join("\n") +
+        items.map((item) => {
+          const extrasMsj = item.extrasElegidos?.length 
+            ? item.extrasElegidos.map(e => `\n   └ + ${e.nombre}`).join('') 
+            : '';
+          return `🍔 *${item.quantity}x* ${item.nombre.toUpperCase()}${extrasMsj}\n💰 Subtotal: $${(item.precioUnitarioTotal * item.quantity).toLocaleString('es-AR')}`;
+        }).join("\n\n") +
         `\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `💵 *SUBTOTAL:* $${subtotal.toLocaleString('es-AR')}\n` +
-        `🛵 *ENVÍO:* ${costoEnvio === 0 ? 'GRATIS' : `$${costoEnvio.toLocaleString('es-AR')}`}\n` +
+        `🛵 *ENVÍO:* ${customer.tipoEntrega === 'Retiro' ? 'N/A' : (costoEnvio === 0 ? 'GRATIS' : `$${costoEnvio.toLocaleString('es-AR')}`)}\n` +
         `💰 *TOTAL: $${montoTotalFinal.toLocaleString('es-AR')}*\n\n` +
-        (customer.metodoPago === 'Transferencia' ? `🏦 *ALIAS PARA TRANSFERIR:* ${ALIAS_TRANSFERENCIA}\n⚠️ _Por favor enviá el comprobante por acá._\n\n` : '') +
+        (customer.metodoPago === 'Transferencia' ? `🏦 *ALIAS:* ${ALIAS_TRANSFERENCIA}\n` : '') +
         `🤡 _¡Gracias por elegir al payaso!_`
       );
 
@@ -156,7 +161,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
       router.push('/gracias');
 
     } catch (e) {
-      console.error("Error en checkout:", e);
+      console.error(e);
       alert("❌ Error procesando el pedido.");
     } finally {
       setIsSending(false);
@@ -175,48 +180,62 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
               <div>
                 <h2 className="text-2xl font-black text-stone-900 tracking-tighter uppercase">Tu Pedido</h2>
                 <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">
-                  {items.length} {items.length === 1 ? 'producto' : 'productos'} seleccionado
+                  {items.length} {items.length === 1 ? 'producto' : 'productos'} en el carrito
                 </p>
               </div>
-              <button onClick={onClose} className="bg-stone-100 text-stone-400 w-10 h-10 rounded-full flex items-center justify-center hover:bg-stone-200 transition-colors">✕</button>
+              <button onClick={onClose} className="bg-stone-100 text-stone-400 w-10 h-10 rounded-full flex items-center justify-center hover:bg-stone-200 transition-transform active:scale-90">✕</button>
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar">
+          <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar relative">
             <div className="space-y-4">
               {items.length === 0 ? (
                 <div className="text-center py-20 bg-stone-50 rounded-[2.5rem] border border-dashed border-stone-200">
                   <span className="text-6xl block mb-4">🍔</span>
                   <p className="font-bold text-stone-400 uppercase text-xs tracking-widest">¿Hambre? Agregá algo rico</p>
-                  <button onClick={onClose} className="mt-4 text-[#D32F2F] font-black text-xs uppercase underline">Ver Menú</button>
+                  <button onClick={onClose} className="mt-4 text-[#D32F2F] font-black text-xs uppercase underline underline-offset-4">Ver Menú</button>
                 </div>
               ) : (
                 items.map((item) => (
-                  <div key={item.id} className="flex items-center gap-4 p-2 bg-white group">
-                    <div className="relative w-16 h-16 shrink-0 rounded-2xl overflow-hidden border border-stone-100 shadow-sm">
-                      <img src={item.imagen} className="w-full h-full object-cover" alt={item.nombre} />
+                  <div key={`cart-item-${item.cartId}`} className="flex flex-col gap-2 p-3 bg-stone-50/50 rounded-2xl border border-stone-100 group">
+                    <div className="flex items-center gap-4">
+                      <div className="relative w-16 h-16 shrink-0 rounded-2xl overflow-hidden border border-white shadow-sm">
+                        <img src={item.imagen} className="w-full h-full object-cover" alt={item.nombre} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-bold text-sm text-stone-900 truncate uppercase tracking-tight">{item.nombre}</h4>
+                        <p className="font-black text-[#D32F2F] text-xs mt-0.5">${(item.precioUnitarioTotal * item.quantity).toLocaleString('es-AR')}</p>
+                      </div>
+                      <div className="flex items-center bg-white border border-stone-200 rounded-xl p-1 shrink-0">
+                        <button onClick={() => decreaseQuantity(item.cartId)} className="w-7 h-7 flex items-center justify-center font-bold text-stone-500 hover:bg-stone-100 hover:rounded-lg transition-all">–</button>
+                        <span className="px-2 font-black text-xs text-stone-900">{item.quantity}</span>
+                        <button onClick={() => addItem(item, item.extrasElegidos)} className="w-7 h-7 flex items-center justify-center font-bold text-stone-500 hover:bg-stone-100 hover:rounded-lg transition-all">+</button>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm text-stone-900 truncate uppercase tracking-tight">{item.nombre}</h4>
-                      <p className="font-black text-[#D32F2F] text-xs mt-0.5">${(item.precio * item.quantity).toLocaleString('es-AR')}</p>
-                    </div>
-                    <div className="flex items-center bg-stone-100 rounded-xl p-1 shrink-0">
-                      <button onClick={() => decreaseQuantity(item.id)} className="w-7 h-7 flex items-center justify-center font-bold text-stone-500 hover:bg-white hover:rounded-lg transition-all">–</button>
-                      <span className="px-2 font-black text-xs text-stone-900">{item.quantity}</span>
-                      <button onClick={() => addItem(item)} className="w-7 h-7 flex items-center justify-center font-bold text-stone-500 hover:bg-white hover:rounded-lg transition-all">+</button>
-                    </div>
+                    
+                    {/* VISUALIZACIÓN DE EXTRAS SELECCIONADOS */}
+                    {item.extrasElegidos && item.extrasElegidos.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 ml-20 mt-1">
+                        {item.extrasElegidos.map((extra, idx) => (
+                          <span key={`extra-${item.cartId}-${extra.id}-${idx}`} className="text-[8px] font-black uppercase bg-[#FFCA28]/10 text-[#c79d1a] border border-[#FFCA28]/20 px-2 py-0.5 rounded-md">
+                            + {extra.nombre}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
             </div>
 
             {items.length > 0 && (
-              <div className="space-y-6 animate-in fade-in duration-500">
+              <div className="space-y-6 pb-10">
+                {/* TIPO DE ENTREGA */}
                 <div className="flex p-1 bg-stone-100 rounded-2xl">
                   {['Delivery', 'Retiro'].map((tipo) => (
                     <button 
-                      key={tipo} 
-                      onClick={() => setCustomer({...customer, tipoEntrega: tipo})} 
+                      key={`delivery-type-${tipo}`} 
+                      onClick={() => setCustomer({...customer, tipoEntrega: tipo as 'Delivery' | 'Retiro'})} 
                       className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${customer.tipoEntrega === tipo ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-400 hover:text-stone-600'}`}
                     >
                       {tipo === 'Delivery' ? '🛵 Delivery' : '🏠 Retiro'}
@@ -224,35 +243,46 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   ))}
                 </div>
 
+                {/* DATOS CLIENTE */}
                 <div className="space-y-3">
                   <input type="text" placeholder="TU NOMBRE" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold uppercase text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.nombre} onChange={(e) => setCustomer({...customer, nombre: e.target.value})} />
-                  <input type="tel" placeholder="TELÉFONO (SIN 0 NI 15)" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.telefono} onChange={(e) => setCustomer({...customer, telefono: e.target.value.replace(/\D/g, '')})} />
+                  <input type="tel" placeholder="TELÉFONO" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.telefono} onChange={(e) => setCustomer({...customer, telefono: e.target.value.replace(/\D/g, '')})} />
 
-                  {customer.tipoEntrega === 'Delivery' && (
-                    <div className="space-y-3 animate-in slide-in-from-top-2 duration-300">
+                  {customer.tipoEntrega === 'Delivery' ? (
+                    <div className="space-y-3">
                       <select className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none cursor-pointer appearance-none" value={customer.barrio} onChange={(e) => setCustomer({...customer, barrio: e.target.value})}>
                         <option value="">📍 SELECCIONÁ TU BARRIO</option>
                         {ZONAS_REPARTO.map(zona => (
-                          <option key={zona.nombre} value={zona.nombre}>{zona.nombre} (+${zona.costo})</option>
+                          <option key={`zona-${zona.nombre}`} value={zona.nombre}>{zona.nombre} (+${zona.costo})</option>
                         ))}
                       </select>
                       <input type="text" placeholder="CALLE Y ALTURA" className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none focus:bg-white focus:ring-2 focus:ring-[#FFCA28]/20 transition-all" value={customer.calleAltura} onChange={(e) => setCustomer({...customer, calleAltura: e.target.value})} />
                     </div>
+                  ) : (
+                    <div className="bg-orange-50 border border-orange-100 p-5 rounded-[2rem] flex items-start gap-4">
+                      <span className="text-2xl mt-1">🏠</span>
+                      <div>
+                        <p className="text-[10px] font-black uppercase text-orange-400 mb-1 tracking-wider">Punto de Retiro</p>
+                        <p className="font-black text-stone-900 text-xs uppercase">{DIRECCION_LOCAL}</p>
+                        <p className="text-[10px] font-bold text-orange-600 mt-1 uppercase tracking-tighter">🕒 Te avisamos cuando esté listo</p>
+                      </div>
+                    </div>
                   )}
                 </div>
 
+                {/* MÉTODO DE PAGO */}
                 <div className="space-y-4">
                   <p className="text-[10px] font-black uppercase text-stone-400 tracking-[0.2em] px-1">Método de Pago</p>
                   <div className="grid grid-cols-3 gap-2">
                     {['Efectivo', 'Transferencia', 'QR'].map((pago) => (
-                      <button key={pago} onClick={() => setCustomer({...customer, metodoPago: pago})} className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago ? 'bg-stone-900 text-white border-stone-900 shadow-lg' : 'bg-white border-stone-100 text-stone-400'}`}>{pago}</button>
+                      <button key={`payment-method-${pago}`} onClick={() => setCustomer({...customer, metodoPago: pago})} className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago ? 'bg-stone-900 text-white border-stone-900 shadow-lg' : 'bg-white border-stone-100 text-stone-400'}`}>{pago}</button>
                     ))}
                   </div>
 
                   {customer.metodoPago === 'Transferencia' && (
-                    <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem] animate-in fade-in zoom-in-95 duration-300">
-                      <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">Copiá nuestro Alias</p>
-                      <div onClick={handleCopyAlias} className="flex items-center justify-between bg-white p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all active:scale-95 group border border-blue-100">
+                    <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem]">
+                      <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">Alias de Pago</p>
+                      <div onClick={handleCopyAlias} className="flex items-center justify-between bg-white p-4 rounded-2xl cursor-pointer hover:shadow-md transition-all active:scale-95 border border-blue-100">
                         <span className="font-black text-blue-900 text-sm">{ALIAS_TRANSFERENCIA}</span>
                         <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${copied ? 'bg-emerald-500 text-white' : 'bg-blue-100 text-blue-600'}`}>
                           {copied ? '¡Copiado!' : 'Copiar'}
@@ -262,7 +292,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
                   )}
 
                   {customer.metodoPago === 'Efectivo' && (
-                    <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-[2rem] animate-in fade-in zoom-in-95 duration-300">
+                    <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-[2rem]">
                       <p className="text-[9px] font-black uppercase text-emerald-400 mb-3 tracking-wider">¿Con cuánto pagás?</p>
                       <input type="number" className="w-full bg-white p-4 rounded-2xl font-black text-emerald-900 border border-emerald-100 outline-none focus:ring-2 focus:ring-emerald-200" value={montoEfectivo} onChange={(e) => setMontoEfectivo(e.target.value)} placeholder={`$${montoTotalFinal}`} />
                       {vuelto > 0 && (
@@ -280,7 +310,7 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
             )}
           </div>
 
-          <div className="p-6 bg-white border-t border-stone-100 shrink-0">
+          <div className="p-6 bg-white border-t border-stone-100 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
             <div className="space-y-2 mb-6">
               <div className="flex justify-between items-center text-stone-400 font-bold text-[11px] uppercase tracking-tighter">
                 <span>Subtotal</span>
@@ -288,7 +318,9 @@ export default function CartDrawer({ isOpen, onClose }: { isOpen: boolean, onClo
               </div>
               <div className="flex justify-between items-center text-stone-400 font-bold text-[11px] uppercase tracking-tighter">
                 <span>Costo de Envío</span>
-                <span className={costoEnvio === 0 ? 'text-emerald-500' : ''}>{costoEnvio === 0 ? '¡GRATIS!' : `$${costoEnvio.toLocaleString('es-AR')}`}</span>
+                <span className={costoEnvio === 0 ? 'text-emerald-500' : ''}>
+                  {customer.tipoEntrega === 'Retiro' ? 'N/A' : (costoEnvio === 0 ? '¡GRATIS!' : `$${costoEnvio.toLocaleString('es-AR')}`)}
+                </span>
               </div>
               <div className="flex justify-between items-end pt-3">
                 <span className="font-black text-stone-900 uppercase tracking-tighter">Total Final</span>

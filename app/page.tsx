@@ -8,9 +8,11 @@ import Link from 'next/link';
 
 export default function Home() {
   const [items, setItems] = useState<Burger[]>([]);
+  const [adicionales, setAdicionales] = useState<any[]>([]); // Nuevo: Estado para extras
   const [categoriaActual, setCategoriaActual] = useState('todos');
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -22,13 +24,18 @@ export default function Home() {
     { id: 'combos', label: 'Combos', icon: '🎁' }
   ];
 
-  const fetchProductos = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const { data, error } = await supabase
-        .from('productos')
-        .select('*')
-        .order('nombre', { ascending: true });
-      if (data) setItems(data as Burger[]);
+      setLoading(true);
+      // Traemos productos y adicionales en paralelo para ganar velocidad
+      const [prodRes, addRes] = await Promise.all([
+        supabase.from('productos').select('*').order('nombre', { ascending: true }),
+        supabase.from('adicionales').select('*').order('nombre', { ascending: true })
+      ]);
+
+      if (prodRes.data) setItems(prodRes.data as Burger[]);
+      if (addRes.data) setAdicionales(addRes.data);
+      
     } catch (error) {
       console.error('Error cargando el menú:', error);
     } finally {
@@ -42,118 +49,131 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    fetchProductos();
+    fetchData();
     checkAdminSession();
-  }, [fetchProductos, checkAdminSession]);
+
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [fetchData, checkAdminSession]);
 
   const filtrados = categoriaActual === 'todos'
     ? items
     : items.filter(item => item.categoria.toLowerCase() === categoriaActual.toLowerCase());
 
   return (
-    <main className="min-h-screen pb-32 bg-stone-50 selection:bg-[#FFCA28]/30 text-stone-900">
+    <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
 
       {/* BOTÓN ADMIN FLOTANTE */}
       {isAdmin && (
-        <Link href="/admin" className="fixed bottom-28 left-4 z-[100] active:scale-90 transition-transform">
-          <div className="bg-stone-900 text-[#FFCA28] p-4 rounded-full shadow-lg border border-stone-800">
+        <Link href="/admin" className="fixed bottom-28 left-4 z-[110] active:scale-90 transition-transform">
+          <div className="bg-black text-[#FFCA28] p-4 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-[#FFCA28]">
             <span className="text-xl">⚙️</span>
           </div>
         </Link>
       )}
 
-      {/* HERO SECTION - LOGO AJUSTADO */}
-      <header className="relative pt-12 pb-16 px-6 overflow-hidden bg-white border-b border-stone-100">
-        <div className="max-w-4xl mx-auto relative z-10 flex flex-col items-center text-center">
-
-          {/* Badge Superior */}
-          <div className="inline-block bg-emerald-100 text-emerald-700 text-[10px] font-bold px-4 py-1.5 rounded-full mb-8 uppercase tracking-wider border border-emerald-200 shadow-sm">
+      {/* HERO SECTION */}
+      <header className="relative pt-24 pb-20 px-6 overflow-hidden bg-white border-b-4 border-black">
+        <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center text-center">
+          <div className="inline-block bg-[#D32F2F] text-white text-[11px] font-black px-5 py-2 rounded-full mb-8 uppercase tracking-tighter border-2 border-black shadow-[3px_3px_0px_0px_black]">
             Directo de Springfield
           </div>
 
-          {/* Contenedor del Logo - Tamaño aumentado */}
           <div className="mb-10 relative flex justify-center items-center">
-            {/* Ajustamos el brillo para que sea más grande (scale-150 o más) */}
-            <div className="absolute inset-0 bg-[#FFCA28]/30 blur-[100px] rounded-full scale-[2] opacity-60" />
-
+            <div className="absolute inset-0 bg-[#FFCA28]/40 blur-[120px] rounded-full scale-[2.5] opacity-70 animate-pulse" />
             <img
               src="/images/Krustyburgerheader.webp"
               alt="Krusty Burger Logo"
-              className="relative w-64 h-64 md:w-80 md:h-80 object-contain drop-shadow-2xl transform transition-transform hover:scale-105 duration-300"
+              className="relative w-64 h-64 md:w-96 md:h-96 object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.3)] animate-float"
             />
           </div>
 
-          <p className="text-base md:text-lg font-medium text-stone-500 max-w-md leading-relaxed">
-            El sabor legendario que conquistó Springfield, ahora con ingredientes seleccionados de primera calidad.
+          <h2 className="font-krusty text-3xl md:text-5xl text-black mb-4 leading-none uppercase">
+            El sabor que te <span className="text-[#D32F2F]">hace reír</span>
+          </h2>
+          <p className="text-sm md:text-base font-bold text-[#71717a] max-w-lg leading-[1.5] italic">
+            Ingredientes de primera calidad, procesados por el mismísimo Krusty.
           </p>
         </div>
-
-        {/* Gradiente decorativo */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#FFCA28]/15 via-transparent to-white pointer-events-none" />
       </header>
 
       {/* NAV DE CATEGORÍAS */}
-      <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-lg border-b border-stone-100 shadow-sm">
-        <div className="relative max-w-7xl mx-auto">
-          <div
-            ref={scrollRef}
-            className="flex gap-3 px-6 py-5 overflow-x-auto no-scrollbar snap-x mask-fade-right"
+      <nav className={`sticky z-50 transition-all duration-500 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
+        ${isScrolled ? 'top-16 shadow-sm' : 'top-24 shadow-none'}`}
+      >
+        <div className="max-w-7xl mx-auto relative">
+          <div 
+            className="overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory flex items-center"
+            style={{ 
+              maskImage: 'linear-gradient(to right, black 90%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to right, black 90%, transparent 100%)' 
+            }}
           >
-            {categorias.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => setCategoriaActual(cat.id)}
-                className={`
-                  flex items-center gap-2.5 px-6 py-3 rounded-full font-bold uppercase text-[11px] transition-all snap-start whitespace-nowrap
-                  active:scale-95
-                  ${categoriaActual === cat.id
-                    ? 'bg-[#FFCA28] text-stone-950 shadow-md ring-1 ring-stone-900/5'
-                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                  }
-                `}
-              >
-                <span className="text-lg">{cat.icon}</span>
-                {cat.label}
-              </button>
-            ))}
+            <div
+              ref={scrollRef}
+              className="flex gap-2 md:gap-4 px-6 py-4 md:justify-center w-max md:w-full"
+            >
+              {categorias.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setCategoriaActual(cat.id)}
+                  className={`
+                    flex items-center gap-2 px-5 py-2.5 rounded-full font-black uppercase text-[11px] transition-all border-2 snap-start
+                    ${categoriaActual === cat.id
+                      ? 'bg-[#FFCA28] text-black border-black shadow-[3px_3px_0px_0px_black] -translate-y-0.5'
+                      : 'bg-white text-stone-500 border-transparent hover:bg-stone-100 active:translate-y-0'
+                    }
+                  `}
+                >
+                  <span className="text-lg">{cat.icon}</span>
+                  {cat.label}
+                </button>
+              ))}
+              <div className="w-10 h-1 md:hidden flex-shrink-0" />
+            </div>
           </div>
         </div>
       </nav>
 
       {/* SECCIÓN DE PRODUCTOS */}
-      <section className="max-w-7xl mx-auto px-5 mt-12">
-        <div className="flex items-center justify-between mb-10 px-2">
-          <h2 className="text-3xl font-black text-stone-950 tracking-tighter flex items-center gap-3">
-            <div className="w-2 h-8 bg-[#D32F2F] rounded-full" />
-            {categoriaActual === 'todos' ? 'Nuestro Menú' : categoriaActual}
-          </h2>
-          <p className="text-sm font-bold text-stone-400 uppercase tracking-widest hidden md:block">
-            {filtrados.length} Seleccionados
+      <section className="max-w-7xl mx-auto px-6 mt-12 md:mt-20">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+          <div>
+            <h2 className="font-krusty text-4xl md:text-5xl text-black tracking-normal flex items-center gap-4 uppercase">
+              <span className="text-[#D32F2F]">El</span> Menú
+            </h2>
+            <div className="w-20 h-2 bg-[#FFCA28] border border-black mt-2" />
+          </div>
+          <p className="text-[10px] font-black text-[#71717a] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full">
+            {filtrados.length} OPCIONES DISPONIBLES
           </p>
         </div>
 
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24">
-            <div className="w-14 h-14 border-4 border-stone-100 border-t-[#D32F2F] rounded-full animate-spin" />
-            <p className="mt-5 font-bold text-xs uppercase tracking-widest text-stone-400">Preparando pedido...</p>
+          <div className="flex flex-col items-center justify-center py-32">
+            <div className="w-16 h-16 border-[6px] border-stone-200 border-t-[#D32F2F] rounded-full animate-spin border-black" />
+            <p className="mt-6 font-krusty text-xl tracking-widest text-black">COCINANDO...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-10">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-10 md:gap-y-16">
             {filtrados.length > 0 ? (
               filtrados.map((item, index) => (
                 <div
                   key={item.id}
-                  className="active:scale-[0.98] transition-transform animate-in fade-in slide-in-from-bottom-5 duration-500"
-                  style={{ animationDelay: `${index * 40}ms` }}
+                  className="animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both"
+                  style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <BurgerCard burger={item} />
                 </div>
               ))
             ) : (
-              <div className="col-span-full py-24 text-center bg-white rounded-[3rem] border border-stone-100 shadow-inner">
-                <span className="text-7xl block mb-6">🤷‍♂️</span>
-                <p className="text-xl font-bold text-stone-800 tracking-tight px-6">
-                  ¡Ay caramba! No encontramos lo que buscás.
+              <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
+                <span className="text-8xl block mb-6 animate-bounce">🤡</span>
+                <p className="font-krusty text-3xl text-black px-6 uppercase">
+                  ¡Ay caramba! No hay nada.
                 </p>
               </div>
             )}
@@ -161,18 +181,20 @@ export default function Home() {
         )}
       </section>
 
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        .mask-fade-right {
-          mask-image: linear-gradient(to right, black 88%, transparent 100%);
-          -webkit-mask-image: linear-gradient(to right, black 88%, transparent 100%);
+        * { -webkit-tap-highlight-color: transparent; }
+
+        @keyframes float {
+          0%, 100% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(1deg); }
         }
 
-        * { -webkit-tap-highlight-color: transparent; }
-      `}} />
+        .animate-float {
+          animation: float 4s ease-in-out infinite;
+        }
+      `}</style>
     </main>
   );
 }

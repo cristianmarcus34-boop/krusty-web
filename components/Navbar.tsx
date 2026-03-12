@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import CartDrawer from './CartDrawer';
 import Link from 'next/link';
 
-// Lista blanca de correos autorizados
 const ADMIN_EMAILS = ['cristianmarcus34@gmail.com', 'marianajuarez99@gmail.com'];
 
 export default function Navbar() {
@@ -17,12 +16,10 @@ export default function Navbar() {
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
 
   useEffect(() => {
-    // 1. Manejo de Scroll
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 120);
+      setIsScrolled(window.scrollY > 50);
     };
 
-    // 2. Función unificada para validar si el mail es admin
     const checkAdminStatus = (userEmail: string | undefined) => {
       if (userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase().trim())) {
         setIsAdmin(true);
@@ -31,7 +28,6 @@ export default function Navbar() {
       }
     };
 
-    // 3. Ejecución inicial al cargar
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       checkAdminStatus(session?.user?.email);
@@ -40,7 +36,6 @@ export default function Navbar() {
     initAuth();
     window.addEventListener('scroll', handleScroll);
 
-    // 4. Suscripción a cambios de sesión (Login/Logout)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       checkAdminStatus(session?.user?.email);
     });
@@ -53,49 +48,63 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className={`sticky top-0 z-[100] transition-all duration-500 px-4 md:px-12 flex justify-between items-center h-20
+      <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 px-4 md:px-10
         ${isScrolled 
-          ? 'bg-[#D32F2F] border-b-4 border-black shadow-[0_4px_0_0_rgba(0,0,0,1)]' 
-          : 'bg-transparent'}`}
+          ? 'h-16 bg-white border-b-2 border-stone-100 shadow-sm' 
+          : 'h-24 bg-transparent'}`}
       >
-        {/* Logo que aparece al scrollear */}
-        <div className={`transition-all duration-500 transform ${
-          isScrolled ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10 pointer-events-none'
-        }`}>
-          <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter text-white drop-shadow-[2px_2px_0px_rgba(0,0,0,1)]">
-            KRUSTY <span className="text-[#FFCA28] uppercase">Burger</span>
-          </h1>
-        </div>
-        
-        <div className="flex items-center gap-3">
-          {/* BOTÓN STAFF: Solo se muestra si NO eres admin */}
-          {!isAdmin && (
-            <Link href="/admin/login">
-              <button className={`flex items-center gap-2 font-black transition-all active:scale-95 border-[3px] border-black rounded-xl px-3 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
-                ${isScrolled ? 'bg-white text-black' : 'bg-[#FFCA28] text-black hover:bg-white'}`}>
-                <div className="w-2 h-2 bg-red-600 rounded-full animate-pulse" />
-                <span className="text-[10px] font-black uppercase italic">Staff</span>
-              </button>
-            </Link>
-          )}
-
-          {/* BOTÓN CARRITO */}
-          <button 
-            onClick={() => setIsCartOpen(true)}
-            className={`relative group flex items-center gap-3 font-black transition-all active:scale-95 border-[3px] border-black rounded-xl px-4 py-2 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]
-              ${isScrolled ? 'bg-[#FFCA28] text-black' : 'bg-white text-black hover:bg-[#FFCA28]'}`}
-          >
-            <span className="text-xl">🍔</span>
-            <div className="flex flex-col items-start leading-tight">
-              <span className="text-[10px] uppercase opacity-70">Pedido</span>
-              <span className="text-lg -mt-1">{totalItems}</span>
+        <div className="max-w-7xl mx-auto h-full grid grid-cols-2 md:grid-cols-3 items-center">
+          
+          {/* 1. LADO IZQUIERDO: Espaciador en desktop, invisible en móvil si no hay menú */}
+          <div className="hidden md:flex items-center">
+            <div className={`w-10 h-10 rounded-full bg-[#D32F2F] flex items-center justify-center transition-transform duration-500 ${isScrolled ? 'scale-75' : 'scale-100'}`}>
+              <span className="text-white text-xs font-black italic">K</span>
             </div>
-            {totalItems > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-black w-6 h-6 flex items-center justify-center rounded-full border-2 border-black animate-bounce">
-                {totalItems}
-              </span>
-            )}
-          </button>
+          </div>
+
+          {/* 2. LOGO CENTRAL: Con posición relativa para evitar colisiones */}
+          <div className="flex justify-start md:justify-center">
+            <Link href="/" className="flex flex-col items-center group">
+              <h1 className={`text-xl md:text-2xl font-black italic tracking-tighter transition-all duration-500
+                ${isScrolled 
+                  ? 'text-[#D32F2F] scale-90' 
+                  : 'text-[#FFCA28] drop-shadow-[2px_2px_0px_black] scale-110'}`}>
+                KRUSTY <span className={isScrolled ? 'text-black' : 'text-white'}>BURGER</span>
+              </h1>
+              {!isScrolled && (
+                <div className="h-1 w-8 bg-[#D32F2F] rounded-full mt-0.5 group-hover:w-16 transition-all duration-500"></div>
+              )}
+            </Link>
+          </div>
+          
+          {/* 3. LADO DERECHO: Carrito con espaciado garantizado */}
+          <div className="flex justify-end items-center">
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className={`relative flex items-center gap-2 md:gap-3 px-3 md:px-6 py-2 rounded-full font-black transition-all active:scale-90 border-2
+                ${isScrolled 
+                  ? 'bg-[#D32F2F] text-white border-transparent shadow-md' 
+                  : 'bg-white text-black border-black shadow-[3px_3px_0px_0px_black] hover:bg-[#FFCA28]'}`}
+            >
+              <span className="text-base md:text-xl">🛒</span>
+              
+              <div className="flex flex-col items-start leading-none text-left">
+                <span className="text-[8px] md:text-[9px] uppercase font-black opacity-80 tracking-tighter">Tu Bolsa</span>
+                <span className="text-xs md:text-sm font-black italic">
+                  {totalItems > 0 ? `${totalItems} ítems` : 'Vacía'}
+                </span>
+              </div>
+
+              {/* Badge de cantidad */}
+              {totalItems > 0 && (
+                <span className={`absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center text-[10px] font-black rounded-full border
+                  ${isScrolled ? 'bg-[#FFCA28] text-black border-white' : 'bg-[#D32F2F] text-white border-black'}`}>
+                  {totalItems}
+                </span>
+              )}
+            </button>
+          </div>
+
         </div>
       </nav>
 
