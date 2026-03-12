@@ -35,10 +35,10 @@ export default function AdminPage() {
   }, []);
 
   const fetchProductos = useCallback(async () => {
-    if (isSaving.current || editandoId !== null) return;
+    if (isSaving.current) return;
     const { data } = await supabase.from('productos').select('*').order('categoria', { ascending: true });
     if (data) setProductos(data);
-  }, [editandoId]);
+  }, []);
 
   const playNotification = useCallback(() => {
     if (audioRef.current) {
@@ -76,7 +76,6 @@ export default function AdminPage() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'pedidos' },
         (payload) => {
-          console.log("🔥 NUEVO PEDIDO:", payload.new);
           playNotification();
           setPedidos((current) => [payload.new, ...current]);
         }
@@ -85,7 +84,6 @@ export default function AdminPage() {
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'pedidos' },
         (payload) => {
-          // Actualización blindada: comparamos IDs como strings para evitar errores de tipo
           setPedidos((current) =>
             current.map((p) => String(p.id) === String(payload.new.id) ? payload.new : p)
           );
@@ -125,19 +123,40 @@ export default function AdminPage() {
     }
   };
 
+  // Función genérica para subir archivos al Storage
+  const uploadToStorage = async (file: File) => {
+    const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
+    const filePath = `productos/${fileName}`;
+    const { error: uploadError } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file);
+    if (uploadError) throw uploadError;
+    const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
+    return publicUrl;
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
       setIsUploading(true);
-      const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
-      const filePath = `productos/${fileName}`;
-      const { error: uploadError } = await supabase.storage.from(BUCKET_NAME).upload(filePath, file);
-      if (uploadError) throw uploadError;
-      const { data: { publicUrl } } = supabase.storage.from(BUCKET_NAME).getPublicUrl(filePath);
-      setNuevoProducto(prev => ({ ...prev, imagen: publicUrl }));
+      const url = await uploadToStorage(file);
+      setNuevoProducto(prev => ({ ...prev, imagen: url }));
     } catch (error: any) {
       alert("Error carga imagen: " + error.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // NUEVA FUNCIÓN: Editar imagen de producto existente
+  const handleEditImage = async (id: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploading(true);
+      const url = await uploadToStorage(file);
+      handleLocalChange(id, 'imagen', url);
+    } catch (error: any) {
+      alert("Error al cambiar imagen: " + error.message);
     } finally {
       setIsUploading(false);
     }
@@ -160,7 +179,7 @@ export default function AdminPage() {
       }).eq('id', producto.id);
       if (error) throw error;
       setEditandoId(null);
-      alert("✅ Guardado");
+      alert("✅ Menú actualizado");
     } catch (error: any) {
       alert("❌ Error: " + error.message);
     } finally {
@@ -193,19 +212,18 @@ export default function AdminPage() {
   if (loading) return (
     <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center p-4">
       <div className="w-16 h-16 border-8 border-black border-t-white rounded-full animate-spin mb-4"></div>
-      <p className="font-black italic text-2xl uppercase text-black">Cargando Admin...</p>
+      <p className="font-black italic text-2xl uppercase text-black tracking-tighter">Cargando Sistema Krusty...</p>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-stone-200 font-sans text-black">
-      {/* HEADER */}
+    <div className="min-h-screen bg-stone-200 font-sans text-black pb-20">
       <header className="sticky top-0 z-50 bg-white border-b-8 border-black p-4 md:p-6 shadow-md">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="flex items-center justify-between w-full md:w-auto gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#D32F2F] rounded-full border-4 border-black flex items-center justify-center text-white font-black italic">K</div>
-              <h1 className="text-3xl font-black text-[#D32F2F] italic uppercase tracking-tighter">ADMIN</h1>
+              <h1 className="text-3xl font-black text-[#D32F2F] italic uppercase tracking-tighter transform -skew-x-6">ADMIN PANEL</h1>
             </div>
             <button onClick={() => { supabase.auth.signOut(); router.push('/admin/login'); }} className="md:hidden bg-black text-white px-4 py-2 rounded-xl font-black text-[10px]">SALIR</button>
           </div>
@@ -214,13 +232,12 @@ export default function AdminPage() {
               Comandas {pedidos.filter(p => p.estado !== 'entregado').length > 0 && `(${pedidos.filter(p => p.estado !== 'entregado').length})`}
             </button>
             <button onClick={() => setActiveTab('productos')} className={`flex-1 md:flex-none px-8 py-3 rounded-2xl font-black uppercase italic border-4 border-black transition-all ${activeTab === 'productos' ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1' : 'bg-white'}`}>
-              Menú
+              Editar Menú
             </button>
           </nav>
         </div>
       </header>
 
-      {/* CONTENIDO PRINCIPAL */}
       <main className="max-w-7xl mx-auto p-4 md:p-8">
         {activeTab === 'pedidos' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -247,21 +264,21 @@ export default function AdminPage() {
                 <div className="flex justify-between items-end mb-6">
                   <div>
                     <p className="text-[10px] font-black text-stone-400 uppercase">Pago:</p>
-                    <p className="font-black text-xs italic text-[#D32F2F]">{pedido.metodo_pago}</p>
+                    <p className="font-black text-xs italic text-[#D32F2F] uppercase">{pedido.metodo_pago}</p>
                   </div>
                   <p className="text-4xl font-black italic tracking-tighter">${pedido.total}</p>
                 </div>
 
                 <div className="flex flex-col gap-3">
                   <div className="grid grid-cols-2 gap-2">
-                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en cocina')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-orange-400 shadow-[4px_4px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all">👨‍🍳 COCINA</button>
-                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en camino')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-blue-500 shadow-[4px_4px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all">🛵 ENVÍO</button>
+                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en cocina')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-orange-400 shadow-[4px_4px_0px_0px_black] active:translate-y-1 transition-all">👨‍🍳 COCINA</button>
+                    <button onClick={() => cambiarEstadoPedido(pedido.id, 'en camino')} className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-blue-500 shadow-[4px_4px_0px_0px_black] active:translate-y-1 transition-all">🛵 ENVÍO</button>
                   </div>
                   <button
                     onClick={() => cambiarEstadoPedido(pedido.id, pedido.estado === 'entregado' ? 'pendiente' : 'entregado')}
-                    className={`font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_black] transition-all uppercase text-xs active:translate-y-1 active:shadow-none ${pedido.estado === 'entregado' ? 'bg-stone-300' : 'bg-green-500 text-white'}`}
+                    className={`font-black py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_black] transition-all uppercase text-xs active:translate-y-1 ${pedido.estado === 'entregado' ? 'bg-stone-300' : 'bg-green-500 text-white'}`}
                   >
-                    {pedido.estado === 'entregado' ? 'REABRIR' : 'ENTREGAR ✅'}
+                    {pedido.estado === 'entregado' ? 'REABRIR COMANDA' : 'MARCAR ENTREGADO ✅'}
                   </button>
                 </div>
               </div>
@@ -269,25 +286,79 @@ export default function AdminPage() {
           </div>
         ) : (
           <div className="space-y-8">
-            <button onClick={() => setShowModal(true)} className="w-full bg-[#D32F2F] text-white border-8 border-black p-8 rounded-[3rem] font-black uppercase text-2xl italic shadow-[10px_10px_0px_0px_black] hover:-translate-y-2 transition-transform">
-              + AGREGAR AL MENÚ 🔥
+            <button onClick={() => setShowModal(true)} className="w-full bg-[#D32F2F] text-white border-8 border-black p-8 rounded-[3rem] font-black uppercase text-2xl italic shadow-[10px_10px_0px_0px_black] hover:-translate-y-2 transition-transform active:translate-y-0">
+              + AGREGAR NUEVO ITEM 🔥
             </button>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {productos.map((prod) => (
                 <div key={prod.id} className="bg-white border-4 border-black p-6 rounded-[3rem] shadow-[8px_8px_0px_0px_black] flex flex-col sm:flex-row gap-6">
-                  <div className="w-full sm:w-32 h-32 shrink-0">
-                    <img src={prod.imagen} className="w-full h-full object-cover rounded-2xl border-4 border-black" alt={prod.nombre} />
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <input value={prod.nombre} onChange={(e) => handleLocalChange(prod.id, 'nombre', e.target.value)} className="w-full font-black text-xl uppercase italic bg-transparent border-b-2 border-black focus:border-[#D32F2F] outline-none" />
-                    <div className="flex gap-2">
-                      <span className="font-black text-xl">$</span>
-                      <input type="number" value={prod.precio} onChange={(e) => handleLocalChange(prod.id, 'precio', e.target.value)} className="w-full font-black text-xl outline-none" />
+                  {/* SECCIÓN IMAGEN EDITABLE */}
+                  <div className="relative group shrink-0 mx-auto sm:mx-0">
+                    <div className="w-32 h-32 relative">
+                      <img 
+                        src={prod.imagen} 
+                        className={`w-full h-full object-cover rounded-2xl border-4 border-black bg-stone-100 ${isUploading ? 'opacity-30' : ''}`} 
+                        alt={prod.nombre} 
+                      />
+                      {/* Overlay al pasar el mouse */}
+                      <label className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
+                        <span className="text-[10px] text-white font-black uppercase text-center px-2">Cambiar Foto</span>
+                        <input 
+                          type="file" 
+                          className="hidden" 
+                          accept="image/*"
+                          onChange={(e) => handleEditImage(prod.id, e)} 
+                        />
+                      </label>
+                      {isUploading && (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="w-8 h-8 border-4 border-black border-t-[#D32F2F] rounded-full animate-spin"></div>
+                        </div>
+                      )}
                     </div>
+                    <p className="text-[8px] font-black text-center mt-2 text-stone-400 uppercase tracking-widest">Click para editar</p>
+                  </div>
+
+                  <div className="flex-1 space-y-3">
+                    <input 
+                      value={prod.nombre} 
+                      onChange={(e) => handleLocalChange(prod.id, 'nombre', e.target.value)} 
+                      className="w-full font-black text-xl uppercase italic bg-transparent border-b-2 border-black focus:border-[#D32F2F] outline-none" 
+                    />
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="font-black text-xl">$</span>
+                      <input 
+                        type="number" 
+                        value={prod.precio} 
+                        onChange={(e) => handleLocalChange(prod.id, 'precio', e.target.value)} 
+                        className="w-full font-black text-xl outline-none bg-transparent" 
+                      />
+                    </div>
+
+                    <select 
+                      value={prod.categoria} 
+                      onChange={(e) => handleLocalChange(prod.id, 'categoria', e.target.value)}
+                      className="w-full text-[10px] font-black uppercase italic bg-stone-100 p-2 rounded-lg border-2 border-black"
+                    >
+                      {listaCategorias.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+
                     <div className="flex gap-2 pt-2">
-                      <button onClick={() => guardarCambiosEnDB(prod)} disabled={editandoId !== prod.id} className={`flex-1 py-3 rounded-xl border-4 border-black font-black uppercase text-[10px] ${editandoId === prod.id ? 'bg-green-500 text-white shadow-[3px_3px_0px_0px_black]' : 'bg-stone-100 opacity-40'}`}>GUARDAR</button>
-                      <button onClick={async () => { if (confirm("¿Borrar?")) { const { error } = await supabase.from('productos').delete().eq('id', prod.id); if (!error) setProductos(prev => prev.filter(p => p.id !== prod.id)); } }} className="px-4 border-4 border-black rounded-xl text-red-600 font-black text-[10px]">BORRAR</button>
+                      <button 
+                        onClick={() => guardarCambiosEnDB(prod)} 
+                        disabled={editandoId !== prod.id || isUploading} 
+                        className={`flex-1 py-3 rounded-xl border-4 border-black font-black uppercase text-[10px] transition-all ${editandoId === prod.id ? 'bg-green-500 text-white shadow-[3px_3px_0px_0px_black] active:translate-y-1 active:shadow-none' : 'bg-stone-100 opacity-40 cursor-not-allowed'}`}
+                      >
+                        {editandoId === prod.id ? 'GUARDAR CAMBIOS' : 'SIN CAMBIOS'}
+                      </button>
+                      <button 
+                        onClick={async () => { if (confirm("¿Borrar definitivamente?")) { const { error } = await supabase.from('productos').delete().eq('id', prod.id); if (!error) setProductos(prev => prev.filter(p => p.id !== prod.id)); } }} 
+                        className="px-4 border-4 border-black rounded-xl text-red-600 font-black text-[10px] hover:bg-red-50"
+                      >
+                        BORRAR
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -297,13 +368,13 @@ export default function AdminPage() {
         )}
       </main>
 
-      {/* MODAL NUEVO PRODUCTO */}
+      {/* MODAL NUEVO PRODUCTO (Sigue igual, funcional) */}
       {showModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
-          <div className="bg-[#FFCA28] border-[10px] border-black p-8 rounded-[4rem] w-full max-w-lg animate-in zoom-in-95 duration-300">
-            <h2 className="text-4xl font-black uppercase italic mb-8 text-center">NUEVO ITEM</h2>
+          <div className="bg-[#FFCA28] border-[10px] border-black p-8 rounded-[4rem] w-full max-w-lg">
+            <h2 className="text-4xl font-black uppercase italic mb-8 text-center tracking-tighter">NUEVO ITEM</h2>
             <form onSubmit={handleAddProducto} className="space-y-5">
-              <input required placeholder="NOMBRE" className="w-full border-4 border-black p-4 rounded-2xl font-black uppercase italic outline-none focus:bg-white" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })} />
+              <input required placeholder="NOMBRE DEL PRODUCTO" className="w-full border-4 border-black p-4 rounded-2xl font-black uppercase italic outline-none focus:bg-white" value={nuevoProducto.nombre} onChange={(e) => setNuevoProducto({ ...nuevoProducto, nombre: e.target.value })} />
               <div className="flex gap-3">
                 <input required type="number" placeholder="PRECIO" className="flex-1 border-4 border-black p-4 rounded-2xl font-black outline-none" value={nuevoProducto.precio || ''} onChange={(e) => setNuevoProducto({ ...nuevoProducto, precio: Number(e.target.value) })} />
                 <select className="flex-1 border-4 border-black p-4 rounded-2xl font-black bg-white outline-none" value={nuevoProducto.categoria} onChange={(e) => setNuevoProducto({ ...nuevoProducto, categoria: e.target.value })}>
@@ -311,14 +382,15 @@ export default function AdminPage() {
                 </select>
               </div>
               <div className="bg-white border-4 border-black p-4 rounded-2xl text-center">
+                <p className="text-[10px] font-black mb-2 uppercase italic">Imagen del producto:</p>
                 <input type="file" onChange={handleFileUpload} className="w-full text-xs font-black cursor-pointer" />
-                {isUploading && <p className="text-[10px] font-bold text-red-600 animate-pulse mt-2 uppercase">Subiendo a Krusty Cloud...</p>}
-                {nuevoProducto.imagen && <p className="text-[10px] font-bold text-green-600 mt-2 uppercase">✅ Imagen lista</p>}
+                {isUploading && <p className="text-[10px] font-bold text-red-600 animate-pulse mt-2 uppercase">Subiendo...</p>}
+                {nuevoProducto.imagen && <p className="text-[10px] font-bold text-green-600 mt-2 uppercase">✅ Imagen cargada</p>}
               </div>
-              <textarea placeholder="DESCRIPCIÓN" className="w-full border-4 border-black p-4 rounded-2xl font-black h-24 resize-none outline-none focus:bg-white" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({ ...nuevoProducto, descripcion: e.target.value })} />
+              <textarea placeholder="DESCRIPCIÓN BREVE" className="w-full border-4 border-black p-4 rounded-2xl font-black h-24 resize-none outline-none focus:bg-white" value={nuevoProducto.descripcion} onChange={(e) => setNuevoProducto({ ...nuevoProducto, descripcion: e.target.value })} />
               <div className="pt-4 space-y-3">
-                <button type="submit" disabled={isUploading} className="w-full bg-[#D32F2F] text-white border-4 border-black py-5 rounded-[2rem] font-black text-xl italic shadow-[6px_6px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all">CREAR 🔥</button>
-                <button type="button" onClick={() => setShowModal(false)} className="w-full text-center font-black uppercase text-xs underline">Cerrar</button>
+                <button type="submit" disabled={isUploading} className="w-full bg-[#D32F2F] text-white border-4 border-black py-5 rounded-[2rem] font-black text-xl italic shadow-[6px_6px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all">CREAR EN MENÚ 🔥</button>
+                <button type="button" onClick={() => setShowModal(false)} className="w-full text-center font-black uppercase text-xs underline">CANCELAR</button>
               </div>
             </form>
           </div>
