@@ -1,41 +1,71 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export default function ModalEditarProducto({ producto, onClose, onSuccess }: any) {
+interface ModalEditarProps {
+  producto: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export default function ModalEditarProducto({ producto, onClose, onSuccess }: ModalEditarProps) {
   const [loading, setLoading] = useState(false);
   const [todosLosExtras, setTodosLosExtras] = useState<any[]>([]);
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<number[]>([]);
   const [editado, setEditado] = useState({ ...producto });
 
-  useEffect(() => {
-    const cargarDatos = async () => {
-      setLoading(true);
+  // Memorizamos la carga para evitar bucles en el build
+  const cargarDatosPrevios = useCallback(async () => {
+    if (!producto?.id) return;
+    setLoading(true);
+    try {
+      // Cargar adicionales disponibles
       const { data: extras } = await supabase.from('adicionales').select('*').order('nombre');
       if (extras) setTodosLosExtras(extras);
 
+      // Cargar adicionales ya vinculados
       const { data: actuales } = await supabase
         .from('producto_adicionales')
         .select('adicional_id')
         .eq('producto_id', producto.id);
 
       if (actuales) {
-        setExtrasSeleccionados(actuales.map(a => a.adicional_id));
+        setExtrasSeleccionados(actuales.map((a: any) => a.adicional_id));
       }
+    } catch (err) {
+      console.error("Error cargando datos:", err);
+    } finally {
       setLoading(false);
-    };
-    cargarDatos();
-  }, [producto.id]);
+    }
+  }, [producto?.id]);
 
-  const handleUpload = async (e: any) => {
-    const file = e.target.files[0];
+  useEffect(() => {
+    cargarDatosPrevios();
+  }, [cargarDatosPrevios]);
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
     setLoading(true);
     const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
-    await supabase.storage.from('krusty_imagenes').upload(`productos/${fileName}`, file);
-    const { data: { publicUrl } } = supabase.storage.from('krusty_imagenes').getPublicUrl(`productos/${fileName}`);
-    setEditado({ ...editado, imagen: publicUrl });
-    setLoading(false);
+    
+    try {
+      const { error: uploadError } = await supabase.storage
+        .from('krusty_imagenes')
+        .upload(`productos/${fileName}`, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('krusty_imagenes')
+        .getPublicUrl(`productos/${fileName}`);
+      
+      setEditado((prev: any) => ({ ...prev, imagen: publicUrl }));
+    } catch (err: any) {
+      alert("Error al subir imagen: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleExtra = (id: number) => {
@@ -44,7 +74,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
     );
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -61,6 +91,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
 
       if (errorProd) throw errorProd;
 
+      // Limpieza y re-inserción de extras
       await supabase.from('producto_adicionales').delete().eq('producto_id', producto.id);
 
       if (extrasSeleccionados.length > 0) {
@@ -70,6 +101,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
         }));
         await supabase.from('producto_adicionales').insert(relaciones);
       }
+      
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -79,9 +111,10 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
     }
   };
 
+  if (!producto) return null;
+
   return (
     <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-sm">
-      {/* Container Principal: Full screen en móvil, max-width en desktop */}
       <div className="bg-[#4CAF50] border-t-8 sm:border-[10px] border-black p-4 sm:p-8 rounded-t-[3rem] sm:rounded-[4rem] w-full max-w-lg h-[92vh] sm:h-auto overflow-y-auto no-scrollbar shadow-[0px_-10px_0px_0px_rgba(0,0,0,1)] sm:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]">
         
         <h2 className="text-3xl sm:text-4xl font-black uppercase italic mb-6 text-center text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] leading-tight">
@@ -89,15 +122,13 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
         </h2>
         
         <form onSubmit={handleSubmit} className="space-y-4 pb-10 sm:pb-0">
-          {/* Nombre */}
           <input 
             required 
             value={editado.nombre} 
             className="w-full border-4 border-black p-3 sm:p-4 rounded-2xl font-black italic outline-none uppercase text-sm sm:text-base" 
-            onChange={e => setEditado({...editado, nombre: e.target.value})} 
+            onChange={e => setEditado({...editado, nombre: e.target.value.toUpperCase()})} 
           />
 
-          {/* Precio y Categoría */}
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black">$</span>
@@ -121,7 +152,6 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
             </select>
           </div>
 
-          {/* Extras */}
           <div className="space-y-2">
             <p className="font-black text-[10px] sm:text-xs uppercase text-white ml-2 italic">Gestionar Extras:</p>
             <div className="grid grid-cols-2 gap-2 bg-white/30 border-4 border-black border-dashed p-3 rounded-2xl max-h-40 overflow-y-auto no-scrollbar">
@@ -142,7 +172,6 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
             </div>
           </div>
 
-          {/* Foto */}
           <div className="bg-white border-4 border-black p-3 rounded-2xl text-center relative hover:bg-stone-50 transition-colors">
             <input 
                 type="file" 
@@ -155,7 +184,6 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
             </span>
           </div>
 
-          {/* Descripción */}
           <textarea 
             value={editado.descripcion || ''} 
             className="w-full border-4 border-black p-3 rounded-2xl font-black h-24 resize-none outline-none text-xs sm:text-sm" 
@@ -163,7 +191,6 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: an
             onChange={e => setEditado({...editado, descripcion: e.target.value})} 
           />
 
-          {/* Botones de acción */}
           <div className="space-y-3 pt-2">
             <button 
                 type="submit" 
