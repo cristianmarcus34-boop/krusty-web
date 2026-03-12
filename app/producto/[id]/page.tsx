@@ -16,6 +16,7 @@ export default function ProductoDetalle() {
     const [extrasSeleccionados, setExtrasSeleccionados] = useState<Adicional[]>([]);
     const [loading, setLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
+    const [showModal, setShowModal] = useState(false);
 
     const cashAudioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -30,12 +31,8 @@ export default function ProductoDetalle() {
             if (!id) return;
             try {
                 setLoading(true);
-
-                // 1. Traemos el producto
                 const resProducto = await supabase.from('productos').select('*').eq('id', id).single();
-
-                // 2. Traemos todos los adicionales (Aseguramos que aparezcan)
-                const resAdicionales = await supabase.from('adicionales').select('*');
+                const resAdicionales = await supabase.from('adicionales').select('*').order('nombre');
 
                 if (resProducto.data) {
                     setProducto(resProducto.data);
@@ -67,7 +64,7 @@ export default function ProductoDetalle() {
 
     const handleAdd = () => {
         if (!producto) return;
-        cashAudioRef.current?.play().catch(() => {});
+        cashAudioRef.current?.play().catch(() => { });
         setIsAdding(true);
         addItem(producto, extrasSeleccionados);
         setTimeout(() => setIsAdding(false), 800);
@@ -75,119 +72,145 @@ export default function ProductoDetalle() {
 
     if (loading) return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-white">
-            <div className="w-16 h-16 border-[6px] border-stone-100 border-t-[#FFCA28] rounded-full animate-spin" />
-            <p className="mt-6 font-black italic uppercase tracking-widest text-black animate-pulse">Cocinando...</p>
+            <div className="w-12 h-12 border-4 border-stone-100 border-t-[#FFCA28] rounded-full animate-spin" />
+            <p className="mt-4 font-black italic uppercase text-xs tracking-widest text-black animate-pulse">Cocinando...</p>
         </div>
     );
 
     if (!producto) return null;
 
     return (
-        <main className="min-h-screen bg-[#fafafa] pb-20 font-sans">
-            {/* Botón Volver - Estilo Flotante */}
-            <div className="fixed top-6 left-6 z-[60]">
-                <button 
-                    onClick={() => router.back()} 
-                    className="w-14 h-14 bg-white border-4 border-black rounded-2xl shadow-[4px_4px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all flex items-center justify-center group"
+        <main className="min-h-screen bg-white pb-24 font-sans relative">
+
+            {/* MODAL PANTALLA COMPLETA (Optimizado para Touch) */}
+            {showModal && (
+                <div 
+                    className="fixed inset-0 z-[100] bg-black flex items-center justify-center animate-in fade-in duration-300"
+                    onClick={() => setShowModal(false)}
                 >
-                    <span className="text-2xl group-hover:scale-125 transition-transform">⬅️</span>
-                </button>
+                    <div className="absolute top-safe mt-6 right-6 z-[110]">
+                        <button className="bg-white/10 backdrop-blur-md text-white w-10 h-10 rounded-full flex items-center justify-center text-2xl border border-white/20">
+                            ×
+                        </button>
+                    </div>
+                    
+                    {/* Contenedor de imagen con scroll/zoom táctil nativo */}
+                    <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+                        <img
+                            src={producto.imagen || ''}
+                            alt={producto.nombre}
+                            className="max-w-none w-full h-auto object-contain drop-shadow-2xl animate-in zoom-in duration-300"
+                            style={{ minHeight: '50vh' }}
+                        />
+                    </div>
+                    
+                    <p className="absolute bottom-10 text-white/50 text-[10px] font-bold uppercase tracking-widest">
+                        Toca para cerrar
+                    </p>
+                </div>
+            )}
+
+            {/* BOTÓN VOLVER (Mobile Friendly) */}
+            <div className="fixed left-0 top-1/2 -translate-y-1/2 z-[60] -ml-1">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-[#FFCA28] rounded-full animate-ping opacity-25" />
+                    <button
+                        onClick={() => router.back()}
+                        className="relative w-9 h-9 bg-white border-2 border-black rounded-full shadow-[2px_2px_0px_0px_black] active:translate-x-0.5 active:shadow-none transition-all flex items-center justify-center"
+                    >
+                        <span className="text-sm">⬅️</span>
+                    </button>
+                </div>
             </div>
 
-            <div className="max-w-6xl mx-auto pt-20 md:pt-32 px-6 grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
-                
-                {/* LADO IZQUIERDO: Hero Image con Glow */}
-                <div className="relative flex justify-center items-center md:sticky md:top-32 h-fit">
-                    <div className="absolute inset-0 bg-[#FFCA28]/20 blur-[100px] rounded-full scale-125 animate-pulse" />
-                    <img 
-                        src={producto.imagen || ''} 
-                        alt={producto.nombre} 
-                        className="relative w-full max-w-[500px] object-contain drop-shadow-[0_35px_60px_rgba(0,0,0,0.3)] hover:rotate-2 transition-transform duration-700" 
-                    />
+            <div className="max-w-5xl mx-auto pt-8 md:pt-24 px-6 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+
+                {/* IMAGEN PRINCIPAL (Toque para zoom) */}
+                <div className="relative flex justify-center items-center h-fit pt-4">
+                    <div className="absolute inset-0 bg-red-50 blur-[50px] rounded-full scale-110 opacity-60" />
+                    <div 
+                        className="relative group cursor-pointer"
+                        onClick={() => setShowModal(true)}
+                    >
+                        <img
+                            src={producto.imagen || ''}
+                            alt={producto.nombre}
+                            className="w-full max-w-[280px] md:max-w-[400px] object-contain drop-shadow-2xl rounded-full active:scale-95 transition-transform duration-300"
+                        />
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] font-black px-3 py-1 rounded-full border-2 border-white shadow-lg uppercase tracking-tighter flex items-center gap-1">
+                            <span>🔍</span> Ver detalle
+                        </div>
+                    </div>
                 </div>
 
-                {/* LADO DERECHO: Info y Configuración */}
+                {/* INFO */}
                 <div className="flex flex-col">
-                    <div className="mb-4">
-                        <span className="bg-[#D32F2F] text-white text-[10px] font-black px-3 py-1 rounded-md border-2 border-black shadow-[3px_3px_0px_0px_black] uppercase italic">
+                    <div className="mb-2">
+                        <span className="bg-[#D32F2F] text-white text-[9px] font-black px-2 py-0.5 rounded border-2 border-black uppercase italic tracking-wider">
                             {producto.categoria}
                         </span>
                     </div>
 
-                    <h1 className="text-6xl md:text-8xl font-black uppercase italic leading-[0.8] tracking-tighter mb-4 text-black">
+                    <h1 className="text-3xl md:text-5xl font-black uppercase italic leading-none tracking-tight mb-4 text-black">
                         {producto.nombre}
                     </h1>
-                    
-                    <p className="text-xl font-bold text-stone-500 italic mb-10 leading-snug max-w-md">
+
+                    <p className="text-xs font-bold text-stone-500 italic mb-6 leading-relaxed">
                         "{producto.descripcion}"
                     </p>
 
-                    {/* Card de Precio */}
-                    <div className="bg-white p-6 rounded-[2rem] border-4 border-black shadow-[8px_8px_0px_0px_black] w-fit mb-12 flex items-center gap-6">
+                    {/* Card de Precio Centrada */}
+                    <div className="bg-stone-50 p-4 rounded-2xl border-2 border-black shadow-[4px_4px_0px_0px_black] w-fit mb-8 flex items-center gap-4 self-center">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-stone-400 uppercase leading-none mb-1">Total aproximado</span>
-                            <span className="text-5xl font-black italic tracking-tighter">${precioTotal.toLocaleString('es-AR')}</span>
+                            <span className="text-[8px] font-black text-stone-400 uppercase leading-none mb-1">Total aproximado</span>
+                            <span className="text-2xl font-black italic tracking-tighter">${precioTotal.toLocaleString('es-AR')}</span>
                         </div>
-                        <div className="w-12 h-12 bg-[#FFCA28] rounded-full border-2 border-black flex items-center justify-center text-xl">
+                        <div className="w-8 h-8 bg-[#FFCA28] rounded-full border-2 border-black flex items-center justify-center text-sm">
                             🍔
                         </div>
                     </div>
 
-                    {/* SECCIÓN ADICIONALES */}
-                    <div className="bg-stone-100 border-4 border-black rounded-[2.5rem] p-6 md:p-8 mb-10">
-                        <h3 className="font-black italic uppercase text-sm mb-6 flex items-center gap-2">
-                            ¿Lo tuneamos? <span className="text-lg">🥓</span>
+                    {/* SECCIÓN ADICIONALES (Scroll Horizontal en Mobile si son muchos) */}
+                    <div className="bg-white border-2 border-black rounded-2xl p-4 mb-8">
+                        <h3 className="font-black italic uppercase text-[10px] mb-4 flex items-center gap-2 text-stone-400">
+                            ¿Lo tuneamos? <span className="text-base">🥓</span>
                         </h3>
-                        
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {adicionalesDisponibles.length > 0 ? (
-                                adicionalesDisponibles.map(extra => {
-                                    const isSelected = extrasSeleccionados.some(e => e.id === extra.id);
-                                    return (
-                                        <button 
-                                            key={extra.id} 
-                                            onClick={() => toggleExtra(extra)}
-                                            className={`group relative px-5 py-4 border-4 rounded-2xl text-[11px] font-black transition-all flex items-center justify-between uppercase
-                                            ${isSelected 
-                                                ? 'bg-black text-[#FFCA28] border-black translate-y-1 shadow-none' 
-                                                : 'bg-white text-black border-black shadow-[4px_4px_0px_0px_black] hover:-translate-y-1 hover:shadow-[6px_6px_0px_0px_black] active:translate-y-0.5'}`}
-                                        >
-                                            <div className="flex flex-col items-start">
-                                                <span>{extra.nombre}</span>
-                                                <span className={`text-[9px] mt-0.5 ${isSelected ? 'text-stone-400' : 'text-stone-500'}`}>
-                                                    +${Number(extra.precio).toLocaleString('es-AR')}
-                                                </span>
-                                            </div>
-                                            <div className={`w-6 h-6 rounded-full border-2 border-black flex items-center justify-center transition-colors
-                                                ${isSelected ? 'bg-[#FFCA28]' : 'bg-stone-50'}`}>
-                                                {isSelected && <span className="text-black text-[10px]">✔</span>}
-                                            </div>
-                                        </button>
-                                    );
-                                })
-                            ) : (
-                                <p className="text-xs font-bold italic text-stone-400">Cargando extras...</p>
-                            )}
+
+                        <div className="flex flex-wrap gap-2">
+                            {adicionalesDisponibles.map(extra => {
+                                const isSelected = extrasSeleccionados.some(e => e.id === extra.id);
+                                return (
+                                    <button
+                                        key={extra.id}
+                                        onClick={() => toggleExtra(extra)}
+                                        className={`px-4 py-2 rounded-xl border-2 text-[10px] font-black transition-all flex items-center gap-2 uppercase active:scale-95
+                                        ${isSelected
+                                                ? 'bg-black text-[#FFCA28] border-black shadow-[2px_2px_0px_0px_#FFCA28]'
+                                                : 'bg-white text-black border-stone-200'}`}
+                                    >
+                                        <span>{extra.nombre}</span>
+                                        <span className={isSelected ? 'text-white' : 'text-stone-400'}>
+                                            +${Number(extra.precio)}
+                                        </span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    {/* BOTÓN "AÑADIR" */}
-                    <button 
-                        onClick={handleAdd} 
-                        disabled={isAdding}
-                        className={`group relative w-full py-7 rounded-[3rem] font-black uppercase transition-all border-4 border-black active:translate-y-2 overflow-hidden
-                        ${isAdding 
-                            ? 'bg-green-500 text-white shadow-none' 
-                            : 'bg-[#FFCA28] text-black shadow-[12px_12px_0px_0px_black] hover:bg-[#D32F2F] hover:text-white hover:-translate-y-1 hover:shadow-[15px_15px_0px_0px_black]'}`}
-                    >
-                        <div className="relative z-10 flex flex-col items-center">
-                            <span className="text-3xl tracking-tighter">
-                                {isAdding ? "¡D'OH! ADENTRO" : "¡MARCHA UNO!"}
+                    {/* BOTÓN "AÑADIR" (Sticky opcional para Mobile) */}
+                    <div className="fixed bottom-6 left-6 right-6 md:relative md:bottom-0 md:left-0 md:right-0 z-50">
+                        <button
+                            onClick={handleAdd}
+                            disabled={isAdding}
+                            className={`group relative w-full py-4 rounded-2xl font-black uppercase transition-all border-4 border-black active:translate-y-1 shadow-[6px_6px_0px_0px_black]
+                            ${isAdding ? 'bg-green-500 text-white shadow-none' : 'bg-[#FFCA28] text-black'}`}
+                        >
+                            <span className="text-lg tracking-tighter">
+                                {isAdding ? "¡LISTO!" : "AGREGAR AL CARRITO"}
                             </span>
-                            {!isAdding && <span className="text-[10px] opacity-60 mt-1 italic">Click para agregar al carrito</span>}
-                        </div>
-                        <div className="absolute top-0 -left-full w-full h-full bg-white/20 skew-x-[-20deg] group-hover:left-[120%] transition-all duration-1000 z-0" />
-                    </button>
+                        </button>
+                    </div>
                 </div>
             </div>
         </main>
