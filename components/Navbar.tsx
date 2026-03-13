@@ -19,6 +19,19 @@ export default function Navbar() {
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
 
   useEffect(() => {
+    // --- NUEVO: LÓGICA DE DETECCIÓN PARA SHORTCUTS PWA ---
+    const handleHashOpenCart = () => {
+      if (window.location.hash === '#carrito') {
+        setIsCartOpen(true);
+      }
+    };
+
+    // Ejecutar al cargar
+    handleHashOpenCart();
+    // Escuchar cambios de hash sin recargar la página
+    window.addEventListener('hashchange', handleHashOpenCart);
+
+    // --- TU LÓGICA ORIGINAL ---
     audioRef.current = new Audio('/sounds/risa-krusty.mp3');
     audioRef.current.volume = 0.4;
 
@@ -48,6 +61,7 @@ export default function Navbar() {
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('hashchange', handleHashOpenCart); // Limpieza
       subscription.unsubscribe();
     };
   }, []);
@@ -129,6 +143,7 @@ export default function Navbar() {
             {/* LADO DERECHO: Botón de Pedido */}
             <div className="flex items-center">
               <button 
+                id="carrito-btn" // Agregado para referencia
                 onClick={() => setIsCartOpen(true)}
                 className={`relative flex items-center gap-2 h-11 px-4 md:px-6 rounded-2xl font-black transition-all active:scale-95 border-2
                   ${isScrolled 

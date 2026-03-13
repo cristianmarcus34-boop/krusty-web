@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# No queremos que Google indexe el panel de administración
+Disallow: /admin
+Disallow: /admin/*
+
+Sitemap: https://krustyburger.com.ar/sitemap.xml
