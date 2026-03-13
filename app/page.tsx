@@ -39,7 +39,7 @@ export default function Home() {
       "addressCountry": "AR"
     },
     "url": "https://krustyburger.com.ar",
-    "telephone": "+5411XXXXXXXX", 
+    "telephone": "+5491127344686", 
     "priceRange": "$$",
     "openingHoursSpecification": [
       {
