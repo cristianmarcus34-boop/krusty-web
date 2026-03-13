@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 export default function Home() {
   const [items, setItems] = useState<Burger[]>([]);
-  const [adicionales, setAdicionales] = useState<any[]>([]); // Nuevo: Estado para extras
+  const [adicionales, setAdicionales] = useState<any[]>([]);
   const [categoriaActual, setCategoriaActual] = useState('todos');
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -24,10 +24,36 @@ export default function Home() {
     { id: 'combos', label: 'Combos', icon: '🎁' }
   ];
 
+  // --- DATOS ESTRUCTURADOS (SCHEMA.ORG) PARA GOOGLE ---
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Restaurant",
+    "name": "Krusty Burger Oficial | Quilmes",
+    "image": "https://krustyburger.com.ar/images/Krustyburgerheader.webp",
+    "description": "Las mejores hamburguesas de Villa La Florida. ¡Si no se atraganta, no es una Krusty!",
+    "servesCuisine": "Hamburguesas, Americana",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Villa La Florida, Quilmes",
+      "addressRegion": "Buenos Aires",
+      "addressCountry": "AR"
+    },
+    "url": "https://krustyburger.com.ar",
+    "telephone": "+5411XXXXXXXX", 
+    "priceRange": "$$",
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        "opens": "19:00",
+        "closes": "23:59"
+      }
+    ]
+  };
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      // Traemos productos y adicionales en paralelo para ganar velocidad
       const [prodRes, addRes] = await Promise.all([
         supabase.from('productos').select('*').order('nombre', { ascending: true }),
         supabase.from('adicionales').select('*').order('nombre', { ascending: true })
@@ -65,6 +91,12 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
+      
+      {/* INYECCIÓN DE SCHEMA.ORG PARA SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
       {/* BOTÓN ADMIN FLOTANTE */}
       {isAdmin && (
@@ -86,7 +118,7 @@ export default function Home() {
             <div className="absolute inset-0 bg-[#FFCA28]/40 blur-[120px] rounded-full scale-[2.5] opacity-70 animate-pulse" />
             <img
               src="/images/Krustyburgerheader.webp"
-              alt="Krusty Burger Logo"
+              alt="Krusty Burger Logo - Hamburguesería en Quilmes"
               className="relative w-64 h-64 md:w-96 md:h-96 object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.3)] animate-float"
             />
           </div>
@@ -95,7 +127,7 @@ export default function Home() {
             El sabor que te <span className="text-[#D32F2F]">hace reír</span>
           </h2>
           <p className="text-sm md:text-base font-bold text-[#71717a] max-w-lg leading-[1.5] italic">
-            Ingredientes de primera calidad, procesados por el mismísimo Krusty.
+            Ingredientes de primera calidad, procesados por el mismísimo Krusty en Villa La Florida.
           </p>
         </div>
       </header>
@@ -148,7 +180,7 @@ export default function Home() {
             <div className="w-20 h-2 bg-[#FFCA28] border border-black mt-2" />
           </div>
           <p className="text-[10px] font-black text-[#71717a] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full">
-            {filtrados.length} OPCIONES DISPONIBLES
+            {filtrados.length} OPCIONES DISPONIBLES EN QUILMES
           </p>
         </div>
 
@@ -173,7 +205,7 @@ export default function Home() {
               <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
                 <span className="text-8xl block mb-6 animate-bounce">🤡</span>
                 <p className="font-krusty text-3xl text-black px-6 uppercase">
-                  ¡Ay caramba! No hay nada.
+                  ¡Ay caramba! No hay nada disponible ahora.
                 </p>
               </div>
             )}
