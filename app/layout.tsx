@@ -37,6 +37,10 @@ export const metadata: Metadata = {
     locale: 'es_AR',
     type: 'website',
   },
+  // AGREGÁ ESTO AQUÍ:
+  verification: {
+    google: "BhY0Fwmdey1BKMH-f-PoWy_1hQhV1SRxziMpF7V71q4",
+  },
 
   // Iconos y PWA (Next.js asocia el manifest.ts automáticamente si está en app/)
   icons: {
@@ -47,6 +51,8 @@ export const metadata: Metadata = {
     apple: [
       { url: '/apple-icon-180x180.png', sizes: '180x180', type: 'image/png' },
     ],
+
+    
   },
 };
 
