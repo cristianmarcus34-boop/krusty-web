@@ -1,11 +1,54 @@
-"use client";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import StatusBar from '@/components/StatusBar';
 import Link from 'next/link';
+import { Metadata, Viewport } from 'next';
 
 const inter = Inter({ subsets: ["latin"] });
+
+// --- CONFIGURACIÓN DE VIEWPORT (Color de la barra del navegador) ---
+export const viewport: Viewport = {
+  themeColor: "#FFCA28",
+};
+
+// --- METADATOS OFICIALES DE NEXT.JS ---
+export const metadata: Metadata = {
+  title: "Krusty Burger ® | Las mejores hamburguesas de Quilmes",
+  description: "¡Si no se atraganta, no es una Krusty! Vení a probar la verdadera experiencia de Springfield en Villa La Florida, Quilmes. Delivery de hamburguesas y más.",
+  keywords: ["Hamburguesas Quilmes", "Krusty Burger", "Villa La Florida", "Delivery Quilmes", "Comida Rápida San Francisco Solano", "Bernal", "Hamburgueserías Quilmes"],
+  authors: [{ name: "Krusty Burger Oficial" }],
+  metadataBase: new URL('https://krustyburger.com.ar'),
+  
+  // Open Graph (WhatsApp, Facebook, etc)
+  openGraph: {
+    title: "Krusty Burger ® | Springfield en Quilmes",
+    description: "Las mejores hamburguesas de Villa La Florida. ¡Si no se atraganta, no es una Krusty!",
+    url: 'https://krustyburger.com.ar',
+    siteName: 'Krusty Burger Oficial',
+    images: [
+      {
+        url: '/images/Krustyburgerheader.webp',
+        width: 800,
+        height: 600,
+        alt: 'Krusty Burger Quilmes Header',
+      },
+    ],
+    locale: 'es_AR',
+    type: 'website',
+  },
+
+  // Iconos y PWA (Next.js asocia el manifest.ts automáticamente si está en app/)
+  icons: {
+    icon: [
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon-180x180.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+};
 
 export default function RootLayout({
   children,
@@ -14,64 +57,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es" className="scroll-smooth">
-      <head>
-        {/* --- SEO BÁSICO Y DINÁMICO --- */}
-        <title>Krusty Burger ® | Las mejores hamburguesas de Quilmes</title>
-        <meta name="description" content="¡Si no se atraganta, no es una Krusty! Vení a probar la verdadera experiencia de Springfield en Villa La Florida, Quilmes. Delivery de hamburguesas y más." />
-        <meta name="keywords" content="Hamburguesas Quilmes, Krusty Burger, Villa La Florida, Delivery Quilmes, Comida Rápida San Francisco Solano, Bernal, Hamburgueserías Quilmes" />
-        
-        {/* --- SEO LOCAL (GEOTAGGING PARA BUSCADORES) --- */}
-        <meta name="geo.region" content="AR-B" />
-        <meta name="geo.placename" content="Villa La Florida, Quilmes, Buenos Aires" />
-        <meta name="geo.position" content="-34.7878;-58.3006" />
-        <meta name="ICBM" content="-34.7878, -58.3006" />
-
-        {/* --- DATOS ESTRUCTURADOS (JSON-LD) - EL CEREBRO DEL SEO --- */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "FastFoodRestaurant",
-              "name": "Krusty Burger Quilmes",
-              "image": "https://krustyburger.com.ar/images/Krustyburgerheader.webp", // Asegurate que esta ruta exista
-              "url": "https://krustyburger.com.ar",
-              "telephone": "+5411XXXXXXXX", // REEMPLAZAR CON TU WHATSAPP REAL
-              "priceRange": "$$",
-              "address": {
-                "@type": "PostalAddress",
-                "streetAddress": "Villa La Florida",
-                "addressLocality": "Quilmes",
-                "addressRegion": "B",
-                "postalCode": "1884",
-                "addressCountry": "AR"
-              },
-              "geo": {
-                "@type": "GeoCoordinates",
-                "latitude": -34.7878,
-                "longitude": -58.3006
-              },
-              "servesCuisine": "Hamburguesas",
-              "areaServed": "Villa La Florida, Quilmes"
-            })
-          }}
-        />
-
-        {/* --- OPEN GRAPH (RRSS & WHATSAPP) --- */}
-        <meta property="og:title" content="Krusty Burger ® | Springfield en Quilmes" />
-        <meta property="og:description" content="Las mejores hamburguesas de Villa La Florida. ¡Si no se atraganta, no es una Krusty!" />
-        <meta property="og:image" content="/images/Krustyburgerheader.webp" />
-        <meta property="og:url" content="https://krustyburger.com.ar" />
-        <meta property="og:type" content="website" />
-        <meta name="theme-color" content="#FFCA28" />
-
-        {/* --- FAVICONS --- */}
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-icon-180x180.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-        <link rel="manifest" href="/manifest.json" />
-      </head>
-
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
 
         {/* Componentes de Navegación */}
@@ -139,10 +124,10 @@ export default function RootLayout({
           </div>
         </footer>
 
-        {/* Barra de estado flotante para feedback de usuario */}
+        {/* Barra de estado flotante */}
         <StatusBar />
 
-        {/* Luces de ambiente de fondo (Gradientes sutiles) */}
+        {/* Luces de ambiente de fondo */}
         <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/10 -z-10 rounded-full blur-[100px] pointer-events-none" />
         <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
 
