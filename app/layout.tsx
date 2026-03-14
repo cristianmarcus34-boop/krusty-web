@@ -3,24 +3,22 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import StatusBar from '@/components/StatusBar';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Metadata, Viewport } from 'next';
 
 const inter = Inter({ subsets: ["latin"] });
 
-// --- CONFIGURACIÓN DE VIEWPORT (Color de la barra del navegador) ---
 export const viewport: Viewport = {
   themeColor: "#FFCA28",
 };
 
-// --- METADATOS OFICIALES DE NEXT.JS ---
 export const metadata: Metadata = {
   title: "Krusty Burger ® | Las mejores hamburguesas de Quilmes",
-  description: "¡Si no se atraganta, no es una Krusty! Vení a probar la verdadera experiencia de Springfield en Villa La Florida, Quilmes. Delivery de hamburguesas y más.",
-  keywords: ["Hamburguesas Quilmes", "Krusty Burger", "Villa La Florida", "Delivery Quilmes", "Comida Rápida San Francisco Solano", "Bernal", "Hamburgueserías Quilmes"],
+  description: "¡Si no se atraganta, no es una Krusty! Vení a probar la verdadera experiencia de Springfield en Villa La Florida, Quilmes.",
+  keywords: ["Hamburguesas Quilmes", "Krusty Burger", "Villa La Florida", "Delivery Quilmes", "Bernal"],
   authors: [{ name: "Krusty Burger Oficial" }],
   metadataBase: new URL('https://krustyburger.com.ar'),
-  
-  // Open Graph (WhatsApp, Facebook, etc)
+
   openGraph: {
     title: "Krusty Burger ® | Springfield en Quilmes",
     description: "Las mejores hamburguesas de Villa La Florida. ¡Si no se atraganta, no es una Krusty!",
@@ -29,20 +27,17 @@ export const metadata: Metadata = {
     images: [
       {
         url: '/images/Krustyburgerheader.webp',
-        width: 800,
-        height: 600,
+        width: 1200,
+        height: 630,
         alt: 'Krusty Burger Quilmes Header',
       },
     ],
     locale: 'es_AR',
     type: 'website',
   },
-  // AGREGÁ ESTO AQUÍ:
   verification: {
     google: "BhY0Fwmdey1BKMH-f-PoWy_1hQhV1SRxziMpF7V71q4",
   },
-
-  // Iconos y PWA (Next.js asocia el manifest.ts automáticamente si está en app/)
   icons: {
     icon: [
       { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
@@ -51,8 +46,6 @@ export const metadata: Metadata = {
     apple: [
       { url: '/apple-icon-180x180.png', sizes: '180x180', type: 'image/png' },
     ],
-
-    
   },
 };
 
@@ -65,15 +58,12 @@ export default function RootLayout({
     <html lang="es" className="scroll-smooth">
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
 
-        {/* Componentes de Navegación */}
         <Navbar />
 
-        {/* Contenedor principal con padding para que nada quede oculto tras el footer */}
         <main className="min-h-[calc(100vh-64px)] pb-32">
           {children}
         </main>
 
-        {/* Footer Robusto - Estilo Corporativo / Springfield */}
         <footer className="bg-[#1A1A1A] text-stone-400 py-16 px-6 border-t-[8px] border-black relative overflow-hidden">
           {/* Trama de fondo */}
           <div className="absolute inset-0 opacity-5 pointer-events-none"
@@ -91,6 +81,21 @@ export default function RootLayout({
               </h2>
             </div>
 
+            {/* Enlace a Reseñas de Google - Optimizado UX */}
+            <div className="mb-10">
+              <Link
+                href="https://g.page/r/CTEcMZ1GEz0LEBI/review"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 px-6 py-3 rounded-xl transition-all active:scale-95 group"
+              >
+                <span className="text-yellow-400 text-lg group-hover:animate-pulse">⭐⭐⭐⭐⭐</span>
+                <span className="text-white font-black text-xs tracking-widest group-hover:text-[#FFCA28] transition-colors uppercase">
+                  Dejanos tu reseña en Google
+                </span>
+              </Link>
+            </div>
+
             <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-10 text-[11px] font-black uppercase tracking-tighter">
               <Link href="/" className="hover:text-white transition-colors">Inicio</Link>
               <Link href="/privacidad" className="hover:text-white transition-colors">Política de Privacidad</Link>
@@ -98,31 +103,61 @@ export default function RootLayout({
               <Link href="/defensa" className="hover:text-white transition-colors underline decoration-[#D32F2F] underline-offset-4">Defensa del Consumidor</Link>
             </nav>
 
-            <div className="flex justify-center gap-2 mb-8">
-              <div className="h-1.5 w-8 bg-[#D32F2F]"></div>
-              <div className="h-1.5 w-8 bg-[#FFCA28]"></div>
-              <div className="h-1.5 w-8 bg-[#D32F2F]"></div>
+            <div className="flex justify-center gap-2 mb-10">
+              <div className="h-1.5 w-8 bg-[#D32F2F]/40"></div>
+              <div className="h-1.5 w-8 bg-[#FFCA28]/40"></div>
+              <div className="h-1.5 w-8 bg-[#D32F2F]/40"></div>
             </div>
 
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-stone-500">
+            <div className="space-y-8">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-stone-600">
                 © 2026 Springfield Food Group / Quilmes, Buenos Aires.
               </p>
-              <p className="text-[10px] text-stone-600 max-w-xs mx-auto italic leading-relaxed">
-                Arcos de Springfield S.A. - CUIT: 30-12345678-9 <br />
-                Villa La Florida, Quilmes (CP 1884). <br />
-                Desarrollado con humor por Agencia Powa.
-              </p>
+
+              {/* Créditos de Agencia Powa con Logo - Original (Sin filtros de brillo) */}
+              <div className="flex flex-col items-center gap-4">
+                <Link
+                  href="https://agencia-powa.vercel.app/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
+                >
+                  {/* Contenedor del logo: Muestra la imagen original, con un sutil cambio de opacidad al hover */}
+                  <div className="relative w-12 h-12 opacity-80 group-hover:opacity-100 transition-opacity duration-500 scale-90 group-hover:scale-110">
+                    <Image
+                      src="/images/logo-powa.png"
+                      alt="Logo Agencia Powa"
+                      fill
+                      className="object-contain"
+                      priority={false} // No es prioridad de carga en el footer
+                    />
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-[9px] text-stone-500 uppercase tracking-[0.2em] mb-1">
+                      Desarrollado con humor por
+                    </p>
+                    <p className="text-xs font-black italic text-stone-300 group-hover:text-[#FFCA28] transition-colors">
+                      AGENCIA POWA
+                    </p>
+                  </div>
+                </Link>
+
+                <p className="text-[10px] text-stone-700 max-w-xs mx-auto italic leading-relaxed">
+                  Arcos de Springfield S.A. - CUIT: 30-12345678-9 <br />
+                  Villa La Florida, Quilmes (CP 1881).
+                </p>
+              </div>
             </div>
 
-            <p className="text-xs mt-8 text-[#D32F2F] font-black uppercase italic">
+            <p className="text-[10px] mt-12 text-[#D32F2F]/60 font-black uppercase italic tracking-[0.3em]">
               "Si no se atraganta, no es una Krusty"
             </p>
 
-            <div className="mt-12 pt-6 border-t border-stone-800/30">
+            <div className="mt-12 pt-6 border-t border-stone-800/20">
               <Link
                 href="/admin"
-                className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-700 hover:text-[#FFCA28] transition-colors duration-300"
+                className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-800 hover:text-[#FFCA28] transition-colors duration-300"
               >
                 🔐 Acceso Staff
               </Link>
@@ -130,12 +165,11 @@ export default function RootLayout({
           </div>
         </footer>
 
-        {/* Barra de estado flotante */}
         <StatusBar />
 
-        {/* Luces de ambiente de fondo */}
-        <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/10 -z-10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
+        {/* Luces de ambiente sutiles */}
+        <div className="fixed bottom-0 right-0 w-[50vw] h-[50vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[100px] pointer-events-none" />
+        <div className="fixed top-20 left-0 w-[40vw] h-[40vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
 
       </body>
     </html>
