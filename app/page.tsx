@@ -5,6 +5,7 @@ import BurgerCard from '@/components/BurgerCard';
 import { Burger } from '@/types';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Image from 'next/image'; // Importación necesaria para optimización
 
 export default function Home() {
   const [items, setItems] = useState<Burger[]>([]);
@@ -24,7 +25,6 @@ export default function Home() {
     { id: 'combos', label: 'Combos', icon: '🎁' }
   ];
 
-  // --- DATOS ESTRUCTURADOS (SCHEMA.ORG) PARA GOOGLE ---
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Restaurant",
@@ -81,7 +81,7 @@ export default function Home() {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 50);
     };
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true }); // Optimización de scroll
     return () => window.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
@@ -92,13 +92,14 @@ export default function Home() {
   return (
     <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
       
-      {/* INYECCIÓN DE SCHEMA.ORG PARA SEO */}
+      {/* PRECONNECT PARA SUPABASE (Mejora LCP) */}
+      <link rel="preconnect" href="https://rrgufgycwhsdnvhpmnzt.supabase.co" />
+
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* BOTÓN ADMIN FLOTANTE */}
       {isAdmin && (
         <Link href="/admin" className="fixed bottom-28 left-4 z-[110] active:scale-90 transition-transform">
           <div className="bg-black text-[#FFCA28] p-4 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-[#FFCA28]">
@@ -107,7 +108,7 @@ export default function Home() {
         </Link>
       )}
 
-      {/* HERO SECTION */}
+      {/* HERO SECTION - Optimizado */}
       <header className="relative pt-24 pb-20 px-6 overflow-hidden bg-white border-b-4 border-black">
         <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center text-center">
           <div className="inline-block bg-[#D32F2F] text-white text-[11px] font-black px-5 py-2 rounded-full mb-8 uppercase tracking-tighter border-2 border-black shadow-[3px_3px_0px_0px_black]">
@@ -115,12 +116,21 @@ export default function Home() {
           </div>
 
           <div className="mb-10 relative flex justify-center items-center">
-            <div className="absolute inset-0 bg-[#FFCA28]/40 blur-[120px] rounded-full scale-[2.5] opacity-70 animate-pulse" />
-            <img
-              src="/images/Krustyburgerheader.webp"
-              alt="Krusty Burger Logo - Hamburguesería en Quilmes"
-              className="relative w-64 h-64 md:w-96 md:h-96 object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.3)] animate-float"
-            />
+            {/* Brillo optimizado para evitar Forced Reflow */}
+            <div className="absolute inset-0 bg-[#FFCA28]/30 blur-[100px] rounded-full scale-[2] opacity-60 animate-pulse pointer-events-none" aria-hidden="true" />
+            
+            {/* Imagen con componente Next.js para corregir LCP Discovery */}
+            <div className="relative w-64 h-64 md:w-96 md:h-96 animate-float">
+              <Image
+                src="/images/Krustyburgerheader.webp"
+                alt="Krusty Burger Logo - Hamburguesería en Quilmes"
+                fill
+                priority // Carga inmediata
+                fetchPriority="high" // Prioridad de red máxima
+                sizes="(max-width: 768px) 256px, 384px"
+                className="object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.3)]"
+              />
+            </div>
           </div>
 
           <h2 className="font-krusty text-3xl md:text-5xl text-black mb-4 leading-none uppercase">
@@ -220,11 +230,12 @@ export default function Home() {
 
         @keyframes float {
           0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(1deg); }
+          50% { transform: translateY(-15px) rotate(1deg); }
         }
 
         .animate-float {
           animation: float 4s ease-in-out infinite;
+          will-change: transform; /* Optimización para GPU */
         }
       `}</style>
     </main>
