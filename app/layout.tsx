@@ -5,6 +5,7 @@ import StatusBar from '@/components/StatusBar';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata, Viewport } from 'next';
+import GestorDeActualizaciones from '@/components/GestorDeActualizaciones';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -57,7 +58,8 @@ export default function RootLayout({
   return (
     <html lang="es" className="scroll-smooth">
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
-
+        
+        <GestorDeActualizaciones />
         <Navbar />
 
         <main className="min-h-[calc(100vh-64px)] pb-32">
