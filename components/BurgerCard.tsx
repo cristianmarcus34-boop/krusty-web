@@ -4,6 +4,7 @@ import { Burger } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image'; // Importamos Image para optimización real
 
 // Interfaz para el mapeo interno de adicionales
 interface Adicional {
@@ -18,8 +19,13 @@ export default function BurgerCard({ burger }: { burger: any }) {
   
   const cashAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Extraemos los adicionales del objeto burger (ajustado a la estructura de Supabase)
-  // Intentamos leer de 'producto_adicionales' que es la tabla intermedia común
+  // --- OPTIMIZACIÓN DE IMAGEN DE SUPABASE ---
+  // Forzamos a Supabase a redimensionar la imagen a un tamaño lógico (400px) 
+  // Esto reduce el peso de 2MB a ~50KB por imagen.
+  const optimizedImageUrl = burger?.imagen 
+    ? `${burger.imagen}?width=400&height=400&resize=contain&quality=75`
+    : 'https://via.placeholder.com/400';
+
   const adicionales: Adicional[] = burger.producto_adicionales?.map((rel: any) => ({
     id: rel.adicionales?.id,
     nombre: rel.adicionales?.nombre,
@@ -27,8 +33,9 @@ export default function BurgerCard({ burger }: { burger: any }) {
   })).filter((a: any) => a.id) || [];
 
   useEffect(() => {
+    // Usamos el constructor de Audio solo si el componente está montado
     const audio = new Audio('/sounds/cash-register.mp3');
-    audio.volume = 0.4;
+    audio.volume = 0.3;
     audio.preload = 'auto';
     cashAudioRef.current = audio;
 
@@ -73,12 +80,14 @@ export default function BurgerCard({ burger }: { burger: any }) {
         </span>
       </div>
 
-      {/* CONTENEDOR DE IMAGEN */}
+      {/* CONTENEDOR DE IMAGEN OPTIMIZADO */}
       <div className="relative aspect-square md:aspect-[4/3] w-full bg-stone-100 overflow-hidden flex items-center justify-center border-b-[4px] border-black">
-        <img 
-          src={burger?.imagen || 'https://via.placeholder.com/300'} 
-          alt={burger?.nombre} 
-          className={`w-full h-full object-cover transition-all duration-500 
+        <Image 
+          src={optimizedImageUrl} 
+          alt={burger?.nombre || 'Producto Krusty'} 
+          fill
+          sizes="(max-width: 768px) 50vw, 33vw" // Informa al navegador el tamaño real en el grid
+          className={`object-cover transition-all duration-500 will-change-transform
             ${isAdding ? 'scale-110 blur-sm' : 'group-hover:scale-110'}
           `}
           loading="lazy"
@@ -94,7 +103,7 @@ export default function BurgerCard({ burger }: { burger: any }) {
         {/* Indicador visual de "Ver Detalle" */}
         <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
              <span className="bg-white/90 text-black font-black text-[10px] px-3 py-1 rounded-full border-2 border-black transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
-                VER DETALLES 🔍
+               VER DETALLES 🔍
              </span>
         </div>
       </div>
@@ -112,7 +121,7 @@ export default function BurgerCard({ burger }: { burger: any }) {
           {burger?.descripcion || 'Una delicia de Springfield directamente a tu mesa.'}
         </p>
 
-        {/* --- SECCIÓN DE EXTRAS CORREGIDA --- */}
+        {/* --- SECCIÓN DE EXTRAS --- */}
         {adicionales.length > 0 && (
           <div className="w-full mb-4 pt-3 border-t-2 border-dashed border-stone-200">
             <p className="text-[9px] font-black uppercase text-stone-400 mb-2 tracking-widest">Extras Disponibles</p>

@@ -39,7 +39,7 @@ export default function Home() {
       "addressCountry": "AR"
     },
     "url": "https://krustyburger.com.ar",
-    "telephone": "+5491127344686", 
+    "telephone": "+5491127344686",
     "priceRange": "$$",
     "openingHoursSpecification": [
       {
@@ -61,7 +61,7 @@ export default function Home() {
 
       if (prodRes.data) setItems(prodRes.data as Burger[]);
       if (addRes.data) setAdicionales(addRes.data);
-      
+
     } catch (error) {
       console.error('Error cargando el menú:', error);
     } finally {
@@ -91,7 +91,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
-      
+
       {/* PRECONNECT PARA SUPABASE (Mejora LCP) */}
       <link rel="preconnect" href="https://rrgufgycwhsdnvhpmnzt.supabase.co" />
 
@@ -118,13 +118,14 @@ export default function Home() {
           <div className="mb-10 relative flex justify-center items-center">
             {/* Brillo optimizado para evitar Forced Reflow */}
             <div className="absolute inset-0 bg-[#FFCA28]/30 blur-[100px] rounded-full scale-[2] opacity-60 animate-pulse pointer-events-none" aria-hidden="true" />
-            
+
             {/* Imagen con componente Next.js para corregir LCP Discovery */}
             <div className="relative w-64 h-64 md:w-96 md:h-96 animate-float">
               <Image
                 src="/images/Krustyburgerheader.webp"
                 alt="Krusty Burger Logo - Hamburguesería en Quilmes"
-                fill
+                width={256} // Bajalo de 960 o 640 a 256
+                height={256}
                 priority // Carga inmediata
                 fetchPriority="high" // Prioridad de red máxima
                 sizes="(max-width: 768px) 256px, 384px"
@@ -147,11 +148,11 @@ export default function Home() {
         ${isScrolled ? 'top-16 shadow-sm' : 'top-24 shadow-none'}`}
       >
         <div className="max-w-7xl mx-auto relative">
-          <div 
+          <div
             className="overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory flex items-center"
-            style={{ 
+            style={{
               maskImage: 'linear-gradient(to right, black 90%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to right, black 90%, transparent 100%)' 
+              WebkitMaskImage: 'linear-gradient(to right, black 90%, transparent 100%)'
             }}
           >
             <div
