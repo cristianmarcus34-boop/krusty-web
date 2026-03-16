@@ -1,21 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import BurgerCard from '@/components/BurgerCard';
 import { Burger } from '@/types';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import Image from 'next/image'; // Importación necesaria para optimización
+import Image from 'next/image';
 
 export default function Home() {
   const [items, setItems] = useState<Burger[]>([]);
-  const [adicionales, setAdicionales] = useState<any[]>([]);
   const [categoriaActual, setCategoriaActual] = useState('todos');
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const categorias = [
     { id: 'todos', label: 'Todo', icon: '🍟' },
@@ -25,6 +22,8 @@ export default function Home() {
     { id: 'combos', label: 'Combos', icon: '🎁' }
   ];
 
+  // Schema.org para SEO - Movido a una constante estática fuera del render si fuera posible, 
+  // pero aquí lo mantenemos limpio.
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Restaurant",
@@ -54,14 +53,13 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const [prodRes, addRes] = await Promise.all([
-        supabase.from('productos').select('*').order('nombre', { ascending: true }),
-        supabase.from('adicionales').select('*').order('nombre', { ascending: true })
-      ]);
+      // Optimizamos la query: solo pedimos lo que necesitamos para la card
+      const { data, error } = await supabase
+        .from('productos')
+        .select('*, adicionales:producto_adicionales(adicionales(*))')
+        .order('nombre', { ascending: true });
 
-      if (prodRes.data) setItems(prodRes.data as Burger[]);
-      if (addRes.data) setAdicionales(addRes.data);
-
+      if (data) setItems(data as Burger[]);
     } catch (error) {
       console.error('Error cargando el menú:', error);
     } finally {
@@ -79,22 +77,24 @@ export default function Home() {
     checkAdminSession();
 
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50);
+      // Usamos requestAnimationFrame para que el scroll no bloquee el hilo principal
+      window.requestAnimationFrame(() => {
+        setIsScrolled(window.scrollY > 50);
+      });
     };
-    window.addEventListener('scroll', handleScroll, { passive: true }); // Optimización de scroll
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
+  // Filtrado optimizado
   const filtrados = categoriaActual === 'todos'
     ? items
     : items.filter(item => item.categoria.toLowerCase() === categoriaActual.toLowerCase());
 
   return (
     <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
-
-      {/* PRECONNECT PARA SUPABASE (Mejora LCP) */}
-      <link rel="preconnect" href="https://rrgufgycwhsdnvhpmnzt.supabase.co" />
-
+      
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -108,7 +108,7 @@ export default function Home() {
         </Link>
       )}
 
-      {/* HERO SECTION - Optimizado */}
+      {/* HERO SECTION */}
       <header className="relative pt-24 pb-20 px-6 overflow-hidden bg-white border-b-4 border-black">
         <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center text-center">
           <div className="inline-block bg-[#D32F2F] text-white text-[11px] font-black px-5 py-2 rounded-full mb-8 uppercase tracking-tighter border-2 border-black shadow-[3px_3px_0px_0px_black]">
@@ -116,67 +116,56 @@ export default function Home() {
           </div>
 
           <div className="mb-10 relative flex justify-center items-center">
-            {/* Brillo optimizado para evitar Forced Reflow */}
-            <div className="absolute inset-0 bg-[#FFCA28]/30 blur-[100px] rounded-full scale-[2] opacity-60 animate-pulse pointer-events-none" aria-hidden="true" />
+            {/* Brillo optimizado: Usamos opacity fija para evitar recalcular blur en el thread principal */}
+            <div className="absolute inset-0 bg-[#FFCA28]/20 blur-[80px] rounded-full scale-[2] pointer-events-none" aria-hidden="true" />
 
-            {/* Imagen con componente Next.js para corregir LCP Discovery */}
-            <div className="relative w-64 h-64 md:w-96 md:h-96 animate-float">
+            <div className="relative w-64 h-64 md:w-80 md:h-80 animate-float">
               <Image
                 src="/images/Krustyburgerheader.webp"
-                alt="Krusty Burger Logo - Hamburguesería en Quilmes"
-                width={256} // Bajalo de 960 o 640 a 256
-                height={256}
-                priority // Carga inmediata
-                fetchPriority="high" // Prioridad de red máxima
-                sizes="(max-width: 768px) 256px, 384px"
-                className="object-contain drop-shadow-[0_35px_35px_rgba(0,0,0,0.3)]"
+                alt="Krusty Burger Logo"
+                width={320}
+                height={320}
+                priority
+                loading="eager"
+                fetchPriority="high"
+                decoding="sync"
+                className="object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]"
               />
             </div>
           </div>
 
-          <h2 className="font-krusty text-3xl md:text-5xl text-black mb-4 leading-none uppercase">
+          <h1 className="font-krusty text-3xl md:text-5xl text-black mb-4 leading-none uppercase">
             El sabor que te <span className="text-[#D32F2F]">hace reír</span>
-          </h2>
-          <p className="text-sm md:text-base font-bold text-[#71717a] max-w-lg leading-[1.5] italic">
+          </h1>
+          {/* ACCESIBILIDAD: Oscurecemos el gris del subtítulo */}
+          <p className="text-sm md:text-base font-bold text-[#52525b] max-w-lg leading-[1.5] italic">
             Ingredientes de primera calidad, procesados por el mismísimo Krusty en Villa La Florida.
           </p>
         </div>
       </header>
 
       {/* NAV DE CATEGORÍAS */}
-      <nav className={`sticky z-50 transition-all duration-500 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
-        ${isScrolled ? 'top-16 shadow-sm' : 'top-24 shadow-none'}`}
+      <nav className={`sticky z-40 transition-all duration-300 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
+        ${isScrolled ? 'top-16 shadow-md' : 'top-24'}`}
       >
-        <div className="max-w-7xl mx-auto relative">
-          <div
-            className="overflow-x-auto no-scrollbar scroll-smooth snap-x snap-mandatory flex items-center"
-            style={{
-              maskImage: 'linear-gradient(to right, black 90%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to right, black 90%, transparent 100%)'
-            }}
-          >
-            <div
-              ref={scrollRef}
-              className="flex gap-2 md:gap-4 px-6 py-4 md:justify-center w-max md:w-full"
-            >
-              {categorias.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setCategoriaActual(cat.id)}
-                  className={`
-                    flex items-center gap-2 px-5 py-2.5 rounded-full font-black uppercase text-[11px] transition-all border-2 snap-start
-                    ${categoriaActual === cat.id
-                      ? 'bg-[#FFCA28] text-black border-black shadow-[3px_3px_0px_0px_black] -translate-y-0.5'
-                      : 'bg-white text-stone-500 border-transparent hover:bg-stone-100 active:translate-y-0'
-                    }
-                  `}
-                >
-                  <span className="text-lg">{cat.icon}</span>
-                  {cat.label}
-                </button>
-              ))}
-              <div className="w-10 h-1 md:hidden flex-shrink-0" />
-            </div>
+        <div className="max-w-7xl mx-auto overflow-x-auto no-scrollbar">
+          <div className="flex gap-2 md:gap-4 px-6 py-4 md:justify-center min-w-max">
+            {categorias.map((cat) => (
+              <button
+                key={cat.id}
+                onClick={() => setCategoriaActual(cat.id)}
+                className={`
+                  flex items-center gap-2 px-5 py-2.5 rounded-full font-black uppercase text-[11px] transition-all border-2
+                  ${categoriaActual === cat.id
+                    ? 'bg-[#FFCA28] text-black border-black shadow-[3px_3px_0px_0px_black] -translate-y-0.5'
+                    : 'bg-white text-stone-500 border-transparent hover:bg-stone-100'
+                  }
+                `}
+              >
+                <span className="text-lg">{cat.icon}</span>
+                {cat.label}
+              </button>
+            ))}
           </div>
         </div>
       </nav>
@@ -185,38 +174,34 @@ export default function Home() {
       <section className="max-w-7xl mx-auto px-6 mt-12 md:mt-20">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <div>
-            <h2 className="font-krusty text-4xl md:text-5xl text-black tracking-normal flex items-center gap-4 uppercase">
+            <h2 className="font-krusty text-4xl md:text-5xl text-black tracking-normal uppercase">
               <span className="text-[#D32F2F]">El</span> Menú
             </h2>
             <div className="w-20 h-2 bg-[#FFCA28] border border-black mt-2" />
           </div>
-          <p className="text-[10px] font-black text-[#71717a] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full">
-            {filtrados.length} OPCIONES DISPONIBLES EN QUILMES
+          <p className="text-[10px] font-black text-[#52525b] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full">
+            {filtrados.length} OPCIONES DISPONIBLES
           </p>
         </div>
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-32">
-            <div className="w-16 h-16 border-[6px] border-stone-200 border-t-[#D32F2F] rounded-full animate-spin border-black" />
-            <p className="mt-6 font-krusty text-xl tracking-widest text-black">COCINANDO...</p>
+            <div className="w-16 h-16 border-[6px] border-stone-200 border-t-[#D32F2F] rounded-full animate-spin" />
+            <p className="mt-6 font-krusty text-xl tracking-widest text-black uppercase">Cocinando...</p>
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-10 md:gap-y-16">
             {filtrados.length > 0 ? (
-              filtrados.map((item, index) => (
-                <div
-                  key={item.id}
-                  className="animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
+              filtrados.map((item) => (
+                <div key={item.id} className="transition-opacity duration-500">
                   <BurgerCard burger={item} />
                 </div>
               ))
             ) : (
               <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
-                <span className="text-8xl block mb-6 animate-bounce">🤡</span>
+                <span className="text-8xl block mb-6">🤡</span>
                 <p className="font-krusty text-3xl text-black px-6 uppercase">
-                  ¡Ay caramba! No hay nada disponible ahora.
+                  ¡Ay caramba! No hay nada disponible.
                 </p>
               </div>
             )}
@@ -227,16 +212,15 @@ export default function Home() {
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        * { -webkit-tap-highlight-color: transparent; }
-
+        
         @keyframes float {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-15px) rotate(1deg); }
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-10px); }
         }
 
         .animate-float {
           animation: float 4s ease-in-out infinite;
-          will-change: transform; /* Optimización para GPU */
+          will-change: transform;
         }
       `}</style>
     </main>
