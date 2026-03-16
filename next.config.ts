@@ -1,18 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // 1. COMPRESIÓN: Mejora el TTFB (Time to First Byte) comprimiendo assets en el servidor.
+  compress: true,
+
   logging: {
     fetches: {
       fullUrl: true,
     },
   },
-  images: {
-    // 1. CACHÉ EFICIENTE: Esto elimina la advertencia de Lighthouse sobre 
-    // "servir recursos estáticos con una política de caché eficiente".
-    // Mantiene las imágenes en el navegador por 1 año, evitando recargas innecesarias.
-    minimumCacheTTL: 31536000, 
 
-    // 2. SEGURIDAD: Reemplazamos el '**' por el dominio específico de Supabase.
-    // Lighthouse y Next.js penalizan el uso de comodines totales por seguridad.
+  images: {
+    // 2. CACHÉ EFICIENTE: Mantiene las imágenes en caché del navegador por 1 año.
+    // Esto liquida la advertencia "Serve static assets with an efficient cache policy".
+    minimumCacheTTL: 31536000,
+
+    // 3. CUALIDADES PERMITIDAS: IMPORTANTE para corregir tu error de consola.
+    // Next.js por defecto solo permite ciertas cualidades. Agregamos 70 y 75.
+    qualities: [25, 50, 70, 75, 80, 90],
+
+    // 4. FORMATOS MODERNOS: Forzamos el uso de AVIF y WebP para reducir el peso hasta un 30% más.
+    formats: ['image/avif', 'image/webp'],
+
+    // 5. SEGURIDAD Y OPTIMIZACIÓN DE DOMINIO:
+    // Apuntamos directo a tu bucket de Supabase para que el optimizador de Next lo reconozca.
     remotePatterns: [
       {
         protocol: 'https',
@@ -22,8 +32,14 @@ const nextConfig = {
       },
     ],
   },
-  // 3. COMPRESIÓN: Forzamos la compresión de texto para mejorar el Time to First Byte (TTFB)
-  compress: true,
+
+  // 6. OPTIMIZACIÓN DE PAQUETES: Evita que librerías pesadas dupliquen código.
+  bundlePagesRouterDependencies: true,
+  
+  // Opcional: Si usas componentes de servidor pesados, esto ayuda a la velocidad de respuesta.
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
 };
 
 export default nextConfig;

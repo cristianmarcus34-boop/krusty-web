@@ -1,5 +1,6 @@
 "use client";
 
+import { Burger } from '@/types';
 import { useCartStore } from '@/store/cartStore';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -12,44 +13,46 @@ interface Adicional {
   precio: number;
 }
 
-// SINGLETON DE AUDIO: Lo sacamos del componente para que se cargue UNA sola vez
-// y no se multiplique por cada hamburguesa en el menú.
-let cashSound: HTMLAudioElement | null = null;
-
 export default function BurgerCard({ burger }: { burger: any }) {
   const addItem = useCartStore((state) => state.addItem);
   const [isAdding, setIsAdding] = useState(false);
+  
+  const cashAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // --- OPTIMIZACIÓN DE IMAGEN ---
-  // Reducimos la calidad un poco más y aseguramos que Supabase nos dé el tamaño justo.
+  // --- OPTIMIZACIÓN DE IMAGEN DE SUPABASE ---
+  // Si no hay imagen en la DB, usamos el path local. 
+  // Al ser un string directo, Next.js lo procesará correctamente con los qualities que definimos en el config.
   const optimizedImageUrl = burger?.imagen 
-    ? `${burger.imagen}?width=300&quality=70`
-    : '/images/placeholder-krusty.webp';
+    ? `${burger.imagen}?width=400&height=400&resize=contain&quality=75`
+    : '/images/placeholder-krusty.webp'; // Cambiado a tu imagen local corregida
 
-  // Usamos sintaxis clásica para evitar polyfills (Legacy JS)
-  const adicionalesRaw = burger.producto_adicionales || [];
-  const adicionales: Adicional[] = adicionalesRaw.map((rel: any) => ({
+  const adicionales: Adicional[] = burger.producto_adicionales?.map((rel: any) => ({
     id: rel.adicionales?.id,
     nombre: rel.adicionales?.nombre,
     precio: rel.adicionales?.precio
-  })).filter((a: any) => !!a.id);
+  })).filter((a: any) => a.id) || [];
 
   useEffect(() => {
-    // Inicializamos el audio solo en el cliente y una sola vez
-    if (typeof window !== 'undefined' && !cashSound) {
-      cashSound = new Audio('/sounds/cash-register.mp3');
-      cashSound.volume = 0.3;
-      cashSound.preload = 'auto';
-    }
+    const audio = new Audio('/sounds/cash-register.mp3');
+    audio.volume = 0.3;
+    audio.preload = 'auto';
+    cashAudioRef.current = audio;
+
+    return () => {
+      if (cashAudioRef.current) {
+        cashAudioRef.current.pause();
+        cashAudioRef.current = null;
+      }
+    };
   }, []);
 
   const handleAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (cashSound) {
-      cashSound.currentTime = 0;
-      cashSound.play().catch(() => {});
+    if (cashAudioRef.current) {
+      cashAudioRef.current.currentTime = 0;
+      cashAudioRef.current.play().catch(() => {});
     }
 
     setIsAdding(true);
@@ -82,12 +85,11 @@ export default function BurgerCard({ burger }: { burger: any }) {
           src={optimizedImageUrl} 
           alt={burger?.nombre || 'Producto Krusty'} 
           fill
-          // AJUSTE CRÍTICO: sizes específicos para que Lighthouse no detecte sobre-tamaño
-          sizes="(max-width: 640px) 160px, (max-width: 1024px) 210px, 280px"
+          // Sizes optimizado para evitar descargar imágenes gigantes en celulares
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className={`object-cover transition-all duration-500 will-change-transform
             ${isAdding ? 'scale-110 blur-sm' : 'group-hover:scale-110'}
           `}
-          // fetchpriority si es de las primeras 2 burgers, si no lazy
           loading="lazy"
         />
         
@@ -96,6 +98,13 @@ export default function BurgerCard({ burger }: { burger: any }) {
           <div className="flex flex-col items-center animate-bounce">
             <span className="font-krusty text-3xl text-black">¡D'OH!</span>
           </div>
+        </div>
+
+        {/* Indicador visual de "Ver Detalle" */}
+        <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+             <span className="bg-white/90 text-black font-black text-[10px] px-3 py-1 rounded-full border-2 border-black transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
+               VER DETALLES 🔍
+             </span>
         </div>
       </div>
 
@@ -108,8 +117,7 @@ export default function BurgerCard({ burger }: { burger: any }) {
           </h3>
         </div>
         
-        {/* ACCESIBILIDAD: Oscurecemos el gris para cumplir ratio de contraste */}
-        <p className="text-[11px] text-[#52525b] font-bold leading-[1.4] line-clamp-2 mb-3 h-[2.2rem]">
+        <p className="text-[11px] text-[#71717a] font-bold leading-[1.4] line-clamp-2 mb-3 h-[2.2rem]">
           {burger?.descripcion || 'Una delicia de Springfield directamente a tu mesa.'}
         </p>
 
@@ -119,12 +127,12 @@ export default function BurgerCard({ burger }: { burger: any }) {
             <p className="text-[9px] font-black uppercase text-stone-400 mb-2 tracking-widest">Extras Disponibles</p>
             <div className="flex flex-wrap justify-center gap-1">
               {adicionales.slice(0, 3).map((extra) => (
-                <span key={extra.id} className="text-[9px] font-black bg-stone-100 border border-black/10 px-2 py-0.5 rounded text-[#444] uppercase">
+                <span key={extra.id} className="text-[9px] font-black bg-stone-100 border border-black/10 px-2 py-0.5 rounded text-stone-600 uppercase">
                   {extra.nombre}
                 </span>
               ))}
               {adicionales.length > 3 && (
-                <span className="text-[10px] font-black text-stone-500 self-center">
+                <span className="text-[10px] font-black text-stone-400 self-center">
                   +{adicionales.length - 3} más
                 </span>
               )}

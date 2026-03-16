@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { Metadata, Viewport } from 'next';
 import GestorDeActualizaciones from '@/components/GestorDeActualizaciones';
 
-// 1. Optimizamos Inter con display: swap para evitar bloqueos de renderizado
+// 1. Optimizamos Inter con swap para evitar el "Flash of Unstyled Text"
 const inter = Inter({ 
   subsets: ["latin"],
   display: 'swap', 
@@ -61,7 +61,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="scroll-smooth">
       <head>
-        {/* 2. SOLUCIÓN LCP: Preload de la fuente Simpson para que el navegador la pida PRIMERO */}
+        {/* 2. SOLUCIÓN LCP: Preload de la fuente principal */}
         <link
           rel="preload"
           href="/fonts/Simpsonfont.ttf"
@@ -80,8 +80,8 @@ export default function RootLayout({
         </main>
 
         <footer className="bg-[#1A1A1A] text-stone-300 py-16 px-6 border-t-[8px] border-black relative overflow-hidden">
-          {/* Trama de fondo */}
-          <div className="absolute inset-0 opacity-5 pointer-events-none"
+          {/* Trama de fondo - Optimizada con opacidad fija */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
             style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '10px 10px' }}>
           </div>
 
@@ -96,7 +96,7 @@ export default function RootLayout({
               </h2>
             </div>
 
-            {/* Enlace a Reseñas de Google */}
+            {/* Enlace a Reseñas */}
             <div className="mb-10">
               <Link
                 href="https://g.page/r/CTEcMZ1GEz0LEBI/review"
@@ -105,16 +105,16 @@ export default function RootLayout({
                 className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/20 px-6 py-3 rounded-xl transition-all active:scale-95 group"
               >
                 <span className="text-yellow-400 text-lg group-hover:animate-pulse">⭐⭐⭐⭐⭐</span>
-                <span className="text-white font-black text-xs tracking-widest group-hover:text-[#FFCA28] transition-colors uppercase">
+                <span className="text-stone-100 font-black text-xs tracking-widest group-hover:text-[#FFCA28] transition-colors uppercase">
                   Dejanos tu reseña en Google
                 </span>
               </Link>
             </div>
 
             <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-10 text-[11px] font-black uppercase tracking-tighter">
-              <Link href="/" className="hover:text-white transition-colors">Inicio</Link>
-              <Link href="/privacidad" className="hover:text-white transition-colors">Privacidad</Link>
-              <Link href="/terminos" className="hover:text-white transition-colors">Términos</Link>
+              <Link href="/" className="hover:text-[#FFCA28] transition-colors">Inicio</Link>
+              <Link href="/privacidad" className="hover:text-[#FFCA28] transition-colors">Privacidad</Link>
+              <Link href="/terminos" className="hover:text-[#FFCA28] transition-colors">Términos</Link>
               <Link href="/defensa" className="hover:text-white transition-colors underline decoration-[#D32F2F] underline-offset-4">Defensa Consumidor</Link>
             </nav>
 
@@ -125,8 +125,8 @@ export default function RootLayout({
             </div>
 
             <div className="space-y-8">
-              {/* ACCESIBILIDAD: Subimos de stone-600 a stone-500 para contraste en fondo oscuro */}
-              <p className="text-[10px] font-bold uppercase tracking-widest text-stone-500">
+              {/* ACCESIBILIDAD: Subimos contraste a stone-400 para fondo oscuro #1A1A1A */}
+              <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
                 © 2026 Springfield Food Group / Quilmes, Buenos Aires.
               </p>
 
@@ -137,41 +137,42 @@ export default function RootLayout({
                   rel="noopener noreferrer"
                   className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
                 >
-                  <div className="relative w-12 h-12 opacity-90 group-hover:opacity-100 transition-opacity duration-500 scale-90 group-hover:scale-110">
+                  <div className="relative w-10 h-10 opacity-80 group-hover:opacity-100 transition-opacity duration-500 scale-90 group-hover:scale-110">
                     <Image
                       src="/images/logo-powa.png"
-                      alt="Logo Agencia Powa"
+                      alt="Agencia Powa"
                       fill
-                      sizes="48px"
+                      sizes="40px"
                       className="object-contain"
                     />
                   </div>
 
                   <div className="text-center">
-                    <p className="text-[9px] text-stone-500 uppercase tracking-[0.2em] mb-1">
+                    <p className="text-[9px] text-stone-400 uppercase tracking-[0.2em] mb-1">
                       Desarrollado con humor por
                     </p>
-                    <p className="text-xs font-black italic text-stone-300 group-hover:text-[#FFCA28] transition-colors">
+                    <p className="text-xs font-black italic text-[#FFCA28]">
                       AGENCIA POWA
                     </p>
                   </div>
                 </Link>
 
-                <p className="text-[10px] text-stone-500 max-w-xs mx-auto italic leading-relaxed">
+                {/* ACCESIBILIDAD: El CUIT y dirección ahora son legibles */}
+                <p className="text-[10px] text-stone-400 max-w-xs mx-auto italic leading-relaxed">
                   Arcos de Springfield S.A. - CUIT: 30-12345678-9 <br />
                   Villa La Florida, Quilmes (CP 1881).
                 </p>
               </div>
             </div>
 
-            <p className="text-[10px] mt-12 text-[#D32F2F]/80 font-black uppercase italic tracking-[0.3em]">
+            <p className="text-[10px] mt-12 text-[#D32F2F] font-black uppercase italic tracking-[0.3em] opacity-80">
               "Si no se atraganta, no es una Krusty"
             </p>
 
             <div className="mt-12 pt-6 border-t border-stone-800/40">
               <Link
                 href="/admin"
-                className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-600 hover:text-[#FFCA28] transition-colors duration-300"
+                className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-500 hover:text-[#FFCA28] transition-colors duration-300"
               >
                 🔐 Acceso Staff
               </Link>
@@ -181,9 +182,9 @@ export default function RootLayout({
 
         <StatusBar />
 
-        {/* Luces de ambiente */}
-        <div className="fixed bottom-0 right-0 w-[50vw] h-[50vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[100px] pointer-events-none" />
-        <div className="fixed top-20 left-0 w-[40vw] h-[40vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
+        {/* Luces de ambiente - Reducido el blur y opacidad para mejorar Performance */}
+        <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
+        <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[60px] pointer-events-none" />
 
       </body>
     </html>
