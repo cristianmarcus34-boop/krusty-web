@@ -64,6 +64,10 @@ export default function CartDrawer({
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : 'unset';
+
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isOpen]);
 
   const barrioFinal =
@@ -298,6 +302,7 @@ export default function CartDrawer({
 
   return (
     <>
+      {/* OVERLAY */}
       <div
         className={`fixed inset-0 bg-stone-900/40 z-[60] backdrop-blur-md transition-all duration-500 ${
           isOpen
@@ -307,47 +312,151 @@ export default function CartDrawer({
         onClick={onClose}
       />
 
+      {/* DRAWER */}
       <div
-        className={`fixed right-0 top-0 h-full w-full sm:w-[450px] bg-white z-[70] shadow-2xl transform transition-transform duration-500 ease-in-out ${
+        className={`fixed inset-y-0 right-0 z-[70] w-full sm:max-w-[450px] bg-white shadow-2xl transform transition-transform duration-500 ease-in-out ${
           isOpen
             ? 'translate-x-0'
             : 'translate-x-full'
         }`}
       >
-        <div className="flex flex-col h-full bg-white">
+        <div
+          className="
+            flex flex-col
+            h-[100dvh]
+            max-h-[100dvh]
+            bg-white
+            overflow-hidden
+          "
+        >
 
           {/* HEADER */}
-          <div className="p-6 bg-white border-b border-stone-100 shrink-0">
+          <div
+            className="
+              shrink-0
+              bg-white
+              border-b
+              border-stone-100
+              px-4
+              sm:px-6
+              pt-[max(env(safe-area-inset-top),16px)]
+              pb-4
+              sticky
+              top-0
+              z-20
+            "
+          >
+            <div className="flex justify-between items-start gap-3">
 
-            <div className="flex justify-between items-center">
-
-              <div>
-                <h2 className="text-2xl font-black text-stone-900 tracking-tighter uppercase">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-black text-stone-900 tracking-tighter uppercase leading-none">
                   Tu Pedido
                 </h2>
 
-                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">
-                  {items.length}{" "}
+                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2">
+                  {items.length}{' '}
                   {items.length === 1
                     ? 'producto'
-                    : 'productos'}{" "}
+                    : 'productos'}{' '}
                   en el carrito
                 </p>
               </div>
 
               <button
                 onClick={onClose}
-                className="bg-stone-100 text-stone-400 w-10 h-10 rounded-full flex items-center justify-center hover:bg-stone-200 transition-transform active:scale-90"
+                className="
+                  bg-stone-100
+                  text-stone-500
+                  min-w-10
+                  w-10
+                  h-10
+                  rounded-full
+                  flex
+                  items-center
+                  justify-center
+                  hover:bg-stone-200
+                  transition-all
+                  active:scale-90
+                "
               >
                 ✕
               </button>
 
             </div>
+
+            {/* BOTON VOLVER */}
+            {items.length > 0 && (
+              <button
+                onClick={onClose}
+                className="
+                  group
+                  mt-4
+                  w-full
+                  relative
+                  overflow-hidden
+                  rounded-[1.7rem]
+                  border
+                  border-stone-200
+                  bg-gradient-to-r
+                  from-stone-950
+                  via-stone-900
+                  to-stone-800
+                  px-4
+                  py-4
+                  transition-all
+                  duration-300
+                  active:scale-[0.98]
+                "
+              >
+
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FFCA28]/0 via-[#FFCA28]/10 to-[#FFCA28]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                <div className="relative flex items-center justify-between gap-3">
+
+                  <div className="flex items-center gap-3 min-w-0">
+
+                    <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center text-xl shrink-0">
+                      🍔
+                    </div>
+
+                    <div className="text-left min-w-0">
+
+                      <p className="text-white font-black uppercase tracking-wide text-[11px] sm:text-xs truncate">
+                        Seguir comprando
+                      </p>
+
+                      <p className="text-stone-400 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider mt-1 leading-tight">
+                        Volver al menú sin perder tu carrito
+                      </p>
+
+                    </div>
+                  </div>
+
+                  <div className="w-9 h-9 rounded-full bg-[#FFCA28] text-stone-950 flex items-center justify-center font-black text-lg shrink-0">
+                    →
+                  </div>
+
+                </div>
+              </button>
+            )}
           </div>
 
           {/* CONTENIDO */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-8 no-scrollbar relative">
+          <div
+            className="
+              flex-1
+              overflow-y-auto
+              overflow-x-hidden
+              px-4
+              sm:px-6
+              py-5
+              space-y-8
+              no-scrollbar
+              overscroll-contain
+            "
+          >
 
+            {/* ITEMS */}
             <div className="space-y-4">
 
               {items.length === 0 ? (
@@ -369,7 +478,7 @@ export default function CartDrawer({
                     className="flex flex-col gap-2 p-3 bg-stone-50/50 rounded-2xl border border-stone-100"
                   >
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
 
                       <div className="relative w-16 h-16 shrink-0 rounded-2xl overflow-hidden border border-white shadow-sm">
                         <img
@@ -385,7 +494,7 @@ export default function CartDrawer({
                           {item.nombre}
                         </h4>
 
-                        <p className="font-black text-[#D32F2F] text-xs mt-0.5">
+                        <p className="font-black text-[#D32F2F] text-xs mt-1">
                           $
                           {(
                             item.precioUnitarioTotal *
@@ -401,7 +510,7 @@ export default function CartDrawer({
                           onClick={() =>
                             decreaseQuantity(item.cartId)
                           }
-                          className="w-7 h-7 flex items-center justify-center font-bold text-stone-500"
+                          className="w-8 h-8 flex items-center justify-center font-bold text-stone-500 active:scale-90"
                         >
                           –
                         </button>
@@ -417,18 +526,36 @@ export default function CartDrawer({
                               item.extrasElegidos
                             )
                           }
-                          className="w-7 h-7 flex items-center justify-center font-bold text-stone-500"
+                          className="w-8 h-8 flex items-center justify-center font-bold text-stone-500 active:scale-90"
                         >
                           +
                         </button>
 
                       </div>
                     </div>
+
+                    {item.extrasElegidos &&
+                      item.extrasElegidos.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 ml-[76px] mt-1">
+
+                          {item.extrasElegidos.map((extra, idx) => (
+                            <span
+                              key={`extra-${item.cartId}-${extra.id}-${idx}`}
+                              className="text-[8px] font-black uppercase bg-[#FFCA28]/10 text-[#c79d1a] border border-[#FFCA28]/20 px-2 py-1 rounded-md"
+                            >
+                              + {extra.nombre}
+                            </span>
+                          ))}
+
+                        </div>
+                      )}
+
                   </div>
                 ))
               )}
             </div>
 
+            {/* FORM */}
             {items.length > 0 && (
               <div className="space-y-6 pb-10">
 
@@ -467,7 +594,7 @@ export default function CartDrawer({
                   <input
                     type="text"
                     placeholder="TU NOMBRE"
-                    className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold uppercase text-xs outline-none"
+                    className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold uppercase text-xs outline-none focus:ring-2 focus:ring-[#FFCA28]/30"
                     value={customer.nombre}
                     onChange={(e) =>
                       setCustomer({
@@ -480,7 +607,7 @@ export default function CartDrawer({
                   <input
                     type="tel"
                     placeholder="TELÉFONO"
-                    className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs outline-none"
+                    className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs outline-none focus:ring-2 focus:ring-[#FFCA28]/30"
                     value={customer.telefono}
                     onChange={(e) =>
                       setCustomer({
@@ -509,7 +636,7 @@ export default function CartDrawer({
                             </span>
                           </div>
 
-                          <div>
+                          <div className="min-w-0">
 
                             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c79d1a] mb-1">
                               Referencia del Local
@@ -528,7 +655,7 @@ export default function CartDrawer({
                         </div>
                       </div>
 
-                      {/* SELECT BARRIO */}
+                      {/* SELECT */}
                       <select
                         className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none"
                         value={customer.barrio}
@@ -559,7 +686,7 @@ export default function CartDrawer({
 
                       </select>
 
-                      {/* OTRO BARRIO */}
+                      {/* OTRO */}
                       {customer.barrio ===
                         'Otro Barrio' && (
                         <input
@@ -605,6 +732,119 @@ export default function CartDrawer({
                     </div>
                   )}
 
+                  {/* METODO PAGO */}
+                  <div className="space-y-4 pt-2">
+
+                    <p className="text-[10px] font-black uppercase text-stone-400 tracking-[0.2em] px-1">
+                      Método de Pago
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2">
+
+                      {['Efectivo', 'Transferencia', 'QR'].map((pago) => (
+                        <button
+                          key={pago}
+                          onClick={() =>
+                            setCustomer({
+                              ...customer,
+                              metodoPago: pago
+                            })
+                          }
+                          className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${
+                            customer.metodoPago === pago
+                              ? 'bg-stone-900 text-white border-stone-900'
+                              : 'bg-white border-stone-100 text-stone-400'
+                          }`}
+                        >
+                          {pago}
+                        </button>
+                      ))}
+
+                    </div>
+
+                    {customer.metodoPago ===
+                      'Transferencia' && (
+                      <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem]">
+
+                        <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">
+                          Alias de Pago
+                        </p>
+
+                        <div
+                          onClick={handleCopyAlias}
+                          className="flex items-center justify-between gap-3 bg-white p-4 rounded-2xl cursor-pointer border border-blue-100 active:scale-[0.98] transition-all"
+                        >
+
+                          <span className="font-black text-blue-900 text-sm truncate">
+                            {ALIAS_TRANSFERENCIA}
+                          </span>
+
+                          <span
+                            className={`text-[9px] font-black uppercase px-2 py-1 rounded-full shrink-0 ${
+                              copied
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-blue-100 text-blue-600'
+                            }`}
+                          >
+                            {copied ? '¡Copiado!' : 'Copiar'}
+                          </span>
+
+                        </div>
+                      </div>
+                    )}
+
+                    {customer.metodoPago ===
+                      'Efectivo' && (
+                      <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-[2rem]">
+
+                        <p className="text-[9px] font-black uppercase text-emerald-400 mb-3 tracking-wider">
+                          ¿Con cuánto pagás?
+                        </p>
+
+                        <input
+                          type="number"
+                          className="w-full bg-white p-4 rounded-2xl font-black text-emerald-900 border border-emerald-100 outline-none"
+                          value={montoEfectivo}
+                          onChange={(e) =>
+                            setMontoEfectivo(
+                              e.target.value
+                            )
+                          }
+                          placeholder={`$${montoTotalFinal}`}
+                        />
+
+                        {vuelto > 0 && (
+                          <div className="mt-4 flex justify-between items-center px-2">
+
+                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                              Tu Vuelto:
+                            </span>
+
+                            <span className="text-lg font-black text-emerald-700">
+                              ${vuelto.toLocaleString('es-AR')}
+                            </span>
+
+                          </div>
+                        )}
+
+                      </div>
+                    )}
+
+                  </div>
+
+                  {/* NOTAS */}
+                  <textarea
+                    placeholder="¿Alguna aclaración? (Sin cebolla, puerta roja, etc.)"
+                    className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs h-24 resize-none outline-none"
+                    value={customer.notes}
+                    onChange={(e) =>
+                      setCustomer({
+                        ...customer,
+                        notes: e.target.value
+                      })
+                    }
+                  />
+
                 </div>
               </div>
             )}
@@ -612,11 +852,24 @@ export default function CartDrawer({
           </div>
 
           {/* FOOTER */}
-          <div className="p-6 bg-white border-t border-stone-100 shrink-0">
+          <div
+            className="
+              shrink-0
+              bg-white
+              border-t
+              border-stone-100
+              px-4
+              sm:px-6
+              pt-4
+              pb-[max(env(safe-area-inset-bottom),16px)]
+              shadow-[0_-10px_20px_rgba(0,0,0,0.02)]
+            "
+          >
 
-            <div className="space-y-2 mb-6">
+            <div className="space-y-2 mb-5">
 
               <div className="flex justify-between items-center text-stone-400 font-bold text-[11px] uppercase tracking-tighter">
+
                 <span>Subtotal</span>
 
                 <span>
@@ -625,6 +878,7 @@ export default function CartDrawer({
                     'es-AR'
                   )}
                 </span>
+
               </div>
 
               <div className="flex justify-between items-center text-stone-400 font-bold text-[11px] uppercase tracking-tighter">
@@ -646,13 +900,13 @@ export default function CartDrawer({
 
               </div>
 
-              <div className="flex justify-between items-end pt-3">
+              <div className="flex justify-between items-end pt-3 gap-3">
 
-                <span className="font-black text-stone-900 uppercase tracking-tighter">
+                <span className="font-black text-stone-900 uppercase tracking-tighter text-sm">
                   Total Final
                 </span>
 
-                <span className="text-4xl font-black text-stone-950 tracking-tighter">
+                <span className="text-3xl sm:text-4xl font-black text-stone-950 tracking-tighter text-right break-words">
                   $
                   {montoTotalFinal.toLocaleString(
                     'es-AR'
@@ -668,7 +922,7 @@ export default function CartDrawer({
                 isSending
               }
               onClick={handleCheckout}
-              className={`w-full py-5 rounded-[2rem] font-black uppercase text-sm tracking-[0.2em] transition-all duration-300 ${
+              className={`w-full py-5 rounded-[2rem] font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] ${
                 !isFormValid ||
                 items.length === 0
                   ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
@@ -696,6 +950,11 @@ export default function CartDrawer({
             .no-scrollbar {
               -ms-overflow-style: none;
               scrollbar-width: none;
+            }
+
+            html,
+            body {
+              overscroll-behavior: none;
             }
           `
         }}
