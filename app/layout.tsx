@@ -1,11 +1,13 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/Navbar";
-import StatusBar from '@/components/StatusBar';
+import Navbar from "../components/Navbar.tsx";
+import StatusBar from '../components/StatusBar.tsx';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata, Viewport } from 'next';
-import GestorDeActualizaciones from '@/components/GestorDeActualizaciones';
+import GestorDeActualizaciones from '../components/GestorDeActualizaciones.tsx';
+import { Analytics } from "@vercel/analytics/next"
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // 1. Optimizamos Inter con swap para evitar el "Flash of Unstyled Text"
 const inter = Inter({ 
@@ -185,7 +187,8 @@ export default function RootLayout({
         {/* Luces de ambiente - Reducido el blur y opacidad para mejorar Performance */}
         <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
         <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[60px] pointer-events-none" />
-
+      <Analytics />
+      <SpeedInsights />
       </body>
     </html>
   );
