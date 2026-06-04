@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import { useCartStore } from '@/store/cartStore';
-import { supabase } from '@/lib/supabase';
+import { useCartStore } from '../store/cartStore.ts';
+import { supabase } from '../lib/supabase.ts';
 import { useRouter } from 'next/navigation';
 
 const ZONAS_REPARTO = [
@@ -165,13 +165,11 @@ export default function CartDrawer({
       let detallePago = customer.metodoPago;
 
       if (customer.metodoPago === 'Efectivo') {
-        detallePago = `Efectivo (Paga con: $${
-          montoEfectivo || montoTotalFinal
-        }${
-          vuelto > 0
+        detallePago = `Efectivo (Paga con: $${montoEfectivo || montoTotalFinal
+          }${vuelto > 0
             ? ` | Vuelto: $${vuelto}`
             : ' - Justo'
-        })`;
+          })`;
       } else if (
         customer.metodoPago === 'Transferencia'
       ) {
@@ -183,8 +181,8 @@ export default function CartDrawer({
           const extras =
             i.extrasElegidos?.length
               ? ` (+${i.extrasElegidos
-                  .map((e) => e.nombre)
-                  .join(', ')})`
+                .map((e) => e.nombre)
+                .join(', ')})`
               : '';
 
           return `${i.quantity}x ${i.nombre}${extras}`;
@@ -225,70 +223,74 @@ export default function CartDrawer({
 
       const numeroTelefono = "5491127344686";
 
-      const baseUrl = window.location.origin;
+      // SOLUCIÓN AL PROBLEM DE DENO/WINDOW: Usamos globalThis de forma segura
+      const baseUrl = typeof globalThis !== 'undefined' && globalThis.location
+        ? globalThis.location.origin
+        : '';
 
       const linkSeguimiento = `${baseUrl}/pedido/${pedidoGuardado.id}`;
 
       const mensaje = encodeURIComponent(
         `🤡 *NUEVO PEDIDO - KRUSTY BURGER*\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          `📍 *SEGUÍ TU PEDIDO AQUÍ:* \n${linkSeguimiento}\n\n` +
-          `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `👤 *CLIENTE:* ${customer.nombre.toUpperCase()}\n` +
-          `📞 *TEL:* ${customer.telefono}\n` +
-          `🚀 *MODO:* ${customer.tipoEntrega.toUpperCase()}\n` +
-          `📍 *DIR:* ${direccionCompleta}\n` +
-          `💳 *PAGO:* ${detallePago}\n` +
-          (customer.notes
-            ? `📝 *NOTAS:* ${customer.notes}\n`
-            : '') +
-          `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
-          items
-            .map((item) => {
-              const extrasMsj =
-                item.extrasElegidos?.length
-                  ? item.extrasElegidos
-                      .map(
-                        (e) =>
-                          `\n   └ + ${e.nombre}`
-                      )
-                      .join('')
-                  : '';
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        `📍 *SEGUÍ TU PEDIDO AQUÍ:* \n${linkSeguimiento}\n\n` +
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `👤 *CLIENTE:* ${customer.nombre.toUpperCase()}\n` +
+        `📞 *TEL:* ${customer.telefono}\n` +
+        `🚀 *MODO:* ${customer.tipoEntrega.toUpperCase()}\n` +
+        `📍 *DIR:* ${direccionCompleta}\n` +
+        `💳 *PAGO:* ${detallePago}\n` +
+        (customer.notes
+          ? `📝 *NOTAS:* ${customer.notes}\n`
+          : '') +
+        `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
+        items
+          .map((item) => {
+            const extrasMsj =
+              item.extrasElegidos?.length
+                ? item.extrasElegidos
+                  .map(
+                    (e) =>
+                      `\n   └ + ${e.nombre}`
+                  )
+                  .join('')
+                : '';
 
-              return (
-                `🍔 *${item.quantity}x* ${item.nombre.toUpperCase()}${extrasMsj}\n` +
-                `💰 Subtotal: $${(
-                  item.precioUnitarioTotal *
-                  item.quantity
-                ).toLocaleString('es-AR')}`
-              );
-            })
-            .join("\n\n") +
-          `\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-          `💵 *SUBTOTAL:* $${subtotal.toLocaleString('es-AR')}\n` +
-          `🛵 *ENVÍO:* ${
-            customer.tipoEntrega === 'Retiro'
-              ? 'N/A'
-              : costoEnvio === 0
-              ? 'GRATIS'
-              : `$${costoEnvio.toLocaleString('es-AR')}`
-          }\n` +
-          `💰 *TOTAL: $${montoTotalFinal.toLocaleString('es-AR')}*\n\n` +
-          (customer.metodoPago ===
+            return (
+              `🍔 *${item.quantity}x* ${item.nombre.toUpperCase()}${extrasMsj}\n` +
+              `💰 Subtotal: $${(
+                item.precioUnitarioTotal *
+                item.quantity
+              ).toLocaleString('es-AR')}`
+            );
+          })
+          .join("\n\n") +
+        `\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+        `💵 *SUBTOTAL:* $${subtotal.toLocaleString('es-AR')}\n` +
+        `🛵 *ENVÍO:* ${customer.tipoEntrega === 'Retiro'
+          ? 'N/A'
+          : costoEnvio === 0
+            ? 'GRATIS'
+            : `$${costoEnvio.toLocaleString('es-AR')}`
+        }\n` +
+        `💰 *TOTAL: $${montoTotalFinal.toLocaleString('es-AR')}*\n\n` +
+        (customer.metodoPago ===
           'Transferencia'
-            ? `🏦 *ALIAS:* ${ALIAS_TRANSFERENCIA}\n`
-            : '') +
-          `🤡 _¡Gracias por elegir al payaso!_`
+          ? `🏦 *ALIAS:* ${ALIAS_TRANSFERENCIA}\n`
+          : '') +
+        `🤡 _¡Gracias por elegir al payaso!_`
       );
 
       clearCart();
 
       onClose();
 
-      window.open(
-        `https://wa.me/${numeroTelefono}?text=${mensaje}`,
-        "_blank"
-      );
+      if (typeof globalThis.window !== "undefined") {
+        globalThis.open(
+          `https://wa.me/${numeroTelefono}?text=${encodeURIComponent(mensaje)}`,
+          "_blank"
+        );
+      }
 
       router.push('/gracias');
     } catch (e) {
@@ -304,21 +306,19 @@ export default function CartDrawer({
     <>
       {/* OVERLAY */}
       <div
-        className={`fixed inset-0 bg-stone-900/40 z-[60] backdrop-blur-md transition-all duration-500 ${
-          isOpen
+        className={`fixed inset-0 bg-stone-900/40 z-[60] backdrop-blur-md transition-all duration-500 ${isOpen
             ? 'opacity-100 visible'
             : 'opacity-0 invisible'
-        }`}
+          }`}
         onClick={onClose}
       />
 
       {/* DRAWER */}
       <div
-        className={`fixed inset-y-0 right-0 z-[70] w-full sm:max-w-[450px] bg-white shadow-2xl transform transition-transform duration-500 ease-in-out ${
-          isOpen
+        className={`fixed inset-y-0 right-0 z-[70] w-full sm:max-w-[450px] bg-white shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen
             ? 'translate-x-0'
             : 'translate-x-full'
-        }`}
+          }`}
       >
         <div
           className="
@@ -363,6 +363,7 @@ export default function CartDrawer({
               </div>
 
               <button
+                type="button"
                 onClick={onClose}
                 className="
                   bg-stone-100
@@ -387,6 +388,7 @@ export default function CartDrawer({
             {/* BOTON VOLVER */}
             {items.length > 0 && (
               <button
+                type="button"
                 onClick={onClose}
                 className="
                   group
@@ -507,6 +509,7 @@ export default function CartDrawer({
                       <div className="flex items-center bg-white border border-stone-200 rounded-xl p-1 shrink-0">
 
                         <button
+                          type="button"
                           onClick={() =>
                             decreaseQuantity(item.cartId)
                           }
@@ -520,6 +523,7 @@ export default function CartDrawer({
                         </span>
 
                         <button
+                          type="button"
                           onClick={() =>
                             addItem(
                               item,
@@ -564,21 +568,21 @@ export default function CartDrawer({
 
                   {['Delivery', 'Retiro'].map((tipo) => (
                     <button
+                      type="button"
                       key={tipo}
                       onClick={() =>
                         setCustomer({
                           ...customer,
                           tipoEntrega:
                             tipo as
-                              | 'Delivery'
-                              | 'Retiro'
+                            | 'Delivery'
+                            | 'Retiro'
                         })
                       }
-                      className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${
-                        customer.tipoEntrega === tipo
+                      className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${customer.tipoEntrega === tipo
                           ? 'bg-white text-stone-900 shadow-sm'
                           : 'text-stone-400'
-                      }`}
+                        }`}
                     >
                       {tipo === 'Delivery'
                         ? '🛵 Delivery'
@@ -623,114 +627,114 @@ export default function CartDrawer({
 
                   {customer.tipoEntrega ===
                     'Delivery' && (
-                    <div className="space-y-3">
+                      <div className="space-y-3">
 
-                      {/* REFERENCIA */}
-                      <div className="relative overflow-hidden rounded-[1.8rem] border border-[#FFCA28]/20 bg-gradient-to-br from-[#FFCA28]/10 via-orange-50 to-white p-4">
+                        {/* REFERENCIA */}
+                        <div className="relative overflow-hidden rounded-[1.8rem] border border-[#FFCA28]/20 bg-gradient-to-br from-[#FFCA28]/10 via-orange-50 to-white p-4">
 
-                        <div className="flex items-start gap-4">
+                          <div className="flex items-start gap-4">
 
-                          <div className="w-12 h-12 rounded-2xl bg-[#FFCA28] flex items-center justify-center shrink-0">
-                            <span className="text-xl">
-                              📍
-                            </span>
-                          </div>
+                            <div className="w-12 h-12 rounded-2xl bg-[#FFCA28] flex items-center justify-center shrink-0">
+                              <span className="text-xl">
+                                📍
+                              </span>
+                            </div>
 
-                          <div className="min-w-0">
+                            <div className="min-w-0">
 
-                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c79d1a] mb-1">
-                              Referencia del Local
-                            </p>
+                              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#c79d1a] mb-1">
+                                Referencia del Local
+                              </p>
 
-                            <p className="font-black text-stone-900 text-sm uppercase leading-tight">
-                              Calle 853 N° 1149
-                            </p>
+                              <p className="font-black text-stone-900 text-sm uppercase leading-tight">
+                                Calle 853 N° 1149
+                              </p>
 
-                            <p className="text-[11px] text-stone-500 font-bold mt-1 leading-relaxed">
-                              Elegí tu barrio según
-                              qué tan lejos estés del local.
-                            </p>
+                              <p className="text-[11px] text-stone-500 font-bold mt-1 leading-relaxed">
+                                Elegí tu barrio según
+                                qué tan lejos estés del local.
+                              </p>
 
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* SELECT */}
-                      <select
-                        className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none"
-                        value={customer.barrio}
-                        onChange={(e) =>
-                          setCustomer({
-                            ...customer,
-                            barrio: e.target.value
-                          })
-                        }
-                      >
-
-                        <option value="">
-                          📍 SELECCIONÁ TU BARRIO
-                        </option>
-
-                        {ZONAS_REPARTO.map((zona) => (
-                          <option
-                            key={zona.nombre}
-                            value={zona.nombre}
-                          >
-                            {zona.nombre}
-                            {zona.nombre !==
-                            'Otro Barrio'
-                              ? ` (+$${zona.costo})`
-                              : ''}
-                          </option>
-                        ))}
-
-                      </select>
-
-                      {/* OTRO */}
-                      {customer.barrio ===
-                        'Otro Barrio' && (
-                        <input
-                          type="text"
-                          placeholder="ESCRIBÍ TU BARRIO"
-                          className="w-full bg-stone-50 border border-orange-200 p-4 rounded-2xl font-bold text-xs uppercase outline-none"
-                          value={customer.otroBarrio}
+                        {/* SELECT */}
+                        <select
+                          className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none"
+                          value={customer.barrio}
                           onChange={(e) =>
                             setCustomer({
                               ...customer,
-                              otroBarrio:
+                              barrio: e.target.value
+                            })
+                          }
+                        >
+
+                          <option value="">
+                            📍 SELECCIONÁ TU BARRIO
+                          </option>
+
+                          {ZONAS_REPARTO.map((zona) => (
+                            <option
+                              key={zona.nombre}
+                              value={zona.nombre}
+                            >
+                              {zona.nombre}
+                              {zona.nombre !==
+                                'Otro Barrio'
+                                ? ` (+$${zona.costo})`
+                                : ''}
+                            </option>
+                          ))}
+
+                        </select>
+
+                        {/* OTRO */}
+                        {customer.barrio ===
+                          'Otro Barrio' && (
+                            <input
+                              type="text"
+                              placeholder="ESCRIBÍ TU BARRIO"
+                              className="w-full bg-stone-50 border border-orange-200 p-4 rounded-2xl font-bold text-xs uppercase outline-none"
+                              value={customer.otroBarrio}
+                              onChange={(e) =>
+                                setCustomer({
+                                  ...customer,
+                                  otroBarrio:
+                                    e.target.value
+                                })
+                              }
+                            />
+                          )}
+
+                        {/* DIRECCIÓN */}
+                        <input
+                          type="text"
+                          placeholder="CALLE Y ALTURA"
+                          className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none"
+                          value={customer.calleAltura}
+                          onChange={(e) =>
+                            setCustomer({
+                              ...customer,
+                              calleAltura:
                                 e.target.value
                             })
                           }
                         />
-                      )}
 
-                      {/* DIRECCIÓN */}
-                      <input
-                        type="text"
-                        placeholder="CALLE Y ALTURA"
-                        className="w-full bg-stone-50 border border-stone-100 p-4 rounded-2xl font-bold text-xs uppercase outline-none"
-                        value={customer.calleAltura}
-                        onChange={(e) =>
-                          setCustomer({
-                            ...customer,
-                            calleAltura:
-                              e.target.value
-                          })
-                        }
-                      />
+                        {/* ALERTA */}
+                        {customer.barrio ===
+                          'Otro Barrio' && (
+                            <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl">
+                              <p className="text-[11px] font-black uppercase text-orange-600 leading-relaxed">
+                                ⚠️ Vamos a revisar manualmente el costo de envío para tu zona.
+                              </p>
+                            </div>
+                          )}
 
-                      {/* ALERTA */}
-                      {customer.barrio ===
-                        'Otro Barrio' && (
-                        <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl">
-                          <p className="text-[11px] font-black uppercase text-orange-600 leading-relaxed">
-                            ⚠️ Vamos a revisar manualmente el costo de envío para tu zona.
-                          </p>
-                        </div>
-                      )}
-
-                    </div>
-                  )}
+                      </div>
+                    )}
 
                   {/* METODO PAGO */}
                   <div className="space-y-4 pt-2">
@@ -743,6 +747,7 @@ export default function CartDrawer({
 
                       {['Efectivo', 'Transferencia', 'QR'].map((pago) => (
                         <button
+                          type="button"
                           key={pago}
                           onClick={() =>
                             setCustomer({
@@ -750,11 +755,10 @@ export default function CartDrawer({
                               metodoPago: pago
                             })
                           }
-                          className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${
-                            customer.metodoPago === pago
+                          className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago
                               ? 'bg-stone-900 text-white border-stone-900'
                               : 'bg-white border-stone-100 text-stone-400'
-                          }`}
+                            }`}
                         >
                           {pago}
                         </button>
@@ -764,71 +768,70 @@ export default function CartDrawer({
 
                     {customer.metodoPago ===
                       'Transferencia' && (
-                      <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem]">
+                        <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem]">
 
-                        <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">
-                          Alias de Pago
-                        </p>
+                          <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">
+                            Alias de Pago
+                          </p>
 
-                        <div
-                          onClick={handleCopyAlias}
-                          className="flex items-center justify-between gap-3 bg-white p-4 rounded-2xl cursor-pointer border border-blue-100 active:scale-[0.98] transition-all"
-                        >
-
-                          <span className="font-black text-blue-900 text-sm truncate">
-                            {ALIAS_TRANSFERENCIA}
-                          </span>
-
-                          <span
-                            className={`text-[9px] font-black uppercase px-2 py-1 rounded-full shrink-0 ${
-                              copied
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-blue-100 text-blue-600'
-                            }`}
+                          <div
+                            onClick={handleCopyAlias}
+                            className="flex items-center justify-between gap-3 bg-white p-4 rounded-2xl cursor-pointer border border-blue-100 active:scale-[0.98] transition-all"
                           >
-                            {copied ? '¡Copiado!' : 'Copiar'}
-                          </span>
 
-                        </div>
-                      </div>
-                    )}
-
-                    {customer.metodoPago ===
-                      'Efectivo' && (
-                      <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-[2rem]">
-
-                        <p className="text-[9px] font-black uppercase text-emerald-400 mb-3 tracking-wider">
-                          ¿Con cuánto pagás?
-                        </p>
-
-                        <input
-                          type="number"
-                          className="w-full bg-white p-4 rounded-2xl font-black text-emerald-900 border border-emerald-100 outline-none"
-                          value={montoEfectivo}
-                          onChange={(e) =>
-                            setMontoEfectivo(
-                              e.target.value
-                            )
-                          }
-                          placeholder={`$${montoTotalFinal}`}
-                        />
-
-                        {vuelto > 0 && (
-                          <div className="mt-4 flex justify-between items-center px-2">
-
-                            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
-                              Tu Vuelto:
+                            <span className="font-black text-blue-900 text-sm truncate">
+                              {ALIAS_TRANSFERENCIA}
                             </span>
 
-                            <span className="text-lg font-black text-emerald-700">
-                              ${vuelto.toLocaleString('es-AR')}
+                            <span
+                              className={`text-[9px] font-black uppercase px-2 py-1 rounded-full shrink-0 ${copied
+                                  ? 'bg-emerald-500 text-white'
+                                  : 'bg-blue-100 text-blue-600'
+                                }`}
+                            >
+                              {copied ? '¡Copiado!' : 'Copiar'}
                             </span>
 
                           </div>
-                        )}
+                        </div>
+                      )}
 
-                      </div>
-                    )}
+                    {customer.metodoPago ===
+                      'Efectivo' && (
+                        <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-[2rem]">
+
+                          <p className="text-[9px] font-black uppercase text-emerald-400 mb-3 tracking-wider">
+                            ¿Con cuánto pagás?
+                          </p>
+
+                          <input
+                            type="number"
+                            className="w-full bg-white p-4 rounded-2xl font-black text-emerald-900 border border-emerald-100 outline-none"
+                            value={montoEfectivo}
+                            onChange={(e) =>
+                              setMontoEfectivo(
+                                e.target.value
+                              )
+                            }
+                            placeholder={`$${montoTotalFinal}`}
+                          />
+
+                          {vuelto > 0 && (
+                            <div className="mt-4 flex justify-between items-center px-2">
+
+                              <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                                Tu Vuelto:
+                              </span>
+
+                              <span className="text-lg font-black text-emerald-700">
+                                ${vuelto.toLocaleString('es-AR')}
+                              </span>
+
+                            </div>
+                          )}
+
+                        </div>
+                      )}
 
                   </div>
 
@@ -889,11 +892,11 @@ export default function CartDrawer({
 
                 <span>
                   {customer.tipoEntrega ===
-                  'Retiro'
+                    'Retiro'
                     ? 'N/A'
                     : costoEnvio === 0
-                    ? '¡GRATIS!'
-                    : `$${costoEnvio.toLocaleString(
+                      ? '¡GRATIS!'
+                      : `$${costoEnvio.toLocaleString(
                         'es-AR'
                       )}`}
                 </span>
@@ -917,23 +920,23 @@ export default function CartDrawer({
             </div>
 
             <button
+              type="button"
               disabled={
                 items.length === 0 ||
                 isSending
               }
               onClick={handleCheckout}
-              className={`w-full py-5 rounded-[2rem] font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] ${
-                !isFormValid ||
-                items.length === 0
+              className={`w-full py-5 rounded-[2rem] font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] ${!isFormValid ||
+                  items.length === 0
                   ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
                   : 'bg-[#FFCA28] text-stone-950 hover:bg-[#D32F2F] hover:text-white'
-              }`}
+                }`}
             >
               {isSending
                 ? 'PROCESANDO...'
                 : isFormValid
-                ? 'Confirmar Pedido ➔'
-                : 'Completá tus datos'}
+                  ? 'Confirmar Pedido ➔'
+                  : 'Completá tus datos'}
             </button>
 
           </div>
