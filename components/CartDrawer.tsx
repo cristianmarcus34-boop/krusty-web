@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useMemo } from 'react';
-import { useCartStore } from '../store/cartStore.ts';
-import { supabase } from '../lib/supabase.ts';
+import { useCartStore } from '../store/cartStore';
+import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
 
 const ZONAS_REPARTO = [
@@ -307,8 +307,8 @@ export default function CartDrawer({
       {/* OVERLAY */}
       <div
         className={`fixed inset-0 bg-stone-900/40 z-[60] backdrop-blur-md transition-all duration-500 ${isOpen
-            ? 'opacity-100 visible'
-            : 'opacity-0 invisible'
+          ? 'opacity-100 visible'
+          : 'opacity-0 invisible'
           }`}
         onClick={onClose}
       />
@@ -316,8 +316,8 @@ export default function CartDrawer({
       {/* DRAWER */}
       <div
         className={`fixed inset-y-0 right-0 z-[70] w-full sm:max-w-[450px] bg-white shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen
-            ? 'translate-x-0'
-            : 'translate-x-full'
+          ? 'translate-x-0'
+          : 'translate-x-full'
           }`}
       >
         <div
@@ -580,8 +580,8 @@ export default function CartDrawer({
                         })
                       }
                       className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${customer.tipoEntrega === tipo
-                          ? 'bg-white text-stone-900 shadow-sm'
-                          : 'text-stone-400'
+                        ? 'bg-white text-stone-900 shadow-sm'
+                        : 'text-stone-400'
                         }`}
                     >
                       {tipo === 'Delivery'
@@ -756,8 +756,8 @@ export default function CartDrawer({
                             })
                           }
                           className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago
-                              ? 'bg-stone-900 text-white border-stone-900'
-                              : 'bg-white border-stone-100 text-stone-400'
+                            ? 'bg-stone-900 text-white border-stone-900'
+                            : 'bg-white border-stone-100 text-stone-400'
                             }`}
                         >
                           {pago}
@@ -785,8 +785,8 @@ export default function CartDrawer({
 
                             <span
                               className={`text-[9px] font-black uppercase px-2 py-1 rounded-full shrink-0 ${copied
-                                  ? 'bg-emerald-500 text-white'
-                                  : 'bg-blue-100 text-blue-600'
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-blue-100 text-blue-600'
                                 }`}
                             >
                               {copied ? '¡Copiado!' : 'Copiar'}
@@ -927,9 +927,9 @@ export default function CartDrawer({
               }
               onClick={handleCheckout}
               className={`w-full py-5 rounded-[2rem] font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] ${!isFormValid ||
-                  items.length === 0
-                  ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
-                  : 'bg-[#FFCA28] text-stone-950 hover:bg-[#D32F2F] hover:text-white'
+                items.length === 0
+                ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
+                : 'bg-[#FFCA28] text-stone-950 hover:bg-[#D32F2F] hover:text-white'
                 }`}
             >
               {isSending
