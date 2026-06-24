@@ -1,11 +1,12 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import BurgerCard from '@/components/BurgerCard';
-import { Burger } from '@/types';
-import { supabase } from '@/lib/supabase';
+import BurgerCard from '../components/BurgerCard.tsx';
+import { Burger } from '../types/index.ts';
+import { supabase } from '../lib/supabase.ts';
 import Link from 'next/link';
 import Image from 'next/image';
+import KrustyLoader from '@/components/KrustyLoader.tsx';
 
 export default function Home() {
   const [items, setItems] = useState<Burger[]>([]);
@@ -22,8 +23,7 @@ export default function Home() {
     { id: 'combos', label: 'Combos', icon: '🎁' }
   ];
 
-  // Schema.org para SEO - Movido a una constante estática fuera del render si fuera posible, 
-  // pero aquí lo mantenemos limpio.
+  // Schema.org para SEO
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Restaurant",
@@ -53,7 +53,7 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      // Optimizamos la query: solo pedimos lo que necesitamos para la card
+      // deno-lint-ignore no-unused-vars
       const { data, error } = await supabase
         .from('productos')
         .select('*, adicionales:producto_adicionales(adicionales(*))')
@@ -77,14 +77,13 @@ export default function Home() {
     checkAdminSession();
 
     const handleScroll = () => {
-      // Usamos requestAnimationFrame para que el scroll no bloquee el hilo principal
-      window.requestAnimationFrame(() => {
-        setIsScrolled(window.scrollY > 50);
+      globalThis.requestAnimationFrame(() => {
+        setIsScrolled(globalThis.scrollY > 50);
       });
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    globalThis.addEventListener('scroll', handleScroll, { passive: true });
+    return () => globalThis.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
   // Filtrado optimizado
@@ -92,14 +91,21 @@ export default function Home() {
     ? items
     : items.filter(item => item.categoria.toLowerCase() === categoriaActual.toLowerCase());
 
+  // Si está cargando, mostrar el KrustyLoader
+  if (loading) {
+    return <KrustyLoader />;
+  }
+
   return (
     <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
-      
+
+      {/* Schema.org JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
+      {/* Botón de Admin */}
       {isAdmin && (
         <Link href="/admin" className="fixed bottom-28 left-4 z-[110] active:scale-90 transition-transform">
           <div className="bg-black text-[#FFCA28] p-4 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-[#FFCA28]">
@@ -108,7 +114,9 @@ export default function Home() {
         </Link>
       )}
 
-      {/* HERO SECTION */}
+      {/* ============================================
+          HERO SECTION
+          ============================================ */}
       <header className="relative pt-24 pb-20 px-6 overflow-hidden bg-white border-b-4 border-black">
         <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center text-center">
           <div className="inline-block bg-[#D32F2F] text-white text-[11px] font-black px-5 py-2 rounded-full mb-8 uppercase tracking-tighter border-2 border-black shadow-[3px_3px_0px_0px_black]">
@@ -116,7 +124,7 @@ export default function Home() {
           </div>
 
           <div className="mb-10 relative flex justify-center items-center">
-            {/* Brillo optimizado: Usamos opacity fija para evitar recalcular blur en el thread principal */}
+            {/* Brillo optimizado */}
             <div className="absolute inset-0 bg-[#FFCA28]/20 blur-[80px] rounded-full scale-[2] pointer-events-none" aria-hidden="true" />
 
             <div className="relative w-64 h-64 md:w-80 md:h-80 animate-float">
@@ -137,14 +145,15 @@ export default function Home() {
           <h1 className="font-krusty text-3xl md:text-5xl text-black mb-4 leading-none uppercase">
             El sabor que te <span className="text-[#D32F2F]">hace reír</span>
           </h1>
-          {/* ACCESIBILIDAD: Oscurecemos el gris del subtítulo */}
           <p className="text-sm md:text-base font-bold text-[#52525b] max-w-lg leading-[1.5] italic">
             Ingredientes de primera calidad, procesados por el mismísimo Krusty en Villa La Florida.
           </p>
         </div>
       </header>
 
-      {/* NAV DE CATEGORÍAS */}
+      {/* ============================================
+          NAV DE CATEGORÍAS
+          ============================================ */}
       <nav className={`sticky z-40 transition-all duration-300 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
         ${isScrolled ? 'top-16 shadow-md' : 'top-24'}`}
       >
@@ -152,6 +161,7 @@ export default function Home() {
           <div className="flex gap-2 md:gap-4 px-6 py-4 md:justify-center min-w-max">
             {categorias.map((cat) => (
               <button
+                type="button"
                 key={cat.id}
                 onClick={() => setCategoriaActual(cat.id)}
                 className={`
@@ -170,7 +180,9 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* SECCIÓN DE PRODUCTOS */}
+      {/* ============================================
+          SECCIÓN DE PRODUCTOS
+          ============================================ */}
       <section className="max-w-7xl mx-auto px-6 mt-12 md:mt-20">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <div>
@@ -184,31 +196,28 @@ export default function Home() {
           </p>
         </div>
 
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <div className="w-16 h-16 border-[6px] border-stone-200 border-t-[#D32F2F] rounded-full animate-spin" />
-            <p className="mt-6 font-krusty text-xl tracking-widest text-black uppercase">Cocinando...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-10 md:gap-y-16">
-            {filtrados.length > 0 ? (
-              filtrados.map((item) => (
-                <div key={item.id} className="transition-opacity duration-500">
-                  <BurgerCard burger={item} />
-                </div>
-              ))
-            ) : (
-              <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
-                <span className="text-8xl block mb-6">🤡</span>
-                <p className="font-krusty text-3xl text-black px-6 uppercase">
-                  ¡Ay caramba! No hay nada disponible.
-                </p>
+        {/* Grid de productos */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-10 md:gap-y-16">
+          {filtrados.length > 0 ? (
+            filtrados.map((item) => (
+              <div key={item.id} className="transition-opacity duration-500">
+                <BurgerCard burger={item} />
               </div>
-            )}
-          </div>
-        )}
+            ))
+          ) : (
+            <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
+              <span className="text-8xl block mb-6">🤡</span>
+              <p className="font-krusty text-3xl text-black px-6 uppercase">
+                ¡Ay caramba! No hay nada disponible.
+              </p>
+            </div>
+          )}
+        </div>
       </section>
 
+      {/* ============================================
+          ESTILOS GLOBALES
+          ============================================ */}
       <style jsx global>{`
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

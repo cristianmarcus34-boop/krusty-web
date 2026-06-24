@@ -130,3 +130,75 @@ h1, h2, h3, h4, .font-krusty {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
+
+/* ==========================================
+   TEMA OSCURO/CLARO KRUSTY
+   ========================================== */
+
+/* Variables por defecto (modo claro) */
+:root {
+  --bg-primary: #FAD02C;
+  --bg-secondary: #FFFDF0;
+  --bg-card: #FFFDF0;
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --text-muted: #666666;
+  --border-color: #000000;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --accent-color: #E21B22;
+  --accent-hover: #b0151a;
+}
+
+/* Variables para modo oscuro */
+.dark {
+  --bg-primary: #1a0a0a;
+  --bg-secondary: #2d1212;
+  --bg-card: #2d1212;
+  --text-primary: #FAD02C;
+  --text-secondary: #FFD700;
+  --text-muted: #aa8833;
+  --border-color: #FAD02C;
+  --shadow-color: rgba(250, 208, 44, 0.2);
+  --accent-color: #E21B22;
+  --accent-hover: #ff3333;
+}
+
+/* Transiciones suaves para todos los elementos */
+* {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease, 
+              border-color 0.3s ease, 
+              box-shadow 0.3s ease;
+}
+
+/* Aplicar variables al body */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+/* Clase helper para elementos que cambian con el tema */
+.theme-transition {
+  transition: background-color 0.3s ease, 
+              color 0.3s ease, 
+              border-color 0.3s ease, 
+              box-shadow 0.3s ease;
+}
+
+/* Scrollbar personalizado */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-color);
+  border: 2px solid var(--border-color);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
+}
