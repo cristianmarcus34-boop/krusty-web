@@ -1,12 +1,12 @@
+// deno-lint-ignore-file no-sloppy-imports
 'use client';
-
 import { useState, useEffect, useCallback } from 'react';
-import BurgerCard from '../components/BurgerCard.tsx';
+import BurgerCard from '../components/BurgerCard';
 import { Burger } from '../types/index.ts';
 import { supabase } from '../lib/supabase.ts';
 import Link from 'next/link';
 import Image from 'next/image';
-import KrustyLoader from '@/components/KrustyLoader.tsx';
+import KrustyLoader from '@/components/KrustyLoader';
 
 export default function Home() {
   const [items, setItems] = useState<Burger[]>([]);
