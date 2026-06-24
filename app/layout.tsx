@@ -1,22 +1,23 @@
+// deno-lint-ignore-file no-sloppy-imports
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Navbar from "../components/Navbar.tsx";
-import StatusBar from '../components/StatusBar.tsx';
+import Navbar from "../components/Navbar";
+import StatusBar from '../components/StatusBar';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata, Viewport } from 'next';
-import GestorDeActualizaciones from '../components/GestorDeActualizaciones.tsx';
+import GestorDeActualizaciones from '../components/GestorDeActualizaciones';
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // ============================================
 // NUEVAS IMPORTACIONES - MEJORAS VISUALES
 // ============================================
-import { ThemeProvider } from './context/ThemeContext.tsx';
-import KrustyCursor from '../components/KrustyCursor.tsx';
-import KrustyParticles from '../components/KrustyParticles.tsx';
-import SauceRain from '../components/SauceRain.tsx';
-import ThemeToggle from '../components/ThemeToggle.tsx';
+import { ThemeProvider } from './context/ThemeContext';
+import KrustyCursor from '../components/KrustyCursor';
+import KrustyParticles from '../components/KrustyParticles';
+import SauceRain from '../components/SauceRain';
+import ThemeToggle from '../components/ThemeToggle';
 
 // 1. Optimizamos Inter con swap para evitar el "Flash of Unstyled Text"
 const inter = Inter({
