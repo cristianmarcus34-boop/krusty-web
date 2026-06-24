@@ -2,8 +2,8 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import BurgerCard from '../components/BurgerCard';
-import { Burger } from '../types/index.ts';
-import { supabase } from '../lib/supabase.ts';
+import { Burger } from '../types/index';
+import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import Image from 'next/image';
 import KrustyLoader from '@/components/KrustyLoader';
