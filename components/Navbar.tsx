@@ -86,7 +86,8 @@ export default function Navbar() {
             : 'h-24 bg-transparent translate-y-0'}`}
         >
           <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
-            {/* LOGO PRINCIPAL IZQUIERDA - Redondeado con SVG */}
+
+            {/* LOGO PRINCIPAL IZQUIERDA - CON UNOPTIMIZED */}
             <div className="flex items-center">
               <Link
                 href="/"
@@ -94,26 +95,19 @@ export default function Navbar() {
                 className={`relative transition-all duration-500 hover:rotate-12 active:scale-95
                   ${isScrolled ? 'w-10 h-10' : 'w-14 h-14'}`}
               >
-                <svg viewBox="0 0 100 100" className="w-full h-full">
-                  <defs>
-                    <clipPath id="logoClipNavbar">
-                      <circle cx="50" cy="50" r="50" />
-                    </clipPath>
-                  </defs>
-                  <image
-                    href="/images/Krustyargentina.jpeg"
-                    x="0"
-                    y="0"
-                    width="100"
-                    height="100"
-                    clipPath="url(#logoClipNavbar)"
-                    preserveAspectRatio="xMidYMid slice"
-                  />
-                </svg>
+                <Image
+                  src="/images/Krustyargentina.jpeg"
+                  alt="Krusty Logo"
+                  fill
+                  className="object-cover rounded-full"
+                  priority
+                  sizes="(max-width: 768px) 40px, 56px"
+                  unoptimized
+                />
               </Link>
             </div>
 
-            {/* LOGO MINI CENTRO - Redondeado con SVG */}
+            {/* LOGO MINI CENTRO - CON UNOPTIMIZED */}
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
               <Link
                 href="/"
@@ -123,23 +117,16 @@ export default function Navbar() {
                     ? 'opacity-100 translate-y-0 scale-100'
                     : 'opacity-0 -translate-y-4 scale-90 pointer-events-none'}`}
               >
-                <div className="hidden md:block mr-2 w-8 h-8">
-                  <svg viewBox="0 0 100 100" className="w-full h-full">
-                    <defs>
-                      <clipPath id="logoMiniClip">
-                        <circle cx="50" cy="50" r="50" />
-                      </clipPath>
-                    </defs>
-                    <image
-                      href="/images/Krustyargentina.jpeg"
-                      x="0"
-                      y="0"
-                      width="100"
-                      height="100"
-                      clipPath="url(#logoMiniClip)"
-                      preserveAspectRatio="xMidYMid slice"
-                    />
-                  </svg>
+                {/* Logo mini con redondeo */}
+                <div className="relative hidden md:block w-8 h-8 mr-2">
+                  <Image
+                    src="/images/Krustyargentina.jpeg"
+                    alt="Krusty Logo"
+                    fill
+                    className="object-cover rounded-full"
+                    sizes="32px"
+                    unoptimized
+                  />
                 </div>
 
                 <h1 className="text-xl md:text-2xl font-black italic tracking-tighter whitespace-nowrap">
@@ -148,6 +135,7 @@ export default function Navbar() {
               </Link>
             </div>
 
+            {/* BOTÓN CARRITO */}
             <div className="flex items-center">
               <button
                 id="carrito-btn"
@@ -176,6 +164,7 @@ export default function Navbar() {
                 )}
               </button>
             </div>
+
           </div>
         </nav>
       </div>
