@@ -23,7 +23,6 @@ export default function Home() {
     { id: 'combos', label: 'Combos', icon: '🎁' }
   ];
 
-  // Schema.org para SEO
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Restaurant",
@@ -53,7 +52,6 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      // deno-lint-ignore no-unused-vars
       const { data, error } = await supabase
         .from('productos')
         .select('*, adicionales:producto_adicionales(adicionales(*))')
@@ -86,12 +84,19 @@ export default function Home() {
     return () => globalThis.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
-  // Filtrado optimizado
   const filtrados = categoriaActual === 'todos'
     ? items
     : items.filter(item => item.categoria.toLowerCase() === categoriaActual.toLowerCase());
 
-  // Si está cargando, mostrar el KrustyLoader
+  const handleVerCombos = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setCategoriaActual('combos');
+    const menuSection = document.getElementById('menu-section');
+    if (menuSection) {
+      menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   if (loading) {
     return <KrustyLoader />;
   }
@@ -99,13 +104,11 @@ export default function Home() {
   return (
     <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
 
-      {/* Schema.org JSON-LD */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Botón de Admin */}
       {isAdmin && (
         <Link href="/admin" className="fixed bottom-28 left-4 z-[110] active:scale-90 transition-transform">
           <div className="bg-black text-[#FFCA28] p-4 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-[#FFCA28]">
@@ -115,7 +118,7 @@ export default function Home() {
       )}
 
       {/* ============================================
-          HERO SECTION
+          HERO SECTION - LOGO REDONDEADO CON SVG
           ============================================ */}
       <header className="relative pt-24 pb-20 px-6 overflow-hidden bg-white border-b-4 border-black">
         <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center text-center">
@@ -124,21 +127,25 @@ export default function Home() {
           </div>
 
           <div className="mb-10 relative flex justify-center items-center">
-            {/* Brillo optimizado */}
             <div className="absolute inset-0 bg-[#FFCA28]/20 blur-[80px] rounded-full scale-[2] pointer-events-none" aria-hidden="true" />
 
             <div className="relative w-64 h-64 md:w-80 md:h-80 animate-float">
-              <Image
-                src="/images/Krustyburgerheader.webp"
-                alt="Krusty Burger Logo"
-                width={320}
-                height={320}
-                priority
-                loading="eager"
-                fetchPriority="high"
-                decoding="sync"
-                className="object-contain drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]"
-              />
+              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]">
+                <defs>
+                  <clipPath id="heroLogoClip">
+                    <circle cx="50" cy="50" r="50" />
+                  </clipPath>
+                </defs>
+                <image
+                  href="/images/Krustyburgerheader.webp"
+                  x="0"
+                  y="0"
+                  width="100"
+                  height="100"
+                  clipPath="url(#heroLogoClip)"
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              </svg>
             </div>
           </div>
 
@@ -150,6 +157,94 @@ export default function Home() {
           </p>
         </div>
       </header>
+
+      {/* ============================================
+          SECCIÓN ESPECIAL - MUNDIAL 2026 🇦🇷
+          ============================================ */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#0a1a3a] via-[#1a3a6a] to-[#2d5a8a] border-y-4 border-black py-20 px-6">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-[#FFCA28]/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[#FFCA28]/10 to-transparent" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-1/2 border-2 border-white/20 rounded-full" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/3 border-2 border-white/20 rounded-full" />
+        </div>
+
+        <div className="absolute inset-0">
+          <div className="absolute top-10 left-10 text-4xl animate-pulse">⭐</div>
+          <div className="absolute top-10 right-10 text-4xl animate-pulse delay-200">⭐</div>
+          <div className="absolute bottom-10 left-10 text-4xl animate-pulse delay-300">⭐</div>
+          <div className="absolute bottom-10 right-10 text-4xl animate-pulse delay-100">⭐</div>
+          <div className="absolute top-1/2 left-5 text-3xl animate-pulse delay-500">⭐</div>
+          <div className="absolute top-1/2 right-5 text-3xl animate-pulse delay-400">⭐</div>
+          <div className="absolute top-20 left-1/3 text-3xl animate-pulse delay-150">⭐</div>
+          <div className="absolute bottom-20 right-1/3 text-3xl animate-pulse delay-250">⭐</div>
+          <div className="absolute top-1/3 left-10 text-3xl animate-pulse delay-350">⭐</div>
+          <div className="absolute bottom-1/3 right-10 text-3xl animate-pulse delay-450">⭐</div>
+        </div>
+
+        <div className="max-w-5xl mx-auto relative z-10 text-center">
+          <div className="inline-flex items-center gap-2 bg-[#D32F2F] text-white text-[10px] font-black px-4 py-1.5 rounded-full mb-6 uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_black]">
+            <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse" />
+            ¡VIVIMOS EL MUNDIAL 2026!
+            <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse delay-150" />
+          </div>
+
+          <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
+            {/* ESCUDO DE ARGENTINA CON ANIMACIÓN BOUNCE */}
+            <div className="flex-shrink-0 group animate-bounce">
+              <div className="relative">
+                <div className="absolute -inset-4 bg-[#FFCA28]/20 rounded-full blur-2xl animate-pulse" />
+                <div className="relative w-36 h-36 md:w-44 md:h-44 transform -rotate-6 group-hover:rotate-12 group-hover:scale-105 transition-all duration-500">
+                  <Image
+                    src="/images/escudoafa.png"
+                    alt="Escudo de Argentina"
+                    fill
+                    className="object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]"
+                    sizes="176px"
+                    priority
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <h2 className="font-krusty text-4xl md:text-6xl text-white uppercase drop-shadow-[3px_3px_0px_black] leading-none mb-3">
+                ¡Vamos por la <span className="text-[#FFCA28]">4ta</span> Estrella!
+              </h2>
+              <p className="text-white/90 text-sm md:text-base font-bold max-w-2xl mx-auto leading-relaxed drop-shadow-[1px_1px_0px_rgba(0,0,0,0.5)]">
+                Con 3 estrellas en el pecho, la Argentina busca la gloria eterna.
+                Sumate a la fiesta con nuestros combos especiales. ¡Dale campeón! ⚽🏆
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-2xl">⭐</span>
+                  <span className="text-white font-black text-sm">3 Estrellas</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-2xl">🏆</span>
+                  <span className="text-white font-black text-sm">¡Vamos por la 4ta!</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-2xl">⚽</span>
+                  <span className="text-white font-black text-sm">Mundial 2026</span>
+                </div>
+              </div>
+
+              <div className="mt-8 inline-block relative group/btn">
+                <div className="absolute -inset-1 bg-[#FFCA28]/30 rounded-full blur-md group-hover/btn:blur-xl transition-all animate-pulse" />
+                <button
+                  onClick={handleVerCombos}
+                  className="relative inline-flex items-center gap-3 bg-[#FFCA28] text-black font-black px-10 py-4 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all uppercase text-sm tracking-wider cursor-pointer"
+                >
+                  <span>Ver Combos Especiales</span>
+                  <span className="text-xl">🏆</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* ============================================
           NAV DE CATEGORÍAS
@@ -183,7 +278,7 @@ export default function Home() {
       {/* ============================================
           SECCIÓN DE PRODUCTOS
           ============================================ */}
-      <section className="max-w-7xl mx-auto px-6 mt-12 md:mt-20">
+      <section id="menu-section" className="max-w-7xl mx-auto px-6 mt-12 md:mt-20">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
           <div>
             <h2 className="font-krusty text-4xl md:text-5xl text-black tracking-normal uppercase">
@@ -196,7 +291,6 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Grid de productos */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-10 md:gap-y-16">
           {filtrados.length > 0 ? (
             filtrados.map((item) => (

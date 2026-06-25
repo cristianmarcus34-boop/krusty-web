@@ -6,7 +6,8 @@
   src: url('/fonts/Simpsonfont.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: swap; /* Evita que el texto desaparezca mientras carga */
+  font-display: swap;
+  /* Evita que el texto desaparezca mientras carga */
 }
 
 /* Variables de marca */
@@ -21,11 +22,11 @@
 body {
   background-color: var(--krusty-stone);
   color: var(--krusty-black);
-  
+
   /* Textura simplificada para evitar lag al hacer scroll en mobile */
   background-image: radial-gradient(#e5e7eb 0.5px, transparent 0.5px);
   background-size: 32px 32px;
-  
+
   font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
@@ -33,7 +34,11 @@ body {
 }
 
 /* 2. Estilo de Títulos Simpson - Optimización de Renderizado */
-h1, h2, h3, h4, .font-krusty {
+h1,
+h2,
+h3,
+h4,
+.font-krusty {
   font-family: 'Simpsonfont', sans-serif !important;
   font-weight: normal;
   text-transform: uppercase;
@@ -44,15 +49,22 @@ h1, h2, h3, h4, .font-krusty {
 }
 
 /* 3. Utilidades */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 /* 4. Efecto Sticker - GPU Accelerated */
 .sticker {
   border: 3px solid black;
   box-shadow: 5px 5px 0px 0px rgba(0, 0, 0, 1);
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
-  will-change: transform; /* Prepara a la GPU para la animación */
+  will-change: transform;
+  /* Prepara a la GPU para la animación */
 }
 
 .sticker:hover {
@@ -61,21 +73,37 @@ h1, h2, h3, h4, .font-krusty {
 }
 
 /* 5. Scrollbar Estilo Springfield */
-::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-track { background: var(--krusty-stone); }
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--krusty-stone);
+}
+
 ::-webkit-scrollbar-thumb {
   background: var(--krusty-black);
   border-radius: 10px;
   border: 2px solid var(--krusty-stone);
 }
-::-webkit-scrollbar-thumb:hover { background: var(--krusty-red); }
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--krusty-red);
+}
 
 /* 7. SISTEMA DE ANIMACIONES - Optimizadas para 60fps */
 
 /* Animación de FLOTACIÓN (Simplificada para no trabar el LCP) */
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 .animate-float {
@@ -85,8 +113,15 @@ h1, h2, h3, h4, .font-krusty {
 
 /* Entrada suave */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(15px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-up {
@@ -95,8 +130,13 @@ h1, h2, h3, h4, .font-krusty {
 
 /* Brillo Shimmer - Optimizado con transform */
 @keyframes shimmer {
-  0% { transform: translateX(-100%) skewX(-15deg); }
-  100% { transform: translateX(100%) skewX(-15deg); }
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+
+  100% {
+    transform: translateX(100%) skewX(-15deg);
+  }
 }
 
 .shimmer-effect {
@@ -107,8 +147,11 @@ h1, h2, h3, h4, .font-krusty {
 .shimmer-effect::after {
   content: "";
   position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
   animation: shimmer 3s infinite;
 }
 
@@ -165,10 +208,10 @@ h1, h2, h3, h4, .font-krusty {
 
 /* Transiciones suaves para todos los elementos */
 * {
-  transition: background-color 0.3s ease, 
-              color 0.3s ease, 
-              border-color 0.3s ease, 
-              box-shadow 0.3s ease;
+  transition: background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 /* Aplicar variables al body */
@@ -179,10 +222,10 @@ body {
 
 /* Clase helper para elementos que cambian con el tema */
 .theme-transition {
-  transition: background-color 0.3s ease, 
-              color 0.3s ease, 
-              border-color 0.3s ease, 
-              box-shadow 0.3s ease;
+  transition: background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
 }
 
 /* Scrollbar personalizado */
