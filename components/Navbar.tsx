@@ -96,7 +96,7 @@ export default function Navbar() {
                   ${isScrolled ? 'w-10 h-10' : 'w-14 h-14'}`}
               >
                 <Image
-                  src="/images/Krustyargentina.png"
+                  src="/images/Krustyburgerheader.webp"
                   alt="Krusty Logo"
                   fill
                   className="object-cover rounded-full"
@@ -120,7 +120,7 @@ export default function Navbar() {
                 {/* Logo mini con redondeo */}
                 <div className="relative hidden md:block w-8 h-8 mr-2">
                   <Image
-                    src="/images/Krustyargentina.png"
+                    src="/images/Krustyburgerheader.webp"
                     alt="Krusty Logo"
                     fill
                     className="object-cover rounded-full"
