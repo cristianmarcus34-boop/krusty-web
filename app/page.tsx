@@ -27,7 +27,7 @@ export default function Home() {
     "@context": "https://schema.org",
     "@type": "Restaurant",
     "name": "Krusty Burger Oficial | Quilmes",
-    "image": "https://krustyburger.com.ar/images/Krustyburgerheader.webp",
+    "image": "https://krustyburger.com.ar/images/Krustyargentina.jpeg",
     "description": "Las mejores hamburguesas de Villa La Florida. ¡Si no se atraganta, no es una Krusty!",
     "servesCuisine": "Hamburguesas, Americana",
     "address": {
@@ -137,7 +137,7 @@ export default function Home() {
                   </clipPath>
                 </defs>
                 <image
-                  href="/images/Krustyburgerheader.webp"
+                  href="/images/Krustyargentina.jpeg"
                   x="0"
                   y="0"
                   width="100"
