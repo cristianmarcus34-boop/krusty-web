@@ -27,7 +27,7 @@ export default function Home() {
     "@context": "https://schema.org",
     "@type": "Restaurant",
     "name": "Krusty Burger Oficial | Quilmes",
-    "image": "https://krustyburger.com.ar/images/Krustyargentina.jpeg",
+    "image": "https://krustyburger.com.ar/images/Krustyburgerheader.webp",
     "description": "Las mejores hamburguesas de Villa La Florida. ¡Si no se atraganta, no es una Krusty!",
     "servesCuisine": "Hamburguesas, Americana",
     "address": {
@@ -137,7 +137,7 @@ export default function Home() {
                   </clipPath>
                 </defs>
                 <image
-                  href="/images/Krustyargentina.jpeg"
+                  href="/images/Krustyburgerheader.webp"
                   x="0"
                   y="0"
                   width="100"
@@ -190,7 +190,7 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
-            {/* ESCUDO DE ARGENTINA CON ANIMACIÓN BOUNCE */}
+            {/* OPCIÓN 2: Imagen del Escudo con animación bounce */}
             <div className="flex-shrink-0 group animate-bounce">
               <div className="relative">
                 <div className="absolute -inset-4 bg-[#FFCA28]/20 rounded-full blur-2xl animate-pulse" />
@@ -201,7 +201,6 @@ export default function Home() {
                     fill
                     className="object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]"
                     sizes="176px"
-                    priority
                   />
                 </div>
               </div>
