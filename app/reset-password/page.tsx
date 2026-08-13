@@ -8,6 +8,7 @@ export default function ResetPasswordPage() {
     const [detected, setDetected] = useState<string>('🔄 Detectando dispositivo...');
 
     useEffect(() => {
+        // ⚠️ Solo se ejecuta en el navegador
         if (typeof window === 'undefined') return;
 
         // ============================================================
@@ -16,8 +17,9 @@ export default function ResetPasswordPage() {
         const url = window.location.href;
         console.log('📍 URL completa:', url);
 
-        // Buscar token en el hash (#access_token=xxx)
         let extractedToken: string | null = null;
+
+        // ✅ Buscar en el hash (#access_token=xxx)
         const hashMatch = url.match(/#access_token=([^&]+)/);
         if (hashMatch) {
             extractedToken = decodeURIComponent(hashMatch[1]);
@@ -40,38 +42,51 @@ export default function ResetPasswordPage() {
         const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
         const esTelefono = esAndroid || esIOS;
 
+        console.log('📱 Dispositivo:', esTelefono ? (esAndroid ? 'Android' : 'iOS') : 'Computadora');
+
+        // ============================================================
+        // 3. CONSTRUIR LA URL DE LA APP CON EL TOKEN
+        // ============================================================
+        let appUrl = 'krustyburger://reset-password';
+        if (extractedToken) {
+            appUrl += `?token=${encodeURIComponent(extractedToken)}`;
+            console.log('🔗 URL de la app con token:', appUrl);
+            setDetected(`📱 Token encontrado ✅ - Redirigiendo...`);
+        } else {
+            console.log('⚠️ No se encontró token en la URL');
+            setDetected('⚠️ No se encontró token. Redirigiendo sin token...');
+        }
+
+        // ============================================================
+        // 4. REDIRIGIR A LA APP (si es teléfono)
+        // ============================================================
         if (esTelefono) {
-            setDetected(`📱 Detectado: ${esAndroid ? 'Android' : 'iOS'}`);
+            // ✅ REDIRIGIR A LA APP INMEDIATAMENTE
+            setTimeout(() => {
+                console.log('🔀 Redirigiendo a:', appUrl);
+                window.location.href = appUrl;
+            }, 500);
 
-            // ============================================================
-            // 3. CONSTRUIR EL DEEP LINK CON EL TOKEN
-            // ============================================================
-            let appUrl = 'krustyburger://reset-password';
-            if (extractedToken) {
-                appUrl += `?token=${encodeURIComponent(extractedToken)}`;
-                console.log('🔗 Redirigiendo a:', appUrl);
-                setDetected(`📱 Detectado: ${esAndroid ? 'Android' : 'iOS'} - Token encontrado ✅`);
-            } else {
-                console.log('⚠️ No se encontró token en la URL');
-                setDetected(`📱 Detectado: ${esAndroid ? 'Android' : 'iOS'} - ⚠️ Token no encontrado`);
-            }
-
-            // ============================================================
-            // 4. REDIRIGIR A LA APP
-            // ============================================================
-            // Intentar abrir la app inmediatamente
-            window.location.href = appUrl;
-
-            // Si la app no está instalada, redirigir a Play Store después de 3 segundos
+            // ⚠️ Si la app no está instalada, redirigir a Play Store
             setTimeout(() => {
                 if (esAndroid) {
+                    console.log('📱 Abriendo Play Store...');
                     window.location.href = 'https://play.google.com/store/apps/details?id=com.agenciapowa.KrustyBurger';
                 }
             }, 3000);
-
         } else {
-            setDetected('🖥️ Detectado: Computadora - La app solo funciona en dispositivos móviles');
+            // 💻 Es una computadora
+            setDetected('🖥️ Computadora - La app solo funciona en dispositivos móviles');
         }
+
+        // ============================================================
+        // 5. LOG DE DEBUG
+        // ============================================================
+        console.log('📊 Estado final:', {
+            extractedToken: extractedToken ? '✅ Sí' : '❌ No',
+            appUrl: appUrl,
+            esTelefono: esTelefono,
+        });
     }, []);
 
     return (
@@ -81,6 +96,7 @@ export default function ResetPasswordPage() {
                 <h1 style={styles.title}>Krusty Burger</h1>
                 <p style={styles.subtitle}>Restablecer contraseña</p>
 
+                {/* ✅ BOTÓN MANUAL PARA ABRIR LA APP */}
                 <a
                     href={token ? `krustyburger://reset-password?token=${encodeURIComponent(token)}` : 'krustyburger://reset-password'}
                     style={styles.button}
@@ -102,9 +118,22 @@ export default function ResetPasswordPage() {
                     </a>
                 </div>
 
+                {/* ✅ INFORMACIÓN DE DEBUG */}
                 <div style={styles.detected}>
                     <p>{detected}</p>
-                    {token && <p style={styles.tokenInfo}>🔑 Token: {token.substring(0, 20)}...</p>}
+                    {token && (
+                        <p style={styles.tokenInfo}>
+                            🔑 Token: {token.substring(0, 20)}...
+                        </p>
+                    )}
+                    {!token && (
+                        <p style={styles.tokenInfo}>
+                            ⚠️ No se encontró token en la URL
+                        </p>
+                    )}
+                    <p style={styles.debugInfo}>
+                        📋 URL: {typeof window !== 'undefined' && window.location.href}
+                    </p>
                 </div>
             </div>
         </div>
@@ -181,6 +210,12 @@ const styles = {
         color: '#F5C518',
         marginTop: '10px',
         fontSize: '12px',
+        wordBreak: 'break-all' as const,
+    },
+    debugInfo: {
+        color: '#666',
+        marginTop: '10px',
+        fontSize: '10px',
         wordBreak: 'break-all' as const,
     },
 } as const;
