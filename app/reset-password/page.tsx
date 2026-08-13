@@ -8,22 +8,34 @@ export default function ResetPasswordPage() {
     const [detected, setDetected] = useState<string>('🔄 Detectando dispositivo...');
 
     useEffect(() => {
-        // ⚠️ Solo se ejecuta en el cliente (navegador)
         if (typeof window === 'undefined') return;
 
-        // Extraer token de la URL
+        // ============================================================
+        // 1. EXTRAER EL TOKEN DE LA URL
+        // ============================================================
         const url = window.location.href;
         console.log('📍 URL completa:', url);
 
         // Buscar token en el hash (#access_token=xxx)
+        let extractedToken: string | null = null;
         const hashMatch = url.match(/#access_token=([^&]+)/);
         if (hashMatch) {
-            const token = decodeURIComponent(hashMatch[1]);
-            console.log('🔑 Token del hash:', token.substring(0, 20) + '...');
-            setToken(token);
+            extractedToken = decodeURIComponent(hashMatch[1]);
+            console.log('🔑 Token del hash:', extractedToken.substring(0, 30) + '...');
+        } else {
+            // Buscar en query string (?access_token=xxx)
+            const queryMatch = url.match(/[?&]access_token=([^&]+)/);
+            if (queryMatch) {
+                extractedToken = decodeURIComponent(queryMatch[1]);
+                console.log('🔑 Token del query:', extractedToken.substring(0, 30) + '...');
+            }
         }
 
-        // Detectar dispositivo
+        setToken(extractedToken);
+
+        // ============================================================
+        // 2. DETECTAR DISPOSITIVO
+        // ============================================================
         const esAndroid = /android/i.test(navigator.userAgent);
         const esIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
         const esTelefono = esAndroid || esIOS;
@@ -31,25 +43,34 @@ export default function ResetPasswordPage() {
         if (esTelefono) {
             setDetected(`📱 Detectado: ${esAndroid ? 'Android' : 'iOS'}`);
 
-            // Redirigir a la app después de 1 segundo
-            const appUrl = token
-                ? `krustyburger://reset-password?token=${encodeURIComponent(token)}`
-                : 'krustyburger://reset-password';
+            // ============================================================
+            // 3. CONSTRUIR EL DEEP LINK CON EL TOKEN
+            // ============================================================
+            let appUrl = 'krustyburger://reset-password';
+            if (extractedToken) {
+                appUrl += `?token=${encodeURIComponent(extractedToken)}`;
+                console.log('🔗 Redirigiendo a:', appUrl);
+                setDetected(`📱 Detectado: ${esAndroid ? 'Android' : 'iOS'} - Token encontrado ✅`);
+            } else {
+                console.log('⚠️ No se encontró token en la URL');
+                setDetected(`📱 Detectado: ${esAndroid ? 'Android' : 'iOS'} - ⚠️ Token no encontrado`);
+            }
 
-            console.log('🔗 Redirigiendo a:', appUrl);
+            // ============================================================
+            // 4. REDIRIGIR A LA APP
+            // ============================================================
+            // Intentar abrir la app inmediatamente
+            window.location.href = appUrl;
 
-            setTimeout(() => {
-                window.location.href = appUrl;
-            }, 1000);
-
-            // Si la app no está instalada, redirigir a Play Store después de 4 segundos
+            // Si la app no está instalada, redirigir a Play Store después de 3 segundos
             setTimeout(() => {
                 if (esAndroid) {
                     window.location.href = 'https://play.google.com/store/apps/details?id=com.agenciapowa.KrustyBurger';
                 }
-            }, 4000);
+            }, 3000);
+
         } else {
-            setDetected('🖥️ Detectado: Computadora');
+            setDetected('🖥️ Detectado: Computadora - La app solo funciona en dispositivos móviles');
         }
     }, []);
 
@@ -61,7 +82,7 @@ export default function ResetPasswordPage() {
                 <p style={styles.subtitle}>Restablecer contraseña</p>
 
                 <a
-                    href={`krustyburger://reset-password${token ? `?token=${encodeURIComponent(token)}` : ''}`}
+                    href={token ? `krustyburger://reset-password?token=${encodeURIComponent(token)}` : 'krustyburger://reset-password'}
                     style={styles.button}
                 >
                     📱 Abrir en la App
@@ -83,7 +104,7 @@ export default function ResetPasswordPage() {
 
                 <div style={styles.detected}>
                     <p>{detected}</p>
-                    {token && <p style={styles.tokenInfo}>🔑 Token encontrado ✅</p>}
+                    {token && <p style={styles.tokenInfo}>🔑 Token: {token.substring(0, 20)}...</p>}
                 </div>
             </div>
         </div>
@@ -159,5 +180,7 @@ const styles = {
     tokenInfo: {
         color: '#F5C518',
         marginTop: '10px',
+        fontSize: '12px',
+        wordBreak: 'break-all' as const,
     },
 } as const;
