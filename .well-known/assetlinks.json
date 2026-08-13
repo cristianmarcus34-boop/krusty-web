@@ -1,0 +1,15 @@
+
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.agenciapowa.KrustyBurger",
+      "sha256_cert_fingerprints": [
+        "90:F7:9B:09:3F:FF:3B:50:21:BB:08:03:35:27:0A:63:98:80:B2:A5:4C:11:47:C7:27:BE:AB:5E:AE:D4:BD:D6",
+        "74:36:1D:AC:74:69:2F:6A:78:7E:C2:67:C2:5E:5A:69:E0:DF:88:6E:94:CF:AE:CF:9E:CE:EA:62:85:EB:17:CA",
+        "9A:28:F1:1A:E5:F2:58:53:8B:5D:2F:70:5B:27:99:2A:D4:76:63:C2"
+      ]
+    }
+  }
+]
