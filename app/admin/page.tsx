@@ -22,33 +22,37 @@ export default function AdminPage() {
           console.error('❌ Error obteniendo sesión:', sessionError);
         }
 
-        console.log('🔍 2. Sesión obtenida:', session?.user?.email || 'No hay sesión');
+        // ✅ Verificación de seguridad para session.user
+        const userEmail = session?.user?.email ?? null;
+        console.log('🔍 2. Sesión obtenida:', userEmail || 'No hay sesión');
 
-        if (!session) {
-          console.log('❌ 3. No hay sesión, redirigiendo...');
+        if (!session || !userEmail) {
+          console.log('❌ 3. No hay sesión o email, redirigiendo...');
           router.push('/admin/login');
           return;
         }
 
-        console.log('🔍 4. Verificando admin en tabla para:', session.user.email);
+        console.log('🔍 4. Verificando admin en tabla para:', userEmail);
+        console.log('🔍 5. Email EXACTO desde sesión:', `"${userEmail}"`);
 
+        // Usar ilike para ignorar mayúsculas/minúsculas y espacios
         const { data, error } = await supabase
           .from('admins')
           .select('email')
-          .eq('email', session.user.email)
+          .ilike('email', userEmail.trim())
           .maybeSingle();
 
-        console.log('🔍 5. Resultado de verificación admin:', data);
-        console.log('🔍 6. Error de verificación:', error);
+        console.log('🔍 6. Resultado de verificación admin:', data);
+        console.log('🔍 7. Error de verificación:', error);
 
         if (!data) {
-          console.log('❌ 7. No es administrador, cerrando sesión...');
+          console.log('❌ 8. No es administrador, cerrando sesión...');
           await supabase.auth.signOut();
           router.push('/admin/login');
           return;
         }
 
-        console.log('✅ 8. Es administrador, mostrando panel');
+        console.log('✅ 9. Es administrador, mostrando panel');
         setLoading(false);
 
       } catch (error) {

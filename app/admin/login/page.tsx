@@ -8,7 +8,7 @@ export default function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); // Estado para el botón
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -17,16 +17,38 @@ export default function AdminLogin() {
     setError(null);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      console.log('🔍 Intentando login con:', email);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
       if (error) {
+        console.error('❌ Error de login:', error.message);
         setError("¡Acceso denegado! Revisa tus credenciales de empleado.");
         setLoading(false);
-      } else {
+        return;
+      }
+
+      console.log('✅ Login exitoso para:', data.user?.email);
+
+      // Verificar que la sesión se estableció correctamente
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session) {
+        console.log('✅ Sesión establecida correctamente');
+        // Pequeña pausa para asegurar que la sesión se propaga
+        await new Promise(resolve => setTimeout(resolve, 500));
         router.push('/admin');
-        router.refresh(); // Asegura que la sesión se actualice en el cliente
+        router.refresh();
+      } else {
+        console.error('❌ No se pudo establecer la sesión');
+        setError("Error al establecer la sesión. Intenta nuevamente.");
+        setLoading(false);
       }
     } catch (err) {
+      console.error('❌ Error inesperado:', err);
       setError("Error de conexión con el servidor de Krusty.");
       setLoading(false);
     }
@@ -34,7 +56,7 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#FFCA28] p-4 relative overflow-hidden">
-      
+
       {/* Decoración de fondo estilo cómic */}
       <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(black 2px, transparent 2px)', backgroundSize: '30px 30px' }} />
 
@@ -45,8 +67,8 @@ export default function AdminLogin() {
         </button>
       </Link>
 
-      <form 
-        onSubmit={handleLogin} 
+      <form
+        onSubmit={handleLogin}
         className="bg-white border-[6px] border-black p-8 rounded-[3rem] shadow-[15px_15px_0px_0px_rgba(0,0,0,1)] max-w-sm w-full relative z-10 animate-in fade-in zoom-in duration-300"
       >
         {/* Logo o Icono temporal */}
@@ -60,7 +82,7 @@ export default function AdminLogin() {
         <p className="text-center text-black font-bold text-[10px] uppercase mb-8 tracking-widest opacity-60">
           Identificación de Seguridad
         </p>
-        
+
         {error && (
           <div className="bg-red-50 text-red-600 p-4 rounded-2xl font-black text-xs mb-6 border-[3px] border-red-600 animate-bounce">
             ⚠️ {error}
@@ -70,9 +92,9 @@ export default function AdminLogin() {
         <div className="space-y-4">
           <div>
             <label className="block text-[10px] font-black uppercase mb-1 ml-2">Email del Payaso</label>
-            <input 
+            <input
               required
-              type="email" 
+              type="email"
               placeholder="empleado@krusty.com"
               className="w-full border-4 border-black p-4 rounded-2xl font-bold focus:outline-none focus:ring-4 focus:ring-[#FFCA28]/30 transition-all"
               onChange={(e) => setEmail(e.target.value)}
@@ -81,9 +103,9 @@ export default function AdminLogin() {
 
           <div>
             <label className="block text-[10px] font-black uppercase mb-1 ml-2">Clave Secreta</label>
-            <input 
+            <input
               required
-              type="password" 
+              type="password"
               placeholder="••••••••"
               className="w-full border-4 border-black p-4 rounded-2xl font-bold focus:outline-none focus:ring-4 focus:ring-[#FFCA28]/30 transition-all"
               onChange={(e) => setPassword(e.target.value)}
@@ -91,11 +113,11 @@ export default function AdminLogin() {
           </div>
         </div>
 
-        <button 
+        <button
           disabled={loading}
           className={`w-full mt-8 text-white font-black py-5 rounded-2xl border-4 border-black shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] transition-all uppercase italic tracking-tighter text-xl
-            ${loading 
-              ? 'bg-gray-400 cursor-not-allowed shadow-none translate-y-1' 
+            ${loading
+              ? 'bg-gray-400 cursor-not-allowed shadow-none translate-y-1'
               : 'bg-[#D32F2F] hover:bg-black active:shadow-none active:translate-x-1 active:translate-y-1'
             }
           `}
