@@ -7,6 +7,13 @@ import TabPedidos from '../../components/TabPedidos';
 import TabProductos from '../../components/TabProductos';
 import TabAdicionales from '../../components/TabAdicionales';
 
+// Lista de respaldo (por si la DB falla)
+const ADMIN_EMAILS_BACKUP = [
+  'cristianmarcus34@gmail.com',
+  'marianajuarez99@gmail.com',
+  'agenciadigitalpowa@gmail.com'
+];
+
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'pedidos' | 'productos' | 'adicionales'>('pedidos');
   const [loading, setLoading] = useState(true);
@@ -22,7 +29,6 @@ export default function AdminPage() {
           console.error('❌ Error obteniendo sesión:', sessionError);
         }
 
-        // ✅ Verificación de seguridad para session.user
         const userEmail = session?.user?.email ?? null;
         console.log('🔍 2. Sesión obtenida:', userEmail || 'No hay sesión');
 
@@ -32,27 +38,50 @@ export default function AdminPage() {
           return;
         }
 
-        console.log('🔍 4. Verificando admin en tabla para:', userEmail);
-        console.log('🔍 5. Email EXACTO desde sesión:', `"${userEmail}"`);
+        console.log('🔍 4. Verificando admin para:', userEmail);
 
-        // Usar ilike para ignorar mayúsculas/minúsculas y espacios
-        const { data, error } = await supabase
-          .from('admins')
-          .select('email')
-          .ilike('email', userEmail.trim())
-          .maybeSingle();
+        let isAdmin = false;
 
-        console.log('🔍 6. Resultado de verificación admin:', data);
-        console.log('🔍 7. Error de verificación:', error);
+        // MÉTODO 1: Intentar consultar la tabla admins
+        try {
+          console.log('🔍 4a. Intentando consulta a tabla admins...');
+          const { data: adminData, error: adminError } = await supabase
+            .from('admins')
+            .select('email')
+            .ilike('email', userEmail.trim())
+            .maybeSingle();
 
-        if (!data) {
-          console.log('❌ 8. No es administrador, cerrando sesión...');
+          console.log('🔍 4b. Resultado de tabla admins:', adminData);
+
+          if (adminError) {
+            console.log('⚠️ Error en consulta DB:', adminError.message);
+          }
+
+          if (adminData) {
+            isAdmin = true;
+            console.log('✅ Encontrado en tabla admins');
+          }
+        } catch (dbError) {
+          console.log('⚠️ Error consultando DB, usando fallback:', dbError);
+        }
+
+        // MÉTODO 2: Si falla la DB, usar lista de respaldo
+        if (!isAdmin) {
+          console.log('🔍 4c. Verificando en lista de respaldo...');
+          isAdmin = ADMIN_EMAILS_BACKUP.some(email =>
+            email.toLowerCase() === userEmail.toLowerCase()
+          );
+          console.log('🔍 4d. ¿Encontrado en respaldo?', isAdmin);
+        }
+
+        if (!isAdmin) {
+          console.log('❌ 5. No es administrador, cerrando sesión...');
           await supabase.auth.signOut();
           router.push('/admin/login');
           return;
         }
 
-        console.log('✅ 9. Es administrador, mostrando panel');
+        console.log('✅ 6. Es administrador, mostrando panel');
         setLoading(false);
 
       } catch (error) {
