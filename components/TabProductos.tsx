@@ -16,10 +16,20 @@ export default function TabProductos() {
 
     const fetchProductos = useCallback(async () => {
         try {
-            // ✅ Ajustado: producto_adicionales puede o no existir
+            // ✅ Ahora con producto_adicionales y adicionales
             const { data, error } = await supabase
                 .from('productos')
-                .select('*')
+                .select(`
+                    *,
+                    producto_adicionales(
+                        adicionales(
+                            id,
+                            nombre,
+                            precio,
+                            descripcion
+                        )
+                    )
+                `)
                 .order('categoria');
 
             if (error) {
@@ -27,7 +37,19 @@ export default function TabProductos() {
                 return;
             }
 
-            if (data) setProductos(data);
+            if (data) {
+                // Procesar los datos para tener un array de adicionales más fácil de usar
+                const processedData = data.map((prod: any) => {
+                    const adicionales = prod.producto_adicionales
+                        ?.map((pa: any) => pa.adicionales)
+                        .filter(Boolean) || [];
+                    return {
+                        ...prod,
+                        adicionales: adicionales
+                    };
+                });
+                setProductos(processedData);
+            }
         } catch (err) {
             console.error('Error inesperado:', err);
         }
@@ -86,6 +108,18 @@ export default function TabProductos() {
             console.error("Error inesperado:", err);
             fetchProductos();
         }
+    };
+
+    // Mostrar adicionales de un producto
+    const mostrarAdicionales = (producto: any) => {
+        if (!producto.adicionales || producto.adicionales.length === 0) {
+            return <span className="text-stone-400 text-xs italic">Sin adicionales</span>;
+        }
+        return producto.adicionales.map((add: any) => (
+            <span key={add.id} className="bg-[#FFCA28] px-2 py-0.5 rounded-full text-[10px] font-black">
+                {add.nombre} (+${add.precio})
+            </span>
+        ));
     };
 
     return (
@@ -167,6 +201,12 @@ export default function TabProductos() {
                                 </select>
                             </div>
                         </div>
+
+                        {/* Mostrar adicionales del producto */}
+                        <div className="flex flex-wrap gap-1">
+                            {mostrarAdicionales(prod)}
+                        </div>
+
                         <textarea
                             value={prod.descripcion || ''}
                             onChange={(e) => handleLocalChange(prod.id, 'descripcion', e.target.value)}
@@ -177,7 +217,7 @@ export default function TabProductos() {
                             <input
                                 type="checkbox"
                                 checked={prod.disponible !== false}
-                                onChange={(e) => handleLocalChange(prod.id, 'disponible', e.target.checked)}
+                                onChange={(e) => handleLocalChange(prod.id, 'disponible', e.target.value)}
                                 className="w-5 h-5"
                             />
                             <span className="font-bold text-xs uppercase">Disponible</span>

@@ -51,12 +51,46 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+
+      // ✅ Consulta con adicionales (producto_adicionales + adicionales)
       const { data, error } = await supabase
         .from('productos')
-        .select('*, adicionales:producto_adicionales(adicionales(*))')
+        .select(`
+          *,
+          producto_adicionales(
+            adicionales(
+              id,
+              nombre,
+              precio,
+              descripcion
+            )
+          )
+        `)
+        .eq('disponible', true)
         .order('nombre', { ascending: true });
 
-      if (data) setItems(data as Burger[]);
+      if (error) {
+        console.error('Error fetching productos:', error);
+        return;
+      }
+
+      if (data) {
+        // ✅ Procesar los datos para tener un array de adicionales fácil de usar
+        const processedData = data.map((item: any) => {
+          // Extraer los adicionales del nested join
+          const adicionales = item.producto_adicionales
+            ?.map((pa: any) => pa.adicionales)
+            .filter((add: any) => add !== null) || [];
+
+          return {
+            ...item,
+            adicionales: adicionales,
+            imagen: item.imagen || '/images/default-burger.jpg',
+            categoria: item.categoria?.toLowerCase() || 'burgers'
+          };
+        });
+        setItems(processedData as Burger[]);
+      }
     } catch (error) {
       console.error('Error cargando el menú:', error);
     } finally {
@@ -65,8 +99,12 @@ export default function Home() {
   }, []);
 
   const checkAdminSession = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session) setIsAdmin(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) setIsAdmin(true);
+    } catch (error) {
+      console.error('Error checking admin session:', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -85,7 +123,10 @@ export default function Home() {
 
   const filtrados = categoriaActual === 'todos'
     ? items
-    : items.filter(item => item.categoria.toLowerCase() === categoriaActual.toLowerCase());
+    : items.filter(item => {
+      const cat = item.categoria?.toLowerCase() || '';
+      return cat === categoriaActual.toLowerCase();
+    });
 
   const handleVerMenu = (e: React.MouseEvent) => {
     e.preventDefault();
