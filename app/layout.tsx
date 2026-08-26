@@ -1,4 +1,4 @@
-// deno-lint-ignore-file no-sloppy-imports
+// app/layout.tsx
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar";
@@ -11,12 +11,9 @@ import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
 // ============================================
-// NUEVAS IMPORTACIONES - MEJORAS VISUALES
+// CONTEXTO DE TEMA
 // ============================================
 import { ThemeProvider } from './context/ThemeContext';
-
-
-
 import ThemeToggle from '../components/ThemeToggle';
 
 // 1. Optimizamos Inter con swap para evitar el "Flash of Unstyled Text"
@@ -73,7 +70,7 @@ export default function RootLayout({
   return (
     <html lang="es" className="scroll-smooth">
       <head>
-        {/* 2. SOLUCIÓN LCP: Preload de la fuente principal */}
+        {/* Preload de la fuente principal */}
         <link
           rel="preload"
           href="/fonts/Simpsonfont.ttf"
@@ -82,7 +79,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
 
-        {/* 3. PRELOAD de imágenes críticas para mejorar LCP */}
+        {/* Preload de imágenes críticas */}
         <link
           rel="preload"
           href="/images/Krustyburgerheader.webp"
@@ -93,32 +90,29 @@ export default function RootLayout({
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
 
         {/* ============================================
-            THEME PROVIDER - Envuelve toda la app
+            THEME PROVIDER - Envuelve TODA la app
             ============================================ */}
         <ThemeProvider>
 
           {/* ============================================
-              COMPONENTES VISUALES GLOBALES
+              COMPONENTES VISUALES GLOBALES (DENTRO DEL PROVIDER)
               ============================================ */}
-
-
-
           <ThemeToggle />
-          {/* ============================================
-              CONTENIDO PRINCIPAL
-              ============================================ */}
           <GestorDeActualizaciones />
           <Navbar />
 
+          {/* ============================================
+              CONTENIDO PRINCIPAL
+              ============================================ */}
           <main className="min-h-[calc(100vh-64px)] pb-32 relative z-10">
             {children}
           </main>
 
           {/* ============================================
-              FOOTER - Actualizado con variables CSS
+              FOOTER
               ============================================ */}
           <footer className="bg-[#1A1A1A] text-stone-300 py-16 px-6 border-t-8] border-black relative overflow-hidden">
-            {/* Trama de fondo - Optimizada con opacidad fija */}
+            {/* Trama de fondo */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '10px 10px' }}>
             </div>
@@ -154,11 +148,9 @@ export default function RootLayout({
                 <Link href="/privacidad" className="hover:text-[#FFCA28] transition-colors">Privacidad</Link>
                 <Link href="/terminos" className="hover:text-[#FFCA28] transition-colors">Términos</Link>
                 <Link href="/defensa" className="hover:text-white transition-colors underline decoration-[#D32F2F] underline-offset-4">Defensa Consumidor</Link>
-                {/* NUEVO ENLACE AL CONTRATO DE KRUSTY */}
                 <Link href="/krusty-legal" className="hover:text-[#FFCA28] transition-colors text-[#FFCA28] animate-pulse">
                   ⚖️ Propiedad de Alma
                 </Link>
-                {/* NUEVO ENLACE A LA GALERÍA DE MUTACIONES */}
                 <Link href="/mutaciones" className="hover:text-[#FFCA28] transition-colors">
                   🧬 Mutaciones
                 </Link>
@@ -171,7 +163,6 @@ export default function RootLayout({
               </div>
 
               <div className="space-y-8">
-                {/* ACCESIBILIDAD: Subimos contraste a stone-400 para fondo oscuro #1A1A1A */}
                 <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
                   © 2026 Springfield Food Group / Quilmes, Buenos Aires.
                 </p>
@@ -203,7 +194,6 @@ export default function RootLayout({
                     </div>
                   </Link>
 
-                  {/* ACCESIBILIDAD: El CUIT y dirección ahora son legibles */}
                   <p className="text-[10px] text-stone-400 max-w-xs mx-auto italic leading-relaxed">
                     Arcos de Springfield S.A. - CUIT: 30-12345678-9 <br />
                     Villa La Florida, Quilmes (CP 1881).
@@ -222,7 +212,6 @@ export default function RootLayout({
                 >
                   🔐 Acceso Staff
                 </Link>
-                {/* NUEVO ENLACE A LEGAL */}
                 <Link
                   href="/krusty-legal"
                   className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-500 hover:text-[#FFCA28] transition-colors duration-300"
@@ -234,11 +223,6 @@ export default function RootLayout({
           </footer>
 
           <StatusBar />
-
-          {/* ============================================
-              BOTÓN DE CAMBIO DE TEMA (Theme Toggle)
-              ============================================ */}
-          <ThemeToggle />
 
           {/* ============================================
               LUCES DE AMBIENTE - Optimizadas

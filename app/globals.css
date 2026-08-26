@@ -7,33 +7,66 @@
   font-weight: normal;
   font-style: normal;
   font-display: swap;
-  /* Evita que el texto desaparezca mientras carga */
 }
 
-/* Variables de marca */
+/* ==========================================
+   SISTEMA DE TEMAS CLARO/OSCURO
+   ========================================== */
+
+/* Variables por defecto (modo claro) */
 :root {
-  --krusty-red: #D32F2F;
-  --krusty-yellow: #FFCA28;
-  --krusty-stone: #FAFAFA;
-  --krusty-black: #1A1A1A;
+  --bg-primary: #FAFAFA;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-input: #F5F5F5;
+  --bg-nav: rgba(255, 255, 255, 0.95);
+  --text-primary: #1A1A1A;
+  --text-secondary: #333333;
+  --text-muted: #666666;
+  --text-inverted: #FFFFFF;
+  --border-color: #000000;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --accent-color: #D32F2F;
+  --accent-hover: #b0151a;
+  --yellow: #FFCA28;
+  --yellow-hover: #f5b800;
 }
 
-/* 1. Reset y Fondo - Optimización de Repaint */
+/* Variables para modo oscuro */
+.dark {
+  --bg-primary: #0d0d0d;
+  --bg-secondary: #1a1a1a;
+  --bg-card: #1f1f1f;
+  --bg-input: #2a2a2a;
+  --bg-nav: rgba(26, 26, 26, 0.95);
+  --text-primary: #FAD02C;
+  --text-secondary: #FFD700;
+  --text-muted: #aa8833;
+  --text-inverted: #1A1A1A;
+  --border-color: #FAD02C;
+  --shadow-color: rgba(250, 208, 44, 0.15);
+  --accent-color: #E21B22;
+  --accent-hover: #ff4444;
+  --yellow: #FAD02C;
+  --yellow-hover: #ffe066;
+}
+
+/* Aplicar variables al body */
 body {
-  background-color: var(--krusty-stone);
-  color: var(--krusty-black);
-
-  /* Textura simplificada para evitar lag al hacer scroll en mobile */
-  background-image: radial-gradient(#e5e7eb 0.5px, transparent 0.5px);
-  background-size: 32px 32px;
-
-  font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* 2. Estilo de Títulos Simpson - Optimización de Renderizado */
+/* Transiciones suaves para todos los elementos */
+* {
+  transition: background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+/* 2. Estilo de Títulos Simpson */
 h1,
 h2,
 h3,
@@ -44,7 +77,6 @@ h4,
   text-transform: uppercase;
   letter-spacing: 0.03em;
   line-height: 1;
-  /* Cambio drop-shadow por text-shadow: mucho más liviano para el procesador */
   text-shadow: 2px 2px 0px #000;
 }
 
@@ -64,7 +96,6 @@ h4,
   box-shadow: 5px 5px 0px 0px rgba(0, 0, 0, 1);
   transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
   will-change: transform;
-  /* Prepara a la GPU para la animación */
 }
 
 .sticker:hover {
@@ -78,22 +109,20 @@ h4,
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--krusty-stone);
+  background: var(--bg-secondary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--krusty-black);
+  background: var(--accent-color);
   border-radius: 10px;
-  border: 2px solid var(--krusty-stone);
+  border: 2px solid var(--border-color);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--krusty-red);
+  background: var(--accent-hover);
 }
 
-/* 7. SISTEMA DE ANIMACIONES - Optimizadas para 60fps */
-
-/* Animación de FLOTACIÓN (Simplificada para no trabar el LCP) */
+/* 7. SISTEMA DE ANIMACIONES */
 @keyframes float {
 
   0%,
@@ -111,7 +140,6 @@ h4,
   will-change: transform;
 }
 
-/* Entrada suave */
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -128,7 +156,6 @@ h4,
   animation: fadeUp 0.5s ease-out forwards;
 }
 
-/* Brillo Shimmer - Optimizado con transform */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%) skewX(-15deg);
@@ -167,81 +194,104 @@ h4,
   background: white;
 }
 
-/* Glass effect optimizado: menos blur para mejor rendimiento en mobile */
 .glass-effect {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
 
+.dark .glass-effect {
+  background: rgba(26, 26, 26, 0.95);
+}
+
 /* ==========================================
-   TEMA OSCURO/CLARO KRUSTY
+   ESTILOS MEJORADOS PARA MODO OSCURO
    ========================================== */
 
-/* Variables por defecto (modo claro) */
-:root {
-  --bg-primary: #FAD02C;
-  --bg-secondary: #FFFDF0;
-  --bg-card: #FFFDF0;
-  --text-primary: #000000;
-  --text-secondary: #333333;
-  --text-muted: #666666;
-  --border-color: #000000;
-  --shadow-color: rgba(0, 0, 0, 0.3);
-  --accent-color: #E21B22;
-  --accent-hover: #b0151a;
+.dark .bg-white {
+  background-color: var(--bg-card) !important;
 }
 
-/* Variables para modo oscuro */
-.dark {
-  --bg-primary: #1a0a0a;
-  --bg-secondary: #2d1212;
-  --bg-card: #2d1212;
-  --text-primary: #FAD02C;
-  --text-secondary: #FFD700;
-  --text-muted: #aa8833;
-  --border-color: #FAD02C;
-  --shadow-color: rgba(250, 208, 44, 0.2);
-  --accent-color: #E21B22;
-  --accent-hover: #ff3333;
+.dark .bg-stone-100 {
+  background-color: var(--bg-input) !important;
 }
 
-/* Transiciones suaves para todos los elementos */
-* {
-  transition: background-color 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
+.dark .text-stone-500,
+.dark .text-stone-400,
+.dark .text-stone-600,
+.dark .text-stone-700 {
+  color: var(--text-muted) !important;
 }
 
-/* Aplicar variables al body */
-body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+.dark .text-black {
+  color: var(--text-primary) !important;
 }
 
-/* Clase helper para elementos que cambian con el tema */
-.theme-transition {
-  transition: background-color 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
+.dark .border-black {
+  border-color: var(--border-color) !important;
 }
 
-/* Scrollbar personalizado */
-::-webkit-scrollbar {
-  width: 10px;
+.dark .shadow-\[8px_8px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 8px 8px 0px 0px var(--shadow-color) !important;
 }
 
-::-webkit-scrollbar-track {
-  background: var(--bg-secondary);
+.dark .shadow-\[6px_6px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 6px 6px 0px 0px var(--shadow-color) !important;
 }
 
-::-webkit-scrollbar-thumb {
-  background: var(--accent-color);
-  border: 2px solid var(--border-color);
+.dark .shadow-\[4px_4px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 4px 4px 0px 0px var(--shadow-color) !important;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-hover);
+.dark .shadow-\[3px_3px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 3px 3px 0px 0px var(--shadow-color) !important;
+}
+
+.dark .shadow-\[2px_2px_0px_0px_rgba\(0\,0\,0\,1\)\] {
+  box-shadow: 2px 2px 0px 0px var(--shadow-color) !important;
+}
+
+.dark .bg-\[\#FFCA28\] {
+  background-color: var(--yellow) !important;
+  color: #000 !important;
+}
+
+.dark .bg-\[\#FFCA28\]:hover {
+  background-color: var(--yellow-hover) !important;
+}
+
+.dark .bg-\[\#D32F2F\] {
+  background-color: var(--accent-color) !important;
+}
+
+.dark .bg-\[\#D32F2F\]:hover {
+  background-color: var(--accent-hover) !important;
+}
+
+.dark .bg-white\/95 {
+  background-color: var(--bg-nav) !important;
+}
+
+.dark .bg-\[\#FFCA28\]\/20 {
+  background-color: rgba(250, 208, 44, 0.2) !important;
+}
+
+.dark .border-\[\#FFCA28\]\/50 {
+  border-color: rgba(250, 208, 44, 0.3) !important;
+}
+
+.dark .text-\[\#D32F2F\] {
+  color: var(--accent-color) !important;
+}
+
+.dark .text-\[\#FFCA28\] {
+  color: var(--yellow) !important;
+}
+
+.dark .bg-\[\#fafafa\] {
+  background-color: var(--bg-primary) !important;
+}
+
+.dark .bg-stone-50 {
+  background-color: var(--bg-secondary) !important;
 }

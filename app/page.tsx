@@ -52,7 +52,6 @@ export default function Home() {
     try {
       setLoading(true);
 
-      // ✅ Consulta con adicionales (producto_adicionales + adicionales)
       const { data, error } = await supabase
         .from('productos')
         .select(`
@@ -75,17 +74,16 @@ export default function Home() {
       }
 
       if (data) {
-        // ✅ Procesar los datos para tener un array de adicionales fácil de usar
         const processedData = data.map((item: any) => {
-          // Extraer los adicionales del nested join
           const adicionales = item.producto_adicionales
             ?.map((pa: any) => pa.adicionales)
             .filter((add: any) => add !== null) || [];
 
           return {
             ...item,
+            producto_adicionales: item.producto_adicionales || [],
             adicionales: adicionales,
-            imagen: item.imagen || '/images/default-burger.jpg',
+            imagen: item.imagen || '/images/placeholder-krusty.webp',
             categoria: item.categoria?.toLowerCase() || 'burgers'
           };
         });
@@ -112,13 +110,17 @@ export default function Home() {
     checkAdminSession();
 
     const handleScroll = () => {
-      globalThis.requestAnimationFrame(() => {
-        setIsScrolled(globalThis.scrollY > 50);
-      });
+      // Usar requestAnimationFrame para mejor performance
+      if (typeof window !== 'undefined') {
+        const scrollY = window.scrollY;
+        // Cambiar el umbral a 100px para que sea más suave
+        setIsScrolled(scrollY > 100);
+      }
     };
 
-    globalThis.addEventListener('scroll', handleScroll, { passive: true });
-    return () => globalThis.removeEventListener('scroll', handleScroll);
+    // Usar passive: true para mejor performance en móviles
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
   const filtrados = categoriaActual === 'todos'
@@ -158,18 +160,20 @@ export default function Home() {
       )}
 
       {/* ============================================
-          HERO SECTION - LOGO REDONDEADO CON SVG
-          ============================================ */}
-      <header className="relative pt-24 pb-20 px-6 overflow-hidden bg-white border-b-4 border-black">
+    HERO SECTION - CON ESPACIO AJUSTADO
+    ============================================ */}
+      <header className="relative z-30 pt-16 sm:pt-20 md:pt-24 pb-12 sm:pb-16 md:pb-20 px-4 sm:px-6 overflow-hidden bg-white border-b-4 border-black">
         <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center text-center">
-          <div className="inline-block bg-[#D32F2F] text-white text-[11px] font-black px-5 py-2 rounded-full mb-8 uppercase tracking-tighter border-2 border-black shadow-[3px_3px_0px_0px_black]">
+          {/* Badge "Directo de Springfield" */}
+          <div className="inline-block bg-[#D32F2F] text-white text-[10px] sm:text-[11px] font-black px-4 sm:px-5 py-1.5 sm:py-2 rounded-full mb-6 sm:mb-8 uppercase tracking-tighter border-2 border-black shadow-[3px_3px_0px_0px_black]">
             Directo de Springfield
           </div>
 
-          <div className="mb-10 relative flex justify-center items-center">
+          {/* Logo - Más pequeño en desktop para evitar superposición */}
+          <div className="mb-6 sm:mb-8 md:mb-10 relative flex justify-center items-center">
             <div className="absolute inset-0 bg-[#FFCA28]/20 blur-[80px] rounded-full scale-[2] pointer-events-none" aria-hidden="true" />
 
-            <div className="relative w-64 h-64 md:w-80 md:h-80 animate-float">
+            <div className="relative w-32 h-32 sm:w-48 sm:h-48 md:w-64 md:h-64 lg:w-72 lg:h-72 animate-float">
               <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]">
                 <defs>
                   <clipPath id="heroLogoClip">
@@ -189,11 +193,15 @@ export default function Home() {
             </div>
           </div>
 
-          <h1 className="font-krusty text-3xl md:text-5xl text-black mb-4 leading-none uppercase">
+          {/* Título principal */}
+          <h1 className="font-krusty text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-black mb-3 sm:mb-4 leading-none uppercase">
             El sabor que te <span className="text-[#D32F2F]">hace reír</span>
           </h1>
-          <p className="text-sm md:text-base font-bold text-[#52525b] max-w-lg leading-1.5 italic">
-            Ingredientes de primera calidad, procesados por el mismísimo Krusty en Villa La Florida.
+
+          {/* Subtítulo - Con espacio para que no se superponga */}
+          <p className="text-xs sm:text-sm md:text-base font-bold text-[#52525b] max-w-md mx-auto leading-relaxed italic px-4">
+            <span className="block">Ingredientes de primera calidad,</span>
+            <span className="block">procesados por el mismísimo Krusty en Quilmes.</span>
           </p>
         </div>
       </header>
@@ -201,7 +209,7 @@ export default function Home() {
       {/* ============================================
           SECCIÓN ESPECIAL - LA FÁBRICA DE LA RISA
           ============================================ */}
-      <section className="relative overflow-hidden bg-linear-to-br from-[#8B0000] via-[#D32F2F] to-[#B71C1C] border-y-4 border-black py-20 px-6">
+      <section className="relative z-20 overflow-hidden bg-linear-to-br from-[#8B0000] via-[#D32F2F] to-[#B71C1C] border-y-4 border-black py-16 md:py-20 px-6">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-full h-1/2 bg-linear-to-b from-[#FFCA28]/20 to-transparent" />
           <div className="absolute bottom-0 left-0 w-full h-1/2 bg-linear-to-t from-[#FFCA28]/10 to-transparent" />
@@ -224,18 +232,18 @@ export default function Home() {
             {/* Columna Izquierda - Info Principal */}
             <div className="text-center lg:text-left flex flex-col justify-center">
               <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
-                <span className="text-5xl animate-bounce">🍔</span>
-                <span className="text-5xl animate-bounce delay-100">💥</span>
-                <span className="text-5xl animate-bounce delay-200">🤡</span>
+                <span className="text-4xl sm:text-5xl animate-bounce">🍔</span>
+                <span className="text-4xl sm:text-5xl animate-bounce delay-100">💥</span>
+                <span className="text-4xl sm:text-5xl animate-bounce delay-200">🤡</span>
               </div>
 
-              <h2 className="font-krusty text-4xl md:text-5xl lg:text-6xl text-white uppercase drop-shadow-[3px_3px_0px_black] leading-none mb-4">
+              <h2 className="font-krusty text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white uppercase drop-shadow-[3px_3px_0px_black] leading-none mb-4">
                 Hechas con <span className="text-[#FFCA28]">amor</span>
                 <br />
                 y <span className="text-[#FFCA28]">explosivos</span>
               </h2>
 
-              <p className="text-white/90 text-sm md:text-base font-bold leading-relaxed drop-shadow-[1px_1px_0px_rgba(0,0,0,0.5)] max-w-lg mx-auto lg:mx-0">
+              <p className="text-white/90 text-xs sm:text-sm md:text-base font-bold leading-relaxed drop-shadow-[1px_1px_0px_rgba(0,0,0,0.5)] max-w-lg mx-auto lg:mx-0">
                 Carne 100% premium, queso que se estira hasta Springfield y
                 el toque secreto del payaso más famoso del mundo.
                 <span className="block mt-2 text-[#FFCA28]">
@@ -243,18 +251,18 @@ export default function Home() {
                 </span>
               </p>
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-6">
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                  <span className="text-2xl">🥩</span>
-                  <span className="text-white font-black text-sm">Carne Premium</span>
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-2 sm:gap-3 mt-6">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-xl sm:text-2xl">🥩</span>
+                  <span className="text-white font-black text-[10px] sm:text-sm">Carne Premium</span>
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                  <span className="text-2xl">🧀</span>
-                  <span className="text-white font-black text-sm">Queso Fundido</span>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-xl sm:text-2xl">🧀</span>
+                  <span className="text-white font-black text-[10px] sm:text-sm">Queso Fundido</span>
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                  <span className="text-2xl">🤡</span>
-                  <span className="text-white font-black text-sm">Toque Krusty</span>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-3 sm:px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-xl sm:text-2xl">🤡</span>
+                  <span className="text-white font-black text-[10px] sm:text-sm">Toque Krusty</span>
                 </div>
               </div>
 
@@ -262,10 +270,10 @@ export default function Home() {
                 <div className="absolute -inset-1 bg-[#FFCA28]/30 rounded-full blur-md group-hover/btn:blur-xl transition-all animate-pulse" />
                 <button
                   onClick={handleVerMenu}
-                  className="relative inline-flex items-center gap-3 bg-[#FFCA28] text-black font-black px-8 py-4 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all uppercase text-sm tracking-wider cursor-pointer"
+                  className="relative inline-flex items-center gap-3 bg-[#FFCA28] text-black font-black px-6 sm:px-8 py-3 sm:py-4 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all uppercase text-xs sm:text-sm tracking-wider cursor-pointer"
                 >
                   <span>Ver el Menú</span>
-                  <span className="text-xl">🤤</span>
+                  <span className="text-lg sm:text-xl">🤤</span>
                 </button>
               </div>
             </div>
@@ -274,39 +282,39 @@ export default function Home() {
             <div className="space-y-6">
               {/* Testimonios */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
-                  <p className="text-white text-sm font-bold">"¡Es la mejor hamburguesa!"</p>
-                  <p className="text-[#FFCA28] text-xs mt-2">- Joe Quimby</p>
+                <div className="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
+                  <p className="text-white text-xs sm:text-sm font-bold">"¡Es la mejor hamburguesa!"</p>
+                  <p className="text-[#FFCA28] text-[10px] sm:text-xs mt-2">- Joe Quimby</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
-                  <p className="text-white text-sm font-bold">"Si no fuera vegana..."</p>
-                  <p className="text-[#FFCA28] text-xs mt-2">- Lisa Simpson</p>
+                <div className="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
+                  <p className="text-white text-xs sm:text-sm font-bold">"Si no fuera vegana..."</p>
+                  <p className="text-[#FFCA28] text-[10px] sm:text-xs mt-2">- Lisa Simpson</p>
                 </div>
-                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
-                  <p className="text-white text-sm font-bold">"¡Mmm... hamburguesas!"</p>
-                  <p className="text-[#FFCA28] text-xs mt-2">- Homero Simpson</p>
+                <div className="bg-white/10 backdrop-blur-sm p-3 sm:p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
+                  <p className="text-white text-xs sm:text-sm font-bold">"¡Mmm... hamburguesas!"</p>
+                  <p className="text-[#FFCA28] text-[10px] sm:text-xs mt-2">- Homero Simpson</p>
                 </div>
               </div>
 
               {/* Secreto Revelado */}
-              <div className="bg-black/40 backdrop-blur-sm p-6 rounded-2xl border-2 border-[#FFCA28]/30 text-center">
+              <div className="bg-black/40 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border-2 border-[#FFCA28]/30 text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-xl">🔮</span>
-                  <span className="text-[#FFCA28] text-xs font-black uppercase tracking-wider">
+                  <span className="text-lg sm:text-xl">🔮</span>
+                  <span className="text-[#FFCA28] text-[10px] sm:text-xs font-black uppercase tracking-wider">
                     ¡Ingrediente Secreto Revelado!
                   </span>
-                  <span className="text-xl">🔮</span>
+                  <span className="text-lg sm:text-xl">🔮</span>
                 </div>
-                <h3 className="text-white text-2xl font-krusty">
+                <h3 className="text-white text-xl sm:text-2xl font-krusty">
                   ¿El secreto? <span className="text-[#FFCA28]">¡Risa!</span>
                 </h3>
-                <p className="text-white/80 text-sm mt-2">
+                <p className="text-white/80 text-xs sm:text-sm mt-2">
                   Y un toque de <span className="text-[#FFCA28] font-bold">explosivos</span>
                   {" "}que hacen cada bocado una <span className="text-[#FFCA28] font-bold">fiesta</span>.
                   <br />
-                  <span className="text-xs opacity-60">(No te preocupes, son seguros. Casi siempre.)</span>
+                  <span className="text-[10px] opacity-60">(No te preocupes, son seguros. Casi siempre.)</span>
                 </p>
-                <div className="flex justify-center gap-3 mt-3 text-3xl">
+                <div className="flex justify-center gap-3 mt-3 text-2xl sm:text-3xl">
                   <span>🤡</span>
                   <span className="animate-pulse">💥</span>
                   <span>🍔</span>
@@ -318,27 +326,27 @@ export default function Home() {
       </section>
 
       {/* ============================================
-          NAV DE CATEGORÍAS
+          NAV DE CATEGORÍAS - CON AJUSTE DE MÁRGENES
           ============================================ */}
       <nav className={`sticky z-40 transition-all duration-300 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
-        ${isScrolled ? 'top-16 shadow-md' : 'top-24'}`}
+        ${isScrolled ? 'top-0 shadow-md' : 'top-20 md:top-24'}`}
       >
         <div className="max-w-7xl mx-auto overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 md:gap-4 px-6 py-4 md:justify-center min-w-max">
+          <div className="flex gap-2 md:gap-4 px-4 sm:px-6 py-3 md:py-4 md:justify-center min-w-max">
             {categorias.map((cat) => (
               <button
                 type="button"
                 key={cat.id}
                 onClick={() => setCategoriaActual(cat.id)}
                 className={`
-                  flex items-center gap-2 px-5 py-2.5 rounded-full font-black uppercase text-[11px] transition-all border-2
+                  flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 rounded-full font-black uppercase text-[9px] sm:text-[10px] md:text-[11px] transition-all border-2 whitespace-nowrap
                   ${categoriaActual === cat.id
                     ? 'bg-[#FFCA28] text-black border-black shadow-[3px_3px_0px_0px_black] -translate-y-0.5'
                     : 'bg-white text-stone-500 border-transparent hover:bg-stone-100'
                   }
                 `}
               >
-                <span className="text-lg">{cat.icon}</span>
+                <span className="text-sm sm:text-base md:text-lg">{cat.icon}</span>
                 {cat.label}
               </button>
             ))}
@@ -349,20 +357,20 @@ export default function Home() {
       {/* ============================================
           SECCIÓN DE PRODUCTOS
           ============================================ */}
-      <section id="menu-section" className="max-w-7xl mx-auto px-6 mt-12 md:mt-20">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+      <section id="menu-section" className="max-w-7xl mx-auto px-4 sm:px-6 mt-10 md:mt-20">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-4">
           <div>
-            <h2 className="font-krusty text-4xl md:text-5xl text-black tracking-normal uppercase">
+            <h2 className="font-krusty text-3xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase">
               <span className="text-[#D32F2F]">El</span> Menú
             </h2>
-            <div className="w-20 h-2 bg-[#FFCA28] border border-black mt-2" />
+            <div className="w-16 sm:w-20 h-2 bg-[#FFCA28] border border-black mt-2" />
           </div>
           <p className="text-[10px] font-black text-[#52525b] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full">
             {filtrados.length} OPCIONES DISPONIBLES
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-10 md:gap-y-16">
+        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-x-8 md:gap-y-12">
           {filtrados.length > 0 ? (
             filtrados.map((item) => (
               <div key={item.id} className="transition-opacity duration-500">
@@ -370,9 +378,9 @@ export default function Home() {
               </div>
             ))
           ) : (
-            <div className="col-span-full py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
-              <span className="text-8xl block mb-6">🤡</span>
-              <p className="font-krusty text-3xl text-black px-6 uppercase">
+            <div className="col-span-full py-20 sm:py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
+              <span className="text-6xl sm:text-8xl block mb-6">🤡</span>
+              <p className="font-krusty text-2xl sm:text-3xl text-black px-6 uppercase">
                 ¡Ay caramba! No hay nada disponible.
               </p>
             </div>
