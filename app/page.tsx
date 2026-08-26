@@ -20,7 +20,6 @@ export default function Home() {
     { id: 'burgers', label: 'Burgers', icon: '🍔' },
     { id: 'bebidas', label: 'Bebidas', icon: '🥤' },
     { id: 'postres', label: 'Postres', icon: '🍦' },
-    { id: 'combos', label: 'Combos', icon: '🎁' }
   ];
 
   const jsonLd = {
@@ -88,9 +87,9 @@ export default function Home() {
     ? items
     : items.filter(item => item.categoria.toLowerCase() === categoriaActual.toLowerCase());
 
-  const handleVerCombos = (e: React.MouseEvent) => {
+  const handleVerMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-    setCategoriaActual('combos');
+    setCategoriaActual('todos');
     const menuSection = document.getElementById('menu-section');
     if (menuSection) {
       menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -110,7 +109,7 @@ export default function Home() {
       />
 
       {isAdmin && (
-        <Link href="/admin" className="fixed bottom-28 left-4 z-[110] active:scale-90 transition-transform">
+        <Link href="/admin" className="fixed bottom-28 left-4 z-110 active:scale-90 transition-transform">
           <div className="bg-black text-[#FFCA28] p-4 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-[#FFCA28]">
             <span className="text-xl">⚙️</span>
           </div>
@@ -152,93 +151,125 @@ export default function Home() {
           <h1 className="font-krusty text-3xl md:text-5xl text-black mb-4 leading-none uppercase">
             El sabor que te <span className="text-[#D32F2F]">hace reír</span>
           </h1>
-          <p className="text-sm md:text-base font-bold text-[#52525b] max-w-lg leading-[1.5] italic">
+          <p className="text-sm md:text-base font-bold text-[#52525b] max-w-lg leading-1.5 italic">
             Ingredientes de primera calidad, procesados por el mismísimo Krusty en Villa La Florida.
           </p>
         </div>
       </header>
 
       {/* ============================================
-          SECCIÓN ESPECIAL - MUNDIAL 2026 🇦🇷
+          SECCIÓN ESPECIAL - LA FÁBRICA DE LA RISA
           ============================================ */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#0a1a3a] via-[#1a3a6a] to-[#2d5a8a] border-y-4 border-black py-20 px-6">
+      <section className="relative overflow-hidden bg-linear-to-br from-[#8B0000] via-[#D32F2F] to-[#B71C1C] border-y-4 border-black py-20 px-6">
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-[#FFCA28]/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-[#FFCA28]/10 to-transparent" />
+          <div className="absolute top-0 left-0 w-full h-1/2 bg-linear-to-b from-[#FFCA28]/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 w-full h-1/2 bg-linear-to-t from-[#FFCA28]/10 to-transparent" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-1/2 border-2 border-white/20 rounded-full" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/3 border-2 border-white/20 rounded-full" />
         </div>
 
-        <div className="absolute inset-0">
-          <div className="absolute top-10 left-10 text-4xl animate-pulse">⭐</div>
-          <div className="absolute top-10 right-10 text-4xl animate-pulse delay-200">⭐</div>
-          <div className="absolute bottom-10 left-10 text-4xl animate-pulse delay-300">⭐</div>
-          <div className="absolute bottom-10 right-10 text-4xl animate-pulse delay-100">⭐</div>
-          <div className="absolute top-1/2 left-5 text-3xl animate-pulse delay-500">⭐</div>
-          <div className="absolute top-1/2 right-5 text-3xl animate-pulse delay-400">⭐</div>
-          <div className="absolute top-20 left-1/3 text-3xl animate-pulse delay-150">⭐</div>
-          <div className="absolute bottom-20 right-1/3 text-3xl animate-pulse delay-250">⭐</div>
-          <div className="absolute top-1/3 left-10 text-3xl animate-pulse delay-350">⭐</div>
-          <div className="absolute bottom-1/3 right-10 text-3xl animate-pulse delay-450">⭐</div>
-        </div>
-
-        <div className="max-w-5xl mx-auto relative z-10 text-center">
-          <div className="inline-flex items-center gap-2 bg-[#D32F2F] text-white text-[10px] font-black px-4 py-1.5 rounded-full mb-6 uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_black]">
-            <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse" />
-            ¡VIVIMOS EL MUNDIAL 2026!
-            <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse delay-150" />
+        <div className="max-w-6xl mx-auto relative z-10">
+          {/* Badge */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 bg-[#FFCA28] text-black text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_black]">
+              <span className="w-2 h-2 bg-[#D32F2F] rounded-full animate-pulse" />
+              🔥 ¡LA FÁBRICA DE LA RISA! 🔥
+              <span className="w-2 h-2 bg-[#D32F2F] rounded-full animate-pulse delay-150" />
+            </div>
           </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
-            {/* OPCIÓN 2: Imagen del Escudo con animación bounce */}
-            <div className="flex-shrink-0 group animate-bounce">
-              <div className="relative">
-                <div className="absolute -inset-4 bg-[#FFCA28]/20 rounded-full blur-2xl animate-pulse" />
-                <div className="relative w-36 h-36 md:w-44 md:h-44 transform -rotate-6 group-hover:rotate-12 group-hover:scale-105 transition-all duration-500">
-                  <Image
-                    src="/images/escudoafa.png"
-                    alt="Escudo de Argentina"
-                    fill
-                    className="object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)]"
-                    sizes="176px"
-                  />
+          {/* Grid 2 columnas */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+            {/* Columna Izquierda - Info Principal */}
+            <div className="text-center lg:text-left flex flex-col justify-center">
+              <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
+                <span className="text-5xl animate-bounce">🍔</span>
+                <span className="text-5xl animate-bounce delay-100">💥</span>
+                <span className="text-5xl animate-bounce delay-200">🤡</span>
+              </div>
+
+              <h2 className="font-krusty text-4xl md:text-5xl lg:text-6xl text-white uppercase drop-shadow-[3px_3px_0px_black] leading-none mb-4">
+                Hechas con <span className="text-[#FFCA28]">amor</span>
+                <br />
+                y <span className="text-[#FFCA28]">explosivos</span>
+              </h2>
+
+              <p className="text-white/90 text-sm md:text-base font-bold leading-relaxed drop-shadow-[1px_1px_0px_rgba(0,0,0,0.5)] max-w-lg mx-auto lg:mx-0">
+                Carne 100% premium, queso que se estira hasta Springfield y
+                el toque secreto del payaso más famoso del mundo.
+                <span className="block mt-2 text-[#FFCA28]">
+                  ¡Si no te atragantas, no es una Krusty!
+                </span>
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-6">
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-2xl">🥩</span>
+                  <span className="text-white font-black text-sm">Carne Premium</span>
                 </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-2xl">🧀</span>
+                  <span className="text-white font-black text-sm">Queso Fundido</span>
+                </div>
+                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+                  <span className="text-2xl">🤡</span>
+                  <span className="text-white font-black text-sm">Toque Krusty</span>
+                </div>
+              </div>
+
+              <div className="mt-6 inline-block relative group/btn mx-auto lg:mx-0">
+                <div className="absolute -inset-1 bg-[#FFCA28]/30 rounded-full blur-md group-hover/btn:blur-xl transition-all animate-pulse" />
+                <button
+                  onClick={handleVerMenu}
+                  className="relative inline-flex items-center gap-3 bg-[#FFCA28] text-black font-black px-8 py-4 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all uppercase text-sm tracking-wider cursor-pointer"
+                >
+                  <span>Ver el Menú</span>
+                  <span className="text-xl">🤤</span>
+                </button>
               </div>
             </div>
 
-            <div className="flex-1">
-              <h2 className="font-krusty text-4xl md:text-6xl text-white uppercase drop-shadow-[3px_3px_0px_black] leading-none mb-3">
-                ¡Vamos por la <span className="text-[#FFCA28]">4ta</span> Estrella!
-              </h2>
-              <p className="text-white/90 text-sm md:text-base font-bold max-w-2xl mx-auto leading-relaxed drop-shadow-[1px_1px_0px_rgba(0,0,0,0.5)]">
-                Con 3 estrellas en el pecho, la Argentina busca la gloria eterna.
-                Sumate a la fiesta con nuestros combos especiales. ¡Dale campeón! ⚽🏆
-              </p>
-
-              <div className="flex flex-wrap items-center justify-center gap-4 mt-6">
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                  <span className="text-2xl">⭐</span>
-                  <span className="text-white font-black text-sm">3 Estrellas</span>
+            {/* Columna Derecha - Testimonios + Secreto */}
+            <div className="space-y-6">
+              {/* Testimonios */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
+                  <p className="text-white text-sm font-bold">"¡Es la mejor hamburguesa!"</p>
+                  <p className="text-[#FFCA28] text-xs mt-2">- Joe Quimby</p>
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                  <span className="text-2xl">🏆</span>
-                  <span className="text-white font-black text-sm">¡Vamos por la 4ta!</span>
+                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
+                  <p className="text-white text-sm font-bold">"Si no fuera vegana..."</p>
+                  <p className="text-[#FFCA28] text-xs mt-2">- Lisa Simpson</p>
                 </div>
-                <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
-                  <span className="text-2xl">⚽</span>
-                  <span className="text-white font-black text-sm">Mundial 2026</span>
+                <div className="bg-white/10 backdrop-blur-sm p-4 rounded-2xl border border-white/20 text-center hover:scale-105 transition-transform">
+                  <p className="text-white text-sm font-bold">"¡Mmm... hamburguesas!"</p>
+                  <p className="text-[#FFCA28] text-xs mt-2">- Homero Simpson</p>
                 </div>
               </div>
 
-              <div className="mt-8 inline-block relative group/btn">
-                <div className="absolute -inset-1 bg-[#FFCA28]/30 rounded-full blur-md group-hover/btn:blur-xl transition-all animate-pulse" />
-                <button
-                  onClick={handleVerCombos}
-                  className="relative inline-flex items-center gap-3 bg-[#FFCA28] text-black font-black px-10 py-4 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all uppercase text-sm tracking-wider cursor-pointer"
-                >
-                  <span>Ver Combos Especiales</span>
-                  <span className="text-xl">🏆</span>
-                </button>
+              {/* Secreto Revelado */}
+              <div className="bg-black/40 backdrop-blur-sm p-6 rounded-2xl border-2 border-[#FFCA28]/30 text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <span className="text-xl">🔮</span>
+                  <span className="text-[#FFCA28] text-xs font-black uppercase tracking-wider">
+                    ¡Ingrediente Secreto Revelado!
+                  </span>
+                  <span className="text-xl">🔮</span>
+                </div>
+                <h3 className="text-white text-2xl font-krusty">
+                  ¿El secreto? <span className="text-[#FFCA28]">¡Risa!</span>
+                </h3>
+                <p className="text-white/80 text-sm mt-2">
+                  Y un toque de <span className="text-[#FFCA28] font-bold">explosivos</span>
+                  {" "}que hacen cada bocado una <span className="text-[#FFCA28] font-bold">fiesta</span>.
+                  <br />
+                  <span className="text-xs opacity-60">(No te preocupes, son seguros. Casi siempre.)</span>
+                </p>
+                <div className="flex justify-center gap-3 mt-3 text-3xl">
+                  <span>🤡</span>
+                  <span className="animate-pulse">💥</span>
+                  <span>🍔</span>
+                </div>
               </div>
             </div>
           </div>

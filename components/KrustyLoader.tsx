@@ -21,8 +21,8 @@ interface KrustyLoaderProps {
   duracion?: number; // Nueva prop para controlar duración
 }
 
-export default function KrustyLoader({ 
-  onComplete, 
+export default function KrustyLoader({
+  onComplete,
   duracion = 10000 // 10 segundos por defecto
 }: KrustyLoaderProps) {
   const [progress, setProgress] = useState(0);
@@ -50,9 +50,9 @@ export default function KrustyLoader({
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const progressPercent = Math.min((elapsed / duracion) * 100, 100);
-      
+
       setProgress(progressPercent);
-      
+
       if (progressPercent >= 100) {
         clearInterval(interval);
         setIsComplete(true);
@@ -116,11 +116,11 @@ export default function KrustyLoader({
           className="fixed inset-0 bg-[#FAD02C] flex flex-col items-center justify-center z-50"
         >
           <motion.div
-            animate={{ 
+            animate={{
               rotate: 360,
               scale: [1, 1.1, 1],
             }}
-            transition={{ 
+            transition={{
               rotate: { duration: 2, repeat: Infinity, ease: 'linear' },
               scale: { duration: 1, repeat: Infinity, ease: 'easeInOut' }
             }}
@@ -154,7 +154,7 @@ export default function KrustyLoader({
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.3 }}
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1s_infinite]" />
+            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1s_infinite]" />
           </div>
 
           <p className="text-xs font-bold text-black/40 mt-2">

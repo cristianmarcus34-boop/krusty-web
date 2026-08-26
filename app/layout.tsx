@@ -14,9 +14,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 // NUEVAS IMPORTACIONES - MEJORAS VISUALES
 // ============================================
 import { ThemeProvider } from './context/ThemeContext';
-import KrustyCursor from '../components/KrustyCursor';
-import KrustyParticles from '../components/KrustyParticles';
-import SauceRain from '../components/SauceRain';
+
+
+
 import ThemeToggle from '../components/ThemeToggle';
 
 // 1. Optimizamos Inter con swap para evitar el "Flash of Unstyled Text"
@@ -81,7 +81,7 @@ export default function RootLayout({
           type="font/ttf"
           crossOrigin="anonymous"
         />
-        
+
         {/* 3. PRELOAD de imágenes críticas para mejorar LCP */}
         <link
           rel="preload"
@@ -91,18 +91,18 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
-        
+
         {/* ============================================
             THEME PROVIDER - Envuelve toda la app
             ============================================ */}
         <ThemeProvider>
-          
+
           {/* ============================================
               COMPONENTES VISUALES GLOBALES
               ============================================ */}
-          <KrustyCursor />
-          <KrustyParticles />
-          <SauceRain />
+
+
+
           <ThemeToggle />
           {/* ============================================
               CONTENIDO PRINCIPAL
@@ -117,7 +117,7 @@ export default function RootLayout({
           {/* ============================================
               FOOTER - Actualizado con variables CSS
               ============================================ */}
-          <footer className="bg-[#1A1A1A] text-stone-300 py-16 px-6 border-t-[8px] border-black relative overflow-hidden">
+          <footer className="bg-[#1A1A1A] text-stone-300 py-16 px-6 border-t-8] border-black relative overflow-hidden">
             {/* Trama de fondo - Optimizada con opacidad fija */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
               style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '10px 10px' }}>
@@ -245,13 +245,13 @@ export default function RootLayout({
               ============================================ */}
           <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
           <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[60px] pointer-events-none" />
-          
+
           {/* ============================================
               ANALYTICS Y SPEED INSIGHTS
               ============================================ */}
           <Analytics />
           <SpeedInsights />
-          
+
         </ThemeProvider>
       </body>
     </html>

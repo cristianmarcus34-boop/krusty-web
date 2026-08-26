@@ -48,7 +48,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
     if (!file) return;
     setLoading(true);
     const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
-    
+
     try {
       const { error: uploadError } = await supabase.storage
         .from('krusty_imagenes')
@@ -59,7 +59,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
       const { data: { publicUrl } } = supabase.storage
         .from('krusty_imagenes')
         .getPublicUrl(`productos/${fileName}`);
-      
+
       setEditado((prev: any) => ({ ...prev, imagen: publicUrl }));
     } catch (err: any) {
       alert("Error al subir imagen: " + err.message);
@@ -69,7 +69,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
   };
 
   const toggleExtra = (id: number) => {
-    setExtrasSeleccionados(prev => 
+    setExtrasSeleccionados(prev =>
       prev.includes(id) ? prev.filter(eId => eId !== id) : [...prev, id]
     );
   };
@@ -101,7 +101,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
         }));
         await supabase.from('producto_adicionales').insert(relaciones);
       }
-      
+
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -114,36 +114,36 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
   if (!producto) return null;
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-sm">
-      <div className="bg-[#4CAF50] border-t-8 sm:border-[10px] border-black p-4 sm:p-8 rounded-t-[3rem] sm:rounded-[4rem] w-full max-w-lg h-[92vh] sm:h-auto overflow-y-auto no-scrollbar shadow-[0px_-10px_0px_0px_rgba(0,0,0,1)] sm:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]">
-        
+    <div className="fixed inset-0 z-150 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-sm">
+      <div className="bg-[#4CAF50] border-t-8 sm:border-10 border-black p-4 sm:p-8 rounded-t-[3rem] sm:rounded-[4rem] w-full max-w-lg h-[92vh] sm:h-auto overflow-y-auto no-scrollbar shadow-[0px_-10px_0px_0px_rgba(0,0,0,1)] sm:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]">
+
         <h2 className="text-3xl sm:text-4xl font-black uppercase italic mb-6 text-center text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] leading-tight">
           EDITAR ITEM ✏️
         </h2>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4 pb-10 sm:pb-0">
-          <input 
-            required 
-            value={editado.nombre} 
-            className="w-full border-4 border-black p-3 sm:p-4 rounded-2xl font-black italic outline-none uppercase text-sm sm:text-base" 
-            onChange={e => setEditado({...editado, nombre: e.target.value.toUpperCase()})} 
+          <input
+            required
+            value={editado.nombre}
+            className="w-full border-4 border-black p-3 sm:p-4 rounded-2xl font-black italic outline-none uppercase text-sm sm:text-base"
+            onChange={e => setEditado({ ...editado, nombre: e.target.value.toUpperCase() })}
           />
 
           <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black">$</span>
-                <input 
-                    required 
-                    type="number" 
-                    value={editado.precio} 
-                    className="w-full border-4 border-black p-3 sm:p-4 pl-8 rounded-2xl font-black shadow-[4px_4px_0px_0px_black] outline-none" 
-                    onChange={e => setEditado({...editado, precio: Number(e.target.value)})} 
-                />
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black">$</span>
+              <input
+                required
+                type="number"
+                value={editado.precio}
+                className="w-full border-4 border-black p-3 sm:p-4 pl-8 rounded-2xl font-black shadow-[4px_4px_0px_0px_black] outline-none"
+                onChange={e => setEditado({ ...editado, precio: Number(e.target.value) })}
+              />
             </div>
-            <select 
-                value={editado.categoria} 
-                className="flex-1 border-4 border-black p-3 sm:p-4 rounded-2xl font-black outline-none bg-white text-sm" 
-                onChange={e => setEditado({...editado, categoria: e.target.value})}
+            <select
+              value={editado.categoria}
+              className="flex-1 border-4 border-black p-3 sm:p-4 rounded-2xl font-black outline-none bg-white text-sm"
+              onChange={e => setEditado({ ...editado, categoria: e.target.value })}
             >
               <option value="burgers">BURGERS</option>
               <option value="bebidas">BEBIDAS</option>
@@ -160,11 +160,10 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
                   key={extra.id}
                   type="button"
                   onClick={() => toggleExtra(extra.id)}
-                  className={`text-[10px] font-black p-2.5 rounded-xl border-2 border-black transition-all uppercase ${
-                    extrasSeleccionados.includes(extra.id) 
-                    ? 'bg-yellow-400 text-black translate-y-1 shadow-none' 
-                    : 'bg-white text-black opacity-60'
-                  }`}
+                  className={`text-[10px] font-black p-2.5 rounded-xl border-2 border-black transition-all uppercase ${extrasSeleccionados.includes(extra.id)
+                      ? 'bg-yellow-400 text-black translate-y-1 shadow-none'
+                      : 'bg-white text-black opacity-60'
+                    }`}
                 >
                   {extra.nombre} {extrasSeleccionados.includes(extra.id) ? '✅' : '+'}
                 </button>
@@ -173,36 +172,36 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
           </div>
 
           <div className="bg-white border-4 border-black p-3 rounded-2xl text-center relative hover:bg-stone-50 transition-colors">
-            <input 
-                type="file" 
-                accept="image/*" 
-                onChange={handleUpload} 
-                className="w-full text-xs font-black cursor-pointer opacity-0 absolute inset-0 z-10" 
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleUpload}
+              className="w-full text-xs font-black cursor-pointer opacity-0 absolute inset-0 z-10"
             />
             <span className="text-[10px] sm:text-xs font-black uppercase">
-                {loading ? 'Subiendo...' : '📷 CAMBIAR FOTO'}
+              {loading ? 'Subiendo...' : '📷 CAMBIAR FOTO'}
             </span>
           </div>
 
-          <textarea 
-            value={editado.descripcion || ''} 
-            className="w-full border-4 border-black p-3 rounded-2xl font-black h-24 resize-none outline-none text-xs sm:text-sm" 
+          <textarea
+            value={editado.descripcion || ''}
+            className="w-full border-4 border-black p-3 rounded-2xl font-black h-24 resize-none outline-none text-xs sm:text-sm"
             placeholder="Descripción..."
-            onChange={e => setEditado({...editado, descripcion: e.target.value})} 
+            onChange={e => setEditado({ ...editado, descripcion: e.target.value })}
           />
 
           <div className="space-y-3 pt-2">
-            <button 
-                type="submit" 
-                disabled={loading} 
-                className="w-full bg-black text-white border-4 border-white py-4 sm:py-5 rounded-[2rem] font-black text-xl sm:text-2xl italic shadow-[6px_6px_0px_0px_rgba(0,0,0,0.5)] active:translate-y-1 transition-all"
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-black text-white border-4 border-white py-4 sm:py-5 rounded-4x1 font-black text-xl sm:text-2xl italic shadow-[6px_6px_0px_0px_rgba(0,0,0,0.5)] active:translate-y-1 transition-all"
             >
               {loading ? 'CARGANDO...' : 'GUARDAR ✅'}
             </button>
-            <button 
-                type="button" 
-                onClick={onClose} 
-                className="w-full font-black uppercase text-[10px] sm:text-xs text-white underline decoration-2 underline-offset-4"
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full font-black uppercase text-[10px] sm:text-xs text-white underline decoration-2 underline-offset-4"
             >
               VOLVER ATRÁS
             </button>

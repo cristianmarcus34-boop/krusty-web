@@ -141,6 +141,10 @@ export default function CartDrawer({
     }, 2000);
   };
 
+  const handleCloseDrawer = () => {
+    onClose();
+  };
+
   if (!mounted) return null;
 
   const handleCheckout = async () => {
@@ -223,7 +227,6 @@ export default function CartDrawer({
 
       const numeroTelefono = "5491127344686";
 
-      // SOLUCIÓN AL PROBLEM DE DENO/WINDOW: Usamos globalThis de forma segura
       const baseUrl = typeof globalThis !== 'undefined' && globalThis.location
         ? globalThis.location.origin
         : '';
@@ -306,16 +309,16 @@ export default function CartDrawer({
     <>
       {/* OVERLAY */}
       <div
-        className={`fixed inset-0 bg-stone-900/40 z-[60] backdrop-blur-md transition-all duration-500 ${isOpen
+        className={`fixed inset-0 bg-stone-900/40 z-60 backdrop-blur-md transition-all duration-500 ${isOpen
           ? 'opacity-100 visible'
           : 'opacity-0 invisible'
           }`}
-        onClick={onClose}
+        onClick={handleCloseDrawer}
       />
 
       {/* DRAWER */}
       <div
-        className={`fixed inset-y-0 right-0 z-[70] w-full sm:max-w-[450px] bg-white shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen
+        className={`fixed inset-y-0 right-0 z-70 w-full sm:max-w-112.5 bg-white shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen
           ? 'translate-x-0'
           : 'translate-x-full'
           }`}
@@ -323,8 +326,8 @@ export default function CartDrawer({
         <div
           className="
             flex flex-col
-            h-[100dvh]
-            max-h-[100dvh]
+            h-dvh
+            max-h-dvh
             bg-white
             overflow-hidden
           "
@@ -364,7 +367,7 @@ export default function CartDrawer({
 
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleCloseDrawer}
                 className="
                   bg-stone-100
                   text-stone-500
@@ -378,6 +381,7 @@ export default function CartDrawer({
                   hover:bg-stone-200
                   transition-all
                   active:scale-90
+                  cursor-pointer
                 "
               >
                 ✕
@@ -389,7 +393,7 @@ export default function CartDrawer({
             {items.length > 0 && (
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleCloseDrawer}
                 className="
                   group
                   mt-4
@@ -399,7 +403,7 @@ export default function CartDrawer({
                   rounded-[1.7rem]
                   border
                   border-stone-200
-                  bg-gradient-to-r
+                  bg-linear-to-r
                   from-stone-950
                   via-stone-900
                   to-stone-800
@@ -408,10 +412,11 @@ export default function CartDrawer({
                   transition-all
                   duration-300
                   active:scale-[0.98]
+                  cursor-pointer
                 "
               >
 
-                <div className="absolute inset-0 bg-gradient-to-r from-[#FFCA28]/0 via-[#FFCA28]/10 to-[#FFCA28]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="absolute inset-0 bg-linear-to-r from-[#FFCA28]/0 via-[#FFCA28]/10 to-[#FFCA28]/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
                 <div className="relative flex items-center justify-between gap-3">
 
@@ -513,7 +518,7 @@ export default function CartDrawer({
                           onClick={() =>
                             decreaseQuantity(item.cartId)
                           }
-                          className="w-8 h-8 flex items-center justify-center font-bold text-stone-500 active:scale-90"
+                          className="w-8 h-8 flex items-center justify-center font-bold text-stone-500 active:scale-90 cursor-pointer"
                         >
                           –
                         </button>
@@ -530,7 +535,7 @@ export default function CartDrawer({
                               item.extrasElegidos
                             )
                           }
-                          className="w-8 h-8 flex items-center justify-center font-bold text-stone-500 active:scale-90"
+                          className="w-8 h-8 flex items-center justify-center font-bold text-stone-500 active:scale-90 cursor-pointer"
                         >
                           +
                         </button>
@@ -540,7 +545,7 @@ export default function CartDrawer({
 
                     {item.extrasElegidos &&
                       item.extrasElegidos.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 ml-[76px] mt-1">
+                        <div className="flex flex-wrap gap-1.5 ml-19 mt-1">
 
                           {item.extrasElegidos.map((extra, idx) => (
                             <span
@@ -579,7 +584,7 @@ export default function CartDrawer({
                             | 'Retiro'
                         })
                       }
-                      className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${customer.tipoEntrega === tipo
+                      className={`flex-1 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all cursor-pointer ${customer.tipoEntrega === tipo
                         ? 'bg-white text-stone-900 shadow-sm'
                         : 'text-stone-400'
                         }`}
@@ -630,7 +635,7 @@ export default function CartDrawer({
                       <div className="space-y-3">
 
                         {/* REFERENCIA */}
-                        <div className="relative overflow-hidden rounded-[1.8rem] border border-[#FFCA28]/20 bg-gradient-to-br from-[#FFCA28]/10 via-orange-50 to-white p-4">
+                        <div className="relative overflow-hidden rounded-[1.8rem] border border-[#FFCA28]/20 bg-linear-to-br from-[#FFCA28]/10 via-orange-50 to-white p-4">
 
                           <div className="flex items-start gap-4">
 
@@ -755,7 +760,7 @@ export default function CartDrawer({
                               metodoPago: pago
                             })
                           }
-                          className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago
+                          className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all cursor-pointer ${customer.metodoPago === pago
                             ? 'bg-stone-900 text-white border-stone-900'
                             : 'bg-white border-stone-100 text-stone-400'
                             }`}
@@ -768,7 +773,7 @@ export default function CartDrawer({
 
                     {customer.metodoPago ===
                       'Transferencia' && (
-                        <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-[2rem]">
+                        <div className="bg-blue-50/50 border border-blue-100 p-5 rounded-4x1">
 
                           <p className="text-[9px] font-black uppercase text-blue-400 mb-3 tracking-wider">
                             Alias de Pago
@@ -798,7 +803,7 @@ export default function CartDrawer({
 
                     {customer.metodoPago ===
                       'Efectivo' && (
-                        <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-[2rem]">
+                        <div className="bg-emerald-50/50 border border-emerald-100 p-5 rounded-4x1">
 
                           <p className="text-[9px] font-black uppercase text-emerald-400 mb-3 tracking-wider">
                             ¿Con cuánto pagás?
@@ -909,7 +914,7 @@ export default function CartDrawer({
                   Total Final
                 </span>
 
-                <span className="text-3xl sm:text-4xl font-black text-stone-950 tracking-tighter text-right break-words">
+                <span className="text-3xl sm:text-4xl font-black text-stone-950 tracking-tighter text-right wrap-break-words">
                   $
                   {montoTotalFinal.toLocaleString(
                     'es-AR'
@@ -926,7 +931,7 @@ export default function CartDrawer({
                 isSending
               }
               onClick={handleCheckout}
-              className={`w-full py-5 rounded-[2rem] font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] ${!isFormValid ||
+              className={`w-full py-5 rounded-4x1 font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] cursor-pointer ${!isFormValid ||
                 items.length === 0
                 ? 'bg-stone-100 text-stone-300 cursor-not-allowed'
                 : 'bg-[#FFCA28] text-stone-950 hover:bg-[#D32F2F] hover:text-white'

@@ -12,9 +12,9 @@ interface KrustyButtonProps {
   variant?: 'primary' | 'secondary' | 'danger';
 }
 
-export default function KrustyButton({ 
-  children, 
-  onClick, 
+export default function KrustyButton({
+  children,
+  onClick,
   className = '',
   type = 'button',
   disabled = false,
@@ -41,11 +41,11 @@ export default function KrustyButton({
       onMouseUp={() => setIsClicked(false)}
       onMouseLeave={() => setIsClicked(false)}
       onClick={onClick}
-      whileHover={{ 
+      whileHover={{
         scale: disabled ? 1 : 1.03,
         y: disabled ? 0 : -2
       }}
-      whileTap={{ 
+      whileTap={{
         scale: disabled ? 1 : 0.97,
         y: disabled ? 0 : 2
       }}
@@ -84,7 +84,7 @@ export default function KrustyButton({
       />
 
       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
+        className="absolute inset-0 bg-linear-to-r from-transparent via-white to-transparent"
         initial={{ x: '-100%' }}
         animate={{ x: isHovered && !disabled ? '100%' : '-100%' }}
         transition={{ duration: 0.6 }}

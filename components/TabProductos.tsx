@@ -77,8 +77,8 @@ export default function TabProductos() {
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Botón Principal */}
-            <button 
-                onClick={() => setShowModal(true)} 
+            <button
+                onClick={() => setShowModal(true)}
                 className="w-full bg-[#D32F2F] text-white border-8 border-black p-8 rounded-[3rem] font-black uppercase text-2xl italic shadow-[10px_10px_0px_0px_black] hover:-translate-y-1 active:translate-y-0 active:shadow-none transition-all"
             >
                 + AGREGAR NUEVO ITEM 🔥
@@ -86,7 +86,7 @@ export default function TabProductos() {
 
             {/* Barra de Guardado Rápido (Solo si hay cambios en texto) */}
             {idsModificados.size > 0 && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] w-full max-w-md px-4">
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-60 w-full max-w-md px-4">
                     <button onClick={guardarCambiosRapidos} disabled={isSaving} className="w-full bg-green-500 text-white border-8 border-black p-6 rounded-[3rem] font-black text-2xl italic animate-bounce shadow-2xl">
                         {isSaving ? 'GUARDANDO...' : '🔥 GUARDAR CAMBIOS'}
                     </button>

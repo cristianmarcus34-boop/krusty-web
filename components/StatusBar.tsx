@@ -7,7 +7,7 @@ export default function StatusBar() {
   const [pedido, setPedido] = useState<any>(null);
   const [visible, setVisible] = useState(false);
   const channelRef = useRef<any>(null);
-  
+
   // Ref para el audio y para seguir el último estado conocido (evita sonidos repetidos)
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const ultimoEstadoRef = useRef<string | null>(null);
@@ -40,7 +40,7 @@ export default function StatusBar() {
         if (ultimoEstadoRef.current && data.estado !== ultimoEstadoRef.current) {
           playStatusSound();
         }
-        
+
         setPedido(data);
         setVisible(true);
         ultimoEstadoRef.current = data.estado;
@@ -72,7 +72,7 @@ export default function StatusBar() {
           { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `id=eq.${currentId}` },
           (payload) => {
             const nuevoEstado = payload.new.estado;
-            
+
             // Si el estado cambió, disparamos sonido
             if (nuevoEstado !== ultimoEstadoRef.current) {
               playStatusSound();
@@ -103,10 +103,10 @@ export default function StatusBar() {
   if (!pedido || !visible) return null;
 
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[999] w-[92%] max-w-[400px]">
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-999 w-[92%] max-w-400">
       <Link href={`/pedido/${pedido.id}`}>
-        <div className="bg-black border-[4px] border-[#FFCA28] p-4 rounded-[2.5rem] shadow-[0_8px_0_0_#D32F2F] flex items-center justify-between group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-5">
-          
+        <div className="bg-black border-4 border-[#FFCA28] p-4 rounded-[2.5rem] shadow-[0_8px_0_0_#D32F2F] flex items-center justify-between group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-5">
+
           <div className="flex items-center gap-4">
             <div className={`text-3xl ${pedido.estado === 'en camino' ? 'animate-bounce' : 'animate-pulse'}`}>
               {pedido.estado === 'pendiente' && '📩'}

@@ -6,12 +6,12 @@ export default function ModalNuevoProducto({ onClose, onSuccess }: any) {
   const [loading, setLoading] = useState(false);
   const [todosLosExtras, setTodosLosExtras] = useState<any[]>([]);
   const [extrasSeleccionados, setExtrasSeleccionados] = useState<number[]>([]);
-  const [nuevo, setNuevo] = useState({ 
-    nombre: '', 
-    precio: 0, 
-    categoria: 'burgers', 
-    descripcion: '', 
-    imagen: '' 
+  const [nuevo, setNuevo] = useState({
+    nombre: '',
+    precio: 0,
+    categoria: 'burgers',
+    descripcion: '',
+    imagen: ''
   });
 
   // 1. Cargar la lista de extras disponibles al abrir el modal
@@ -28,7 +28,7 @@ export default function ModalNuevoProducto({ onClose, onSuccess }: any) {
     if (!file) return;
     setLoading(true);
     const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
-    
+
     const { error } = await supabase.storage
       .from('krusty_imagenes')
       .upload(`productos/${fileName}`, file);
@@ -42,13 +42,13 @@ export default function ModalNuevoProducto({ onClose, onSuccess }: any) {
     const { data: { publicUrl } } = supabase.storage
       .from('krusty_imagenes')
       .getPublicUrl(`productos/${fileName}`);
-    
+
     setNuevo({ ...nuevo, imagen: publicUrl });
     setLoading(false);
   };
 
   const toggleExtra = (id: number) => {
-    setExtrasSeleccionados(prev => 
+    setExtrasSeleccionados(prev =>
       prev.includes(id) ? prev.filter(eId => eId !== id) : [...prev, id]
     );
   };
@@ -92,21 +92,21 @@ export default function ModalNuevoProducto({ onClose, onSuccess }: any) {
   };
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-[#FFCA28] border-[10px] border-black p-8 rounded-[4rem] w-full max-w-lg my-auto shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]">
+    <div className="fixed inset-0 z-150 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm overflow-y-auto">
+      <div className="bg-[#FFCA28] border-10px border-black p-8 rounded-[4rem] w-full max-w-lg my-auto shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]">
         <h2 className="text-4xl font-black uppercase italic mb-6 text-center tracking-tighter">NUEVO ITEM 🔥</h2>
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Nombre y Categoria */}
           <div className="space-y-1">
-            <input required placeholder="NOMBRE DEL PRODUCTO" className="w-full border-4 border-black p-4 rounded-2xl font-black italic outline-none focus:bg-white" onChange={e => setNuevo({...nuevo, nombre: e.target.value.toUpperCase()})} />
+            <input required placeholder="NOMBRE DEL PRODUCTO" className="w-full border-4 border-black p-4 rounded-2xl font-black italic outline-none focus:bg-white" onChange={e => setNuevo({ ...nuevo, nombre: e.target.value.toUpperCase() })} />
           </div>
 
           <div className="flex gap-2">
             <div className="flex-1">
-              <input required type="number" placeholder="PRECIO" className="w-full border-4 border-black p-4 rounded-2xl font-black shadow-[4px_4px_0px_0px_black] outline-none" onChange={e => setNuevo({...nuevo, precio: Number(e.target.value)})} />
+              <input required type="number" placeholder="PRECIO" className="w-full border-4 border-black p-4 rounded-2xl font-black shadow-[4px_4px_0px_0px_black] outline-none" onChange={e => setNuevo({ ...nuevo, precio: Number(e.target.value) })} />
             </div>
-            <select className="flex-1 border-4 border-black p-4 rounded-2xl font-black outline-none" onChange={e => setNuevo({...nuevo, categoria: e.target.value})}>
+            <select className="flex-1 border-4 border-black p-4 rounded-2xl font-black outline-none" onChange={e => setNuevo({ ...nuevo, categoria: e.target.value })}>
               <option value="burgers">BURGERS 🍔</option>
               <option value="bebidas">BEBIDAS 🥤</option>
               <option value="postres">POSTRES 🍦</option>
@@ -124,11 +124,10 @@ export default function ModalNuevoProducto({ onClose, onSuccess }: any) {
                     key={extra.id}
                     type="button"
                     onClick={() => toggleExtra(extra.id)}
-                    className={`text-[10px] font-black p-2 rounded-xl border-2 border-black transition-all uppercase ${
-                      extrasSeleccionados.includes(extra.id) 
-                      ? 'bg-green-500 text-white translate-y-1 shadow-none' 
-                      : 'bg-white text-black shadow-[2px_2px_0px_0px_black]'
-                    }`}
+                    className={`text-[10px] font-black p-2 rounded-xl border-2 border-black transition-all uppercase ${extrasSeleccionados.includes(extra.id)
+                        ? 'bg-green-500 text-white translate-y-1 shadow-none'
+                        : 'bg-white text-black shadow-[2px_2px_0px_0px_black]'
+                      }`}
                   >
                     {extra.nombre} {extrasSeleccionados.includes(extra.id) ? '✅' : '+'}
                   </button>
@@ -149,7 +148,7 @@ export default function ModalNuevoProducto({ onClose, onSuccess }: any) {
             </div>
           </div>
 
-          <textarea placeholder="DESCRIPCIÓN BREVE..." className="w-full border-4 border-black p-4 rounded-2xl font-black h-20 resize-none outline-none focus:bg-white text-sm" onChange={e => setNuevo({...nuevo, descripcion: e.target.value})} />
+          <textarea placeholder="DESCRIPCIÓN BREVE..." className="w-full border-4 border-black p-4 rounded-2xl font-black h-20 resize-none outline-none focus:bg-white text-sm" onChange={e => setNuevo({ ...nuevo, descripcion: e.target.value })} />
 
           <div className="pt-2">
             <button type="submit" disabled={loading} className="w-full bg-[#D32F2F] text-white border-4 border-black py-5 rounded-[2.5rem] font-black text-2xl italic shadow-[8px_8px_0px_0px_black] active:translate-y-1 active:shadow-none transition-all disabled:opacity-50">
