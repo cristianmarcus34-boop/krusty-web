@@ -1,12 +1,9 @@
-// components/LocationPicker.tsx
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
-import { GoogleMap, Marker, Autocomplete } from '@react-google-maps/api';
-import usePlacesAutocomplete from 'use-places-autocomplete';
+import { useState, useRef, useCallback, useEffect } from 'react';
+import { GoogleMap, Marker } from '@react-google-maps/api';
 import { useGoogleMaps } from '@/lib/googleMapsLoader';
 
-// Configuración del mapa
 const mapContainerStyle = {
     width: '100%',
     height: '300px',
@@ -31,23 +28,35 @@ interface LocationPickerProps {
     initialDireccion?: string;
 }
 
+// Tipos para las sugerencias de Places
+interface PlacePrediction {
+    placeId: string;
+    text: {
+        text: string;
+    };
+}
+
+interface Suggestion {
+    placePrediction: PlacePrediction | null;
+}
+
 export default function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPickerProps) {
     const { isLoaded, loadError } = useGoogleMaps();
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [marker, setMarker] = useState<google.maps.LatLngLiteral | null>(null);
     const [direccion, setDireccion] = useState(initialDireccion);
-    const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const inputRef = useRef<HTMLInputElement>(null);
+    const autocompleteServiceRef = useRef<any>(null);
 
-    const {
-        suggestions: { status, data },
-        setValue,
-    } = usePlacesAutocomplete({
-        requestOptions: {
-            componentRestrictions: { country: 'ar' },
-            types: ['address'],
-        },
-        debounce: 300,
-    });
+    // Inicializar el servicio de autocompletado
+    useEffect(() => {
+        if (isLoaded && !autocompleteServiceRef.current) {
+            // Usar el servicio de autocompletado de Places
+            autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+        }
+    }, [isLoaded]);
 
     const onLoad = useCallback((mapInstance: google.maps.Map) => {
         setMap(mapInstance);
@@ -59,7 +68,6 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
             const lng = event.latLng.lng();
             setMarker({ lat, lng });
 
-            // Geocodificar para obtener la dirección
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                 if (status === 'OK' && results && results[0]) {
@@ -70,48 +78,6 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
             });
         }
     }, [onLocationSelect]);
-
-    const onPlaceSelected = useCallback((place: google.maps.places.PlaceResult) => {
-        if (place.geometry?.location) {
-            const lat = place.geometry.location.lat();
-            const lng = place.geometry.location.lng();
-            const direccion = place.formatted_address || place.name || '';
-
-            setMarker({ lat, lng });
-            setDireccion(direccion);
-            onLocationSelect(direccion, lat, lng);
-
-            if (map) {
-                map.panTo({ lat, lng });
-                map.setZoom(15);
-            }
-        }
-    }, [map, onLocationSelect]);
-
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setValue(e.target.value);
-        setDireccion(e.target.value);
-    };
-
-    const handleSelectSuggestion = (suggestion: { description: string }) => {
-        setValue(suggestion.description, false);
-        setDireccion(suggestion.description);
-
-        // Buscar el lugar seleccionado
-        const geocoder = new google.maps.Geocoder();
-        geocoder.geocode({ address: suggestion.description }, (results, status) => {
-            if (status === 'OK' && results && results[0] && results[0].geometry.location) {
-                const lat = results[0].geometry.location.lat();
-                const lng = results[0].geometry.location.lng();
-                setMarker({ lat, lng });
-                onLocationSelect(suggestion.description, lat, lng);
-                if (map) {
-                    map.panTo({ lat, lng });
-                    map.setZoom(15);
-                }
-            }
-        });
-    };
 
     const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
         if (event.latLng) {
@@ -119,7 +85,6 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
             const lng = event.latLng.lng();
             setMarker({ lat, lng });
 
-            // Geocodificar para obtener la dirección
             const geocoder = new google.maps.Geocoder();
             geocoder.geocode({ location: { lat, lng } }, (results, status) => {
                 if (status === 'OK' && results && results[0]) {
@@ -130,6 +95,75 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
             });
         }
     }, [onLocationSelect]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setDireccion(value);
+
+        if (value.length < 3) {
+            setSuggestions([]);
+            return;
+        }
+
+        setIsSearching(true);
+
+        // Usar el servicio de autocompletado
+        const service = new google.maps.places.AutocompleteService();
+        const request = {
+            input: value,
+            types: ['address'] as google.maps.places.AutocompletePrediction['types'],
+            componentRestrictions: { country: 'ar' } as google.maps.places.ComponentRestrictions,
+        };
+
+        service.getPlacePredictions(request, (predictions, status) => {
+            setIsSearching(false);
+
+            if (status === 'OK' && predictions) {
+                const formattedSuggestions: Suggestion[] = predictions.map((prediction: google.maps.places.AutocompletePrediction) => ({
+                    placePrediction: {
+                        placeId: prediction.place_id,
+                        text: {
+                            text: prediction.description,
+                        },
+                    },
+                }));
+                setSuggestions(formattedSuggestions);
+            } else {
+                setSuggestions([]);
+            }
+        });
+    };
+
+    const handleSelectSuggestion = (suggestion: Suggestion) => {
+        const placeId = suggestion.placePrediction?.placeId;
+
+        if (!placeId) {
+            return;
+        }
+
+        const service = new google.maps.places.PlacesService(document.createElement('div'));
+
+        service.getDetails(
+            { placeId: placeId, fields: ['geometry', 'formatted_address'] },
+            (place: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
+                if (status === 'OK' && place?.geometry?.location) {
+                    const lat = place.geometry.location.lat();
+                    const lng = place.geometry.location.lng();
+                    const direccion = place.formatted_address || suggestion.placePrediction?.text?.text || '';
+
+                    setMarker({ lat, lng });
+                    setDireccion(direccion);
+                    setSuggestions([]);
+                    onLocationSelect(direccion, lat, lng);
+
+                    if (map) {
+                        map.panTo({ lat, lng });
+                        map.setZoom(15);
+                    }
+                }
+            }
+        );
+    };
 
     // Muestra el loader mientras carga
     if (!isLoaded) {
@@ -155,9 +189,10 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
 
     return (
         <div className="space-y-4">
-            {/* Input de búsqueda */}
+            {/* Input de búsqueda con sugerencias */}
             <div className="relative">
                 <input
+                    ref={inputRef}
                     type="text"
                     placeholder="Escribí tu dirección o mové el pin en el mapa..."
                     value={direccion}
@@ -166,17 +201,22 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
                 />
 
                 {/* Sugerencias de autocompletado */}
-                {status === 'OK' && data.length > 0 && (
+                {suggestions.length > 0 && (
                     <ul className="absolute z-50 w-full bg-white dark:bg-stone-800 border-4 border-black mt-1 rounded-xl max-h-60 overflow-y-auto">
-                        {data.map((suggestion) => (
+                        {suggestions.map((suggestion, index) => (
                             <li
-                                key={suggestion.place_id}
+                                key={index}
                                 onClick={() => handleSelectSuggestion(suggestion)}
                                 className="p-3 hover:bg-[#FFCA28]/10 dark:hover:bg-[#FAD02C]/10 cursor-pointer font-bold text-xs border-b border-stone-100 dark:border-stone-700 last:border-0"
                             >
-                                {suggestion.description}
+                                {suggestion.placePrediction?.text?.text || 'Dirección'}
                             </li>
                         ))}
+                        {isSearching && (
+                            <li className="p-3 text-center text-stone-400 font-bold text-xs">
+                                Buscando...
+                            </li>
+                        )}
                     </ul>
                 )}
             </div>

@@ -1,18 +1,15 @@
 // services/deliveryService.ts
 
-const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-
-// ✅ COORDENADAS EXACTAS - Calle 853 N° 1149, San Francisco Solano, Quilmes
-// 34°46'35.5"S 58°17'31.9"W
+// 📍 COORDENADAS EXACTAS DEL LOCAL (Calle 853 N° 1149, San Francisco Solano, Quilmes)
 const LOCAL_LAT = -34.776528;
 const LOCAL_LNG = -58.292194;
 
-// Tarifas por kilómetro (AJUSTABLES)
-const TARIFAS = {
-    base: 1000,          // Costo base de envío (zona cercana)
-    por_km: 1000,        // Costo por kilómetro adicional
-    distancia_minima: 1, // Distancia mínima en km (si es menor, tarifa base)
-    distancia_maxima: 7,   // Distancia máxima en km (si es mayor, no se puede enviar)
+// 💰 Tarifas por kilómetro
+export const TARIFAS = {
+    base: 1000,           // Costo base de envío (hasta la distancia mínima)
+    por_km: 1000,         // Costo adicional por cada km extra
+    distancia_minima: 1,  // Distancia en km dentro de la cual se cobra tarifa base
+    distancia_maxima: 7,  // Radio máximo de entrega en km
 };
 
 export interface Ubicacion {
@@ -27,183 +24,166 @@ export interface ResultadoEnvio {
     tiempo_minutos: number;
     disponible: boolean;
     mensaje?: string;
+    metodo_calculo?: 'GOOGLE_MAPS' | 'HAVERSINE_FALLBACK';
 }
 
 /**
- * Geocodificar una dirección a coordenadas
+ * Función auxiliar para calcular la distancia en línea recta (Fórmula de Haversine).
+ * Sirve como fallback en caso de error/caída de la API de Google Maps.
+ */
+function calcularDistanciaHaversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distancia en km
+}
+
+/**
+ * Geocodifica una dirección del cliente invocando el endpoint /api/delivery
  */
 export async function geocodificarDireccion(direccion: string): Promise<Ubicacion | null> {
     try {
-        // 🔍 LOG 1: Verificar que la API Key existe
-        console.log('🔑 API Key configurada:', GOOGLE_MAPS_API_KEY ? '✅ Sí' : '❌ NO');
-        if (!GOOGLE_MAPS_API_KEY) {
-            console.error('❌ ERROR CRÍTICO: No hay API Key de Google Maps en .env.local');
-            return null;
+        const direccionLimpia = direccion.trim();
+        if (!direccionLimpia) return null;
+
+        console.log('🌐 Geocodificando dirección mediante API Server...');
+        const res = await fetch('/api/delivery', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'geocode', direccion: direccionLimpia }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success && data.ubicacion) {
+            console.log('✅ Ubicación obtenida:', data.ubicacion);
+            return data.ubicacion;
         }
 
-        const direccionCompleta = `${direccion}, San Francisco Solano, Quilmes, Buenos Aires, Argentina`;
-        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
-            direccionCompleta
-        )}&key=${GOOGLE_MAPS_API_KEY}`;
-
-        // 🔍 LOG 2: Mostrar la URL completa que se está generando
-        console.log('🌐 URL de Geocoding:', url);
-
-        const response = await fetch(url);
-        const data = await response.json();
-
-        // 🔍 LOG 3: Mostrar la respuesta completa de Google
-        console.log('📦 Respuesta de Geocoding:', JSON.stringify(data, null, 2));
-
-        if (data.status === 'OK' && data.results.length > 0) {
-            const location = data.results[0].geometry.location;
-            console.log('✅ Ubicación encontrada:', location);
-            return {
-                lat: location.lat,
-                lng: location.lng,
-                direccion: data.results[0].formatted_address
-            };
-        }
-
-        // 🔍 LOG 4: Mostrar el error específico de Google
-        console.warn('⚠️ No se encontró la dirección. Status:', data.status);
-        if (data.status === 'REQUEST_DENIED') {
-            console.error('❌ ERROR: La API Key no tiene permisos. Verificá:');
-            console.error('   1. Que la Geocoding API esté habilitada en Google Cloud Console');
-            console.error('   2. Que la API Key tenga restricciones correctas');
-            console.error('   3. Que la API Key sea válida');
-        }
-        if (data.status === 'ZERO_RESULTS') {
-            console.warn('ℹ️ La dirección no existe o no se encontró');
-        }
+        console.warn('⚠️ No se pudo geocodificar la dirección:', data.error || data.message);
         return null;
     } catch (error) {
-        console.error('❌ Error inesperado en geocodificarDireccion:', error);
+        console.error('❌ Error en geocodificarDireccion:', error);
         return null;
     }
 }
 
 /**
- * Calcular distancia y precio de envío entre dos puntos
+ * Calcula distancia, precio y factibilidad de entrega invocando /api/delivery
  */
 export async function calcularEnvio(
-    direccionCliente: string
+    cliente: string | Ubicacion
 ): Promise<ResultadoEnvio> {
-    try {
-        console.log('🚗 Iniciando cálculo de envío para:', direccionCliente);
+    const direccionTexto = typeof cliente === 'string' ? cliente : cliente.direccion;
 
-        // 1. Geocodificar la dirección del cliente
-        const ubicacionCliente = await geocodificarDireccion(direccionCliente);
+    try {
+        console.log('🚗 Calculando costo de envío para:', direccionTexto);
+
+        // Obtener la ubicación (coordenadas) del cliente
+        const ubicacionCliente =
+            typeof cliente !== 'string' && cliente.lat && cliente.lng
+                ? cliente
+                : await geocodificarDireccion(direccionTexto);
 
         if (!ubicacionCliente) {
-            console.warn('⚠️ No se pudo geocodificar la dirección');
             return {
                 distancia_km: 0,
                 precio: 0,
                 tiempo_minutos: 0,
                 disponible: false,
-                mensaje: 'No pudimos encontrar tu dirección. Por favor, verificála.'
+                mensaje: 'No pudimos geolocalizar tu dirección. Por favor, verificá que la calle y número sean correctos.',
             };
         }
 
-        console.log('📍 Ubicación del cliente:', ubicacionCliente);
+        let distanciaKm = 0;
+        let tiempoMinutos = 0;
+        let usadoFallback = false;
 
-        // 2. Calcular distancia usando Distance Matrix API
-        const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${LOCAL_LAT},${LOCAL_LNG}&destinations=${ubicacionCliente.lat},${ubicacionCliente.lng}&key=${GOOGLE_MAPS_API_KEY}&units=metric`;
+        // Llama al servidor Next.js para evitar bloqueos de CORS
+        try {
+            const res = await fetch('/api/delivery', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'calculate',
+                    destinationLat: ubicacionCliente.lat,
+                    destinationLng: ubicacionCliente.lng,
+                }),
+            });
 
-        // 🔍 LOG 5: Mostrar la URL de Distance Matrix
-        console.log('🌐 URL de Distance Matrix:', url);
+            const data = await res.json();
 
-        const response = await fetch(url);
-        const data = await response.json();
+            if (res.ok && data.success) {
+                distanciaKm = data.distanciaMetros / 1000;
+                tiempoMinutos = Math.ceil(data.duracionSegundos / 60);
+            } else {
+                throw new Error(data.error || 'Falla en la respuesta de la API interna');
+            }
+        } catch (matrixErr) {
+            console.warn('⚠️ Falla en la solicitud del cálculo principal. Usando cálculo de contingencia (Haversine)...', matrixErr);
 
-        // 🔍 LOG 6: Mostrar la respuesta de Distance Matrix
-        console.log('📦 Respuesta de Distance Matrix:', JSON.stringify(data, null, 2));
-
-        if (data.status === 'REQUEST_DENIED') {
-            console.error('❌ ERROR: Distance Matrix API no habilitada o sin permisos');
-            return {
-                distancia_km: 0,
-                precio: 0,
-                tiempo_minutos: 0,
-                disponible: false,
-                mensaje: 'Error al calcular la distancia. Verificá tu conexión.'
-            };
+            // Fallback: cálculo en línea recta + 25% estimado por trazado urbano
+            const distanciaDirecta = calcularDistanciaHaversine(
+                LOCAL_LAT,
+                LOCAL_LNG,
+                ubicacionCliente.lat,
+                ubicacionCliente.lng
+            );
+            distanciaKm = distanciaDirecta * 1.25;
+            tiempoMinutos = Math.ceil(distanciaKm * 4) + 10;
+            usadoFallback = true;
         }
 
-        if (data.status !== 'OK' || !data.rows?.[0]?.elements?.[0]) {
-            console.error('❌ Error en Distance Matrix:', data.status);
+        // Redondear distancia a 1 decimal
+        const distanciaFinalKm = Math.round(distanciaKm * 10) / 10;
+
+        // Validar radio de cobertura
+        if (distanciaFinalKm > TARIFAS.distancia_maxima) {
+            console.warn(`⚠️ Distancia de ${distanciaFinalKm} km excede el límite de ${TARIFAS.distancia_maxima} km`);
             return {
-                distancia_km: 0,
-                precio: 0,
-                tiempo_minutos: 0,
-                disponible: false,
-                mensaje: 'Error al calcular la distancia. Intentá de nuevo.'
-            };
-        }
-
-        const element = data.rows[0].elements[0];
-
-        if (element.status === 'ZERO_RESULTS') {
-            console.warn('⚠️ No se encontró ruta entre los puntos');
-            return {
-                distancia_km: 0,
-                precio: 0,
-                tiempo_minutos: 0,
-                disponible: false,
-                mensaje: 'No se pudo calcular la ruta. Revisá tu dirección.'
-            };
-        }
-
-        // 3. Obtener distancia y tiempo
-        const distanciaMetros = element.distance?.value || 0;
-        const distanciaKm = distanciaMetros / 1000;
-        const tiempoMinutos = Math.ceil((element.duration?.value || 0) / 60);
-
-        console.log(`📊 Distancia: ${distanciaKm.toFixed(2)} km, Tiempo: ${tiempoMinutos} min`);
-
-        // 4. Verificar si está dentro del radio de entrega
-        if (distanciaKm > TARIFAS.distancia_maxima) {
-            console.warn(`⚠️ Distancia ${distanciaKm.toFixed(1)} km excede el máximo de ${TARIFAS.distancia_maxima} km`);
-            return {
-                distancia_km: Math.round(distanciaKm * 10) / 10,
+                distancia_km: distanciaFinalKm,
                 precio: 0,
                 tiempo_minutos: tiempoMinutos,
                 disponible: false,
-                mensaje: `Lo sentimos, no hacemos envíos a más de ${TARIFAS.distancia_maxima} km. Tu ubicación está a ${distanciaKm.toFixed(1)} km.`
+                mensaje: `Tu ubicación está a ${distanciaFinalKm} km. Lo sentimos, nuestro radio máximo de entrega es de ${TARIFAS.distancia_maxima} km.`,
+                metodo_calculo: usadoFallback ? 'HAVERSINE_FALLBACK' : 'GOOGLE_MAPS',
             };
         }
 
-        // 5. Calcular precio
-        let precio;
-        if (distanciaKm <= TARIFAS.distancia_minima) {
-            precio = TARIFAS.base;
-            console.log(`✅ Distancia ${distanciaKm.toFixed(2)} km <= ${TARIFAS.distancia_minima} km, precio base: $${precio}`);
-        } else {
-            precio = TARIFAS.base + (distanciaKm - TARIFAS.distancia_minima) * TARIFAS.por_km;
-            console.log(`✅ Distancia ${distanciaKm.toFixed(2)} km > ${TARIFAS.distancia_minima} km, precio calculado: $${precio}`);
+        // Calcular tarifa de envío
+        let precioBase = TARIFAS.base;
+        if (distanciaFinalKm > TARIFAS.distancia_minima) {
+            const kmAdicionales = distanciaFinalKm - TARIFAS.distancia_minima;
+            precioBase += kmAdicionales * TARIFAS.por_km;
         }
 
-        // Redondear a múltiplos de 50
-        precio = Math.ceil(precio / 50) * 50;
+        // Redondeo a múltiplos de $50
+        const precioFinal = Math.ceil(precioBase / 50) * 50;
 
-        console.log(`💰 Precio de envío final: $${precio}`);
+        console.log(`✅ Envío calculado: ${distanciaFinalKm} km | $${precioFinal} | ~${tiempoMinutos} min`);
 
         return {
-            distancia_km: Math.round(distanciaKm * 10) / 10,
-            precio: precio,
+            distancia_km: distanciaFinalKm,
+            precio: precioFinal,
             tiempo_minutos: tiempoMinutos,
             disponible: true,
+            metodo_calculo: usadoFallback ? 'HAVERSINE_FALLBACK' : 'GOOGLE_MAPS',
         };
-
     } catch (error) {
-        console.error('❌ Error inesperado en calcularEnvio:', error);
+        console.error('❌ Error crítico en calcularEnvio:', error);
         return {
             distancia_km: 0,
             precio: 0,
             tiempo_minutos: 0,
             disponible: false,
-            mensaje: 'Error al calcular el envío. Intentá de nuevo.'
+            mensaje: 'Ocurrió un problema inesperado al calcular el envío. Por favor, intentá nuevamente.',
         };
     }
 }
