@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Metadata, Viewport } from 'next';
 import GestorDeActualizaciones from '../components/GestorDeActualizaciones';
+import ActiveOrderFloating from '@/components/ActiveOrderFloating';
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next";
 
@@ -100,12 +101,14 @@ export default function RootLayout({
           <ThemeToggle />
           <GestorDeActualizaciones />
           <Navbar />
+          <ActiveOrderFloating />
 
           {/* ============================================
               CONTENIDO PRINCIPAL
               ============================================ */}
           <main className="min-h-[calc(100vh-64px)] pb-32 relative z-10">
             {children}
+
           </main>
 
           {/* ============================================

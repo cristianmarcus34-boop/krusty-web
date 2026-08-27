@@ -9,15 +9,13 @@ export default function SeguimientoPedido() {
     const params = useParams();
     const router = useRouter();
     const id = params?.id as string;
+
     const [pedido, setPedido] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const cargadoInicial = useRef(false);
 
     // Coordenadas actualizadas según el mapa:
-    // 1. Pendiente: Casa de los Simpson (arriba a la izquierda)
-    // 2. En Cocina: Krusty Burger (edificio rojo central con el logo)
-    // 3. En Camino: Zona de tiendas y avenidas (derecha central)
-    // 4. Entregado: Zona residencial sur (abajo a la derecha)
     const coordenadasMoto: Record<string, { x: string; y: string }> = {
         'pendiente': { x: '41%', y: '36%' },
         'en cocina': { x: '36%', y: '38%' },
@@ -29,17 +27,35 @@ export default function SeguimientoPedido() {
         if (!id) return;
 
         const fetchPedido = async () => {
+            setLoading(true);
+            setErrorMsg(null);
             try {
+                // 1. Buscamos el pedido en Supabase
                 const { data, error } = await supabase
                     .from('pedidos')
                     .select('*')
                     .eq('id', id)
                     .single();
 
-                if (error) throw error;
-                if (data) setPedido(data);
+                if (error || !data) {
+                    setErrorMsg('El pedido que buscás no existe, fue eliminado o la URL es incorrecta.');
+                    setLoading(false);
+                    return;
+                }
+
+                // 2. Validación de seguridad estricta por LocalStorage
+                const telefonoLocal = localStorage.getItem('krusty_user_telefono');
+
+                if (!telefonoLocal || data.telefono !== telefonoLocal) {
+                    setErrorMsg('⚠️ Acceso denegado: No tenés permisos para ver este pedido o no pertenece a este dispositivo.');
+                    setLoading(false);
+                    return;
+                }
+
+                setPedido(data);
             } catch (error: any) {
                 console.error("❌ Error:", error.message);
+                setErrorMsg('Ocurrió un error al conectar con la cocina de Krusty.');
             } finally {
                 setLoading(false);
                 cargadoInicial.current = true;
@@ -55,28 +71,30 @@ export default function SeguimientoPedido() {
                 { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `id=eq.${id}` },
                 (payload) => {
                     const nuevoEstado = payload.new.estado;
-                    const estadoAnterior = pedido?.estado;
 
-                    if (nuevoEstado !== estadoAnterior) {
-                        // 1. Sonido Correcaminos: SOLO si cambia a "en camino"
-                        if (nuevoEstado === 'en camino') {
-                            const beep = new Audio('/sounds/correcaminos-bip.mp3');
-                            beep.volume = 0.5;
-                            beep.play().catch(() => {});
+                    setPedido((estadoAnteriorPedido: any) => {
+                        const estadoAnterior = estadoAnteriorPedido?.estado;
+
+                        if (nuevoEstado !== estadoAnterior) {
+                            // 1. Sonido Correcaminos: SOLO si cambia a "en camino"
+                            if (nuevoEstado === 'en camino') {
+                                const beep = new Audio('/sounds/correcaminos-bip.mp3');
+                                beep.volume = 0.5;
+                                beep.play().catch(() => { });
+                            }
+
+                            // 2. Sonido Yahoo + Confetti: SOLO si cambia a "entregado"
+                            if (nuevoEstado === 'entregado') {
+                                const yahoo = new Audio('/sounds/woo-hoo.mp3');
+                                yahoo.volume = 0.5;
+                                yahoo.play().catch(() => console.log("Esperando interacción para sonar Yahoo"));
+
+                                lanzarConfetti();
+                            }
                         }
 
-                        // 2. Sonido Yahoo + Confetti: SOLO si cambia a "entregado"
-                        if (nuevoEstado === 'entregado') {
-                            // Asegurate de tener el archivo en public/sounds/yahoo.mp3
-                            const yahoo = new Audio('/sounds/woo-hoo.mp3');
-                            yahoo.volume = 0.5;
-                            yahoo.play().catch(() => console.log("Esperando interacción para sonar Yahoo"));
-                            
-                            lanzarConfetti();
-                        }
-                    }
-
-                    setPedido(payload.new);
+                        return payload.new;
+                    });
                 }
             )
             .subscribe();
@@ -84,7 +102,7 @@ export default function SeguimientoPedido() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [id, pedido?.estado]);
+    }, [id]);
 
     const lanzarConfetti = () => {
         const duration = 4 * 1000;
@@ -120,7 +138,7 @@ export default function SeguimientoPedido() {
 
     if (loading) return (
         <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center p-4 text-center">
-            <motion.div 
+            <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                 className="w-16 h-16 border-8 border-black border-t-[#D32F2F] rounded-full mb-6"
@@ -129,11 +147,20 @@ export default function SeguimientoPedido() {
         </div>
     );
 
-    if (!pedido) return (
-        <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
-            <span className="text-8xl mb-6">🤡</span>
-            <h2 className="text-3xl font-black uppercase italic mb-8">¡Ay Caramba! Pedido no encontrado</h2>
-            <button onClick={() => router.push('/')} className="bg-[#D32F2F] text-white font-black px-8 py-4 rounded-2xl border-4 border-black shadow-[6px_6px_0px_black]">VOLVER AL HOME</button>
+    // Pantalla de error mejorada si no existe, o si no tiene permisos
+    if (errorMsg || !pedido) return (
+        <div className="min-h-screen bg-[#FFF9E6] flex flex-col items-center justify-center p-6 text-center">
+            <div className="bg-white border-4 border-black p-8 rounded-[2.5rem] shadow-[8px_8px_0px_black] max-w-md w-full">
+                <span className="text-6xl mb-4 block">👮‍♂️</span>
+                <h2 className="text-2xl font-black uppercase italic mb-2 text-black">¡Ay Caramba!</h2>
+                <p className="font-bold text-stone-600 text-sm mb-6">{errorMsg || 'Pedido no encontrado'}</p>
+                <button
+                    onClick={() => router.push('/')}
+                    className="w-full bg-[#FFCA28] text-black font-black py-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_black] hover:bg-[#D32F2F] hover:text-white transition-all uppercase cursor-pointer"
+                >
+                    VOLVER AL MENÚ
+                </button>
+            </div>
         </div>
     );
 
@@ -144,23 +171,23 @@ export default function SeguimientoPedido() {
     return (
         <div className="min-h-screen bg-stone-100 p-4 font-sans text-black pb-24 overflow-x-hidden">
             <div className="max-w-md mx-auto pt-4">
-                
+
                 {/* NAVEGACIÓN */}
                 <div className="flex justify-between items-center mb-6 gap-4">
-                    <button onClick={() => router.push('/')} className="flex-1 bg-white border-4 border-black p-3 rounded-2xl font-black italic uppercase text-[10px] shadow-[4px_4px_0px_black] active:scale-95 transition-all">← Menú</button>
-                    <button onClick={handleVerTicket} className="flex-1 bg-[#FFCA28] border-4 border-black p-3 rounded-2xl font-black italic uppercase text-[10px] shadow-[4px_4px_0px_black] active:scale-95 transition-all">Ver Ticket 🎫</button>
+                    <button onClick={() => router.push('/')} className="flex-1 bg-white border-4 border-black p-3 rounded-2xl font-black italic uppercase text-[10px] shadow-[4px_4px_0px_black] active:scale-95 transition-all cursor-pointer">← Menú</button>
+                    <button onClick={handleVerTicket} className="flex-1 bg-[#FFCA28] border-4 border-black p-3 rounded-2xl font-black italic uppercase text-[10px] shadow-[4px_4px_0px_black] active:scale-95 transition-all cursor-pointer">Ver Ticket 🎫</button>
                 </div>
 
                 {/* MAPA DE SPRINGFIELD */}
                 <div className="relative w-full h-56 bg-stone-300 rounded-[2.5rem] border-4 border-black mb-8 overflow-hidden shadow-[8px_8px_0px_black]">
-                    <img 
-                        src="/images/springfield-map.jpg" 
-                        alt="Springfield Map" 
+                    <img
+                        src="/images/springfield-map.jpg"
+                        alt="Springfield Map"
                         className="w-full h-full object-cover scale-110 opacity-90"
                     />
-                    
+
                     {/* ICONO DE LA MOTO / GPS */}
-                    <motion.div 
+                    <motion.div
                         className="absolute z-20"
                         animate={{ left: posMoto.x, top: posMoto.y }}
                         transition={{ duration: 2.5, ease: "easeInOut" }}
@@ -170,7 +197,7 @@ export default function SeguimientoPedido() {
                                 {pedido.estado === 'en camino' ? '🛵' : '📍'}
                             </span>
                             {pedido.estado === 'en camino' && (
-                                <motion.div 
+                                <motion.div
                                     animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
                                     transition={{ repeat: Infinity, duration: 1.5 }}
                                     className="absolute -inset-2 bg-yellow-400 rounded-full -z-10 blur-sm"
@@ -199,7 +226,7 @@ export default function SeguimientoPedido() {
                                 <div className={`w-9 h-9 rounded-full border-4 border-black flex items-center justify-center transition-all duration-500 ${index <= indiceActual ? 'bg-[#FFCA28] scale-110 shadow-[3px_3px_0px_black]' : 'bg-white text-stone-300'}`}>
                                     <span className="text-[11px] font-black">{index + 1}</span>
                                 </div>
-                                <p className={`text-[8px] font-black uppercase mt-3 text-center max-w-[60px] leading-tight ${index <= indiceActual ? 'text-black' : 'text-stone-300'}`}>{est}</p>
+                                <p className={`text-[8px] font-black uppercase mt-3 text-center max-w-15 leading-tight ${index <= indiceActual ? 'text-black' : 'text-stone-300'}`}>{est}</p>
                             </div>
                         ))}
                     </div>
@@ -207,7 +234,7 @@ export default function SeguimientoPedido() {
 
                 {/* TARJETA DE ESTADO */}
                 <AnimatePresence mode="wait">
-                    <motion.div 
+                    <motion.div
                         key={pedido.estado}
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -244,7 +271,7 @@ export default function SeguimientoPedido() {
                         </div>
                         <div className="text-right">
                             <p className="text-[10px] font-black uppercase text-stone-500 mb-1">Orden:</p>
-                            <p className="font-mono font-black text-[#4DB6AC]">#{id.slice(-6).toUpperCase()}</p>
+                            <p className="font-mono font-black text-[#4DB6AC]">#{String(id).slice(-6).toUpperCase()}</p>
                         </div>
                     </div>
                     <div className="space-y-4 pt-4 border-t border-white/10">
@@ -255,7 +282,7 @@ export default function SeguimientoPedido() {
                         <div className="flex justify-between items-end">
                             <span className="text-stone-500 font-black text-[10px] uppercase">💰 Total:</span>
                             <span className="text-[#FFCA28] text-4xl font-black italic tracking-tighter">
-                                ${Number(pedido.total).toLocaleString('es-AR')}
+                                ${Number(pedido.total || 0).toLocaleString('es-AR')}
                             </span>
                         </div>
                     </div>

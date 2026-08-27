@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useCartStore } from '../store/cartStore';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -19,7 +19,6 @@ interface CartDrawerProps {
 export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const router = useRouter();
   const { isLoaded, loadError } = useGoogleMaps();
-
   const [mounted, setMounted] = useState(false);
 
   const {
@@ -33,8 +32,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const [isSending, setIsSending] = useState(false);
   const [montoEfectivo, setMontoEfectivo] = useState('');
   const [copied, setCopied] = useState(false);
-
-  // Estados Mercado Pago
   const [procesandoPagoMP, setProcesandoPagoMP] = useState(false);
 
   // Estados Cálculo de envío
@@ -48,8 +45,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   const [customer, setCustomer] = useState({
     nombre: '',
-    barrio: '',
-    otroBarrio: '',
     calleAltura: '',
     telefono: '',
     metodoPago: 'Efectivo',
@@ -62,7 +57,15 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     const saved = localStorage.getItem('krusty-customer-v5');
     if (saved) {
       try {
-        setCustomer(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setCustomer(parsed);
+        if (parsed.calleAltura) {
+          setUbicacionSeleccionada({
+            direccion: parsed.calleAltura,
+            lat: 0,
+            lng: 0
+          });
+        }
       } catch (e) {
         console.error("Error al cargar datos guardados:", e);
       }
@@ -128,17 +131,34 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   const isFormValid = useMemo(() => {
     const hasName = customer.nombre.trim().length >= 2;
-    const hasValidPhone = /^[0-9]{8,15}$/.test(customer.telefono.replace(/\s/g, ''));
+    // Ampliado a 16 dígitos para contemplar prefijos de país internacionales cómodamente
+    const hasValidPhone = /^[0-9]{8,16}$/.test(customer.telefono.replace(/\s/g, ''));
 
-    if (customer.tipoEntrega === 'Retiro') {
-      return hasName && hasValidPhone;
+    // Validaciones según Tipo de Entrega
+    if (customer.tipoEntrega === 'Delivery') {
+      const hasDireccion = customer.calleAltura.trim().length > 5;
+      const isDeliveryAvailable = resultadoEnvio?.disponible ?? false;
+      if (!hasDireccion || !isDeliveryAvailable) return false;
     }
 
-    const hasDireccion = ubicacionSeleccionada !== null &&
-      ubicacionSeleccionada.direccion?.trim().length > 5;
+    // VALIDACIÓN DE EFECTIVO OBLIGATORIO
+    if (customer.metodoPago === 'Efectivo') {
+      const pagaCon = parseFloat(montoEfectivo);
+      const montoValido = !isNaN(pagaCon) && pagaCon >= montoTotalFinal;
+      if (!montoValido) return false;
+    }
 
-    return hasName && hasValidPhone && hasDireccion;
-  }, [customer, ubicacionSeleccionada]);
+    return hasName && hasValidPhone;
+  }, [
+    customer.nombre,
+    customer.telefono,
+    customer.tipoEntrega,
+    customer.calleAltura,
+    customer.metodoPago,
+    montoEfectivo,
+    montoTotalFinal,
+    resultadoEnvio
+  ]);
 
   const handleCopyAlias = () => {
     navigator.clipboard.writeText(ALIAS_TRANSFERENCIA);
@@ -146,15 +166,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleLocationSelect = (direccion: string, lat: number, lng: number) => {
+  const handleLocationSelect = useCallback((direccion: string, lat: number, lng: number) => {
     setUbicacionSeleccionada({ direccion, lat, lng });
     setCustomer(prev => ({ ...prev, calleAltura: direccion }));
-  };
+  }, []);
 
-  // Pago con Mercado Pago
   const handlePagarConMP = async () => {
     if (!isFormValid) {
-      alert("🤡 ¡Completá tus datos primero!");
+      alert("🤡 ¡Completá tus datos y verificá la ubicación de entrega!");
       return;
     }
 
@@ -162,6 +181,9 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
     try {
       localStorage.setItem('krusty-customer-v5', JSON.stringify(customer));
+
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
 
       const direccionCompleta = customer.tipoEntrega === 'Delivery'
         ? customer.calleAltura.toUpperCase()
@@ -184,6 +206,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             estado: 'pago_pendiente',
             resumenes_de_elementos: itemsResumenDB,
             notas: customer.notes || null,
+            id_de_usuario: userId,
           },
         ])
         .select()
@@ -228,14 +251,13 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     }
   };
 
-  // Checkout Tradicional (Efectivo / Transferencia Manual)
   const handleCheckout = async () => {
     if (customer.metodoPago === 'Mercado Pago') {
       return handlePagarConMP();
     }
 
     if (!isFormValid) {
-      alert("🤡 ¡Krusty dice que faltan datos!");
+      alert("🤡 ¡Krusty dice que faltan datos o tu ubicación no tiene cobertura!");
       return;
     }
 
@@ -244,13 +266,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     try {
       localStorage.setItem('krusty-customer-v5', JSON.stringify(customer));
 
-      const direccionCompleta =
-        customer.tipoEntrega === 'Delivery'
-          ? `${customer.calleAltura.toUpperCase()}`
-          : `🏠 RETIRO POR LOCAL (${DIRECCION_LOCAL})`;
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id || null;
+
+      const direccionCompleta = customer.tipoEntrega === 'Delivery'
+        ? customer.calleAltura.toUpperCase()
+        : `🏠 RETIRO POR LOCAL (${DIRECCION_LOCAL})`;
 
       let detallePago = customer.metodoPago;
-
       if (customer.metodoPago === 'Efectivo') {
         detallePago = `Efectivo (Paga con: $${montoEfectivo || montoTotalFinal}${vuelto > 0 ? ` | Vuelto: $${vuelto}` : ' - Justo'})`;
       } else if (customer.metodoPago === 'Transferencia') {
@@ -279,6 +302,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             estado: customer.metodoPago === 'Transferencia' ? 'pago_pendiente' : 'pendiente',
             resumenes_de_elementos: itemsResumenDB,
             notas: customer.notes || null,
+            id_de_usuario: userId,
           },
         ])
         .select()
@@ -564,13 +588,30 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     {/* DETALLES POR MÉTODO DE PAGO */}
                     {customer.metodoPago === 'Efectivo' && (
                       <div className="pt-2">
+                        <label className="text-[10px] font-black uppercase text-stone-400 block mb-1">
+                          ¿Con cuánto pagás? <span className="text-red-500">*Requerido</span>
+                        </label>
                         <input
                           type="number"
-                          placeholder="¿CON CUÁNTO PAGÁS? (Para el vuelto)"
-                          className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 p-3 rounded-xl font-bold text-xs outline-none dark:text-white focus:ring-2 focus:ring-[#D32F2F]/30"
+                          placeholder={`Mínimo: $${montoTotalFinal.toLocaleString('es-AR')}`}
+                          className={`w-full bg-stone-50 dark:bg-stone-800 border p-3 rounded-xl font-bold text-xs outline-none dark:text-white transition-all ${montoEfectivo && parseFloat(montoEfectivo) < montoTotalFinal
+                            ? 'border-red-500 focus:ring-2 focus:ring-red-500/30'
+                            : 'border-stone-100 dark:border-stone-700 focus:ring-2 focus:ring-[#D32F2F]/30'
+                            }`}
                           value={montoEfectivo}
                           onChange={(e) => setMontoEfectivo(e.target.value)}
+                          required
                         />
+
+                        {/* Alerta si el monto es insuficiente */}
+                        {montoEfectivo && parseFloat(montoEfectivo) < montoTotalFinal && (
+                          <p className="text-[10px] font-black text-red-500 mt-1 px-1">
+                            ⚠️ El monto ingresado debe ser mayor o igual al total ($
+                            {montoTotalFinal.toLocaleString('es-AR')})
+                          </p>
+                        )}
+
+                        {/* Vuelto calculado */}
                         {vuelto > 0 && (
                           <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 px-1">
                             💵 Tu vuelto: ${vuelto.toLocaleString('es-AR')}
@@ -632,6 +673,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 <span className="font-black text-stone-900 dark:text-white uppercase tracking-tighter text-sm">
                   Total Final
                 </span>
+                {/* Corrección de la clase CSS de wrap/break */}
                 <span className="text-3xl sm:text-4xl font-black text-stone-950 dark:text-[#FAD02C] tracking-tighter text-right wrap-break-words">
                   ${montoTotalFinal.toLocaleString('es-AR')}
                 </span>
@@ -641,7 +683,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             {/* BOTÓN CONFIRMAR PEDIDO / MERCADO PAGO */}
             <button
               type="button"
-              disabled={items.length === 0 || isSending || procesandoPagoMP}
+              disabled={items.length === 0 || isSending || procesandoPagoMP || !isFormValid}
               onClick={handleCheckout}
               className={`w-full py-4 rounded-2xl font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] cursor-pointer shadow-lg ${!isFormValid || items.length === 0
                 ? 'bg-stone-100 dark:bg-stone-800 text-stone-300 dark:text-stone-600 cursor-not-allowed shadow-none'
@@ -654,13 +696,13 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             >
               {isSending || procesandoPagoMP
                 ? 'PROCESANDO...'
-                : isFormValid
-                  ? customer.metodoPago === 'Mercado Pago'
+                : !isFormValid
+                  ? customer.metodoPago === 'Efectivo' && (!montoEfectivo || parseFloat(montoEfectivo) < montoTotalFinal)
+                    ? 'Ingresá con cuánto pagás 💵'
+                    : 'Completá tus datos'
+                  : customer.metodoPago === 'Mercado Pago'
                     ? 'Pagar con Mercado Pago ➔'
-                    : customer.metodoPago === 'Transferencia'
-                      ? '✅ Confirmar Pedido (Pago realizado)'
-                      : 'Confirmar Pedido ➔'
-                  : 'Completá tus datos'}
+                    : 'Confirmar Pedido ➔'}
             </button>
 
             {/* BOTÓN CERRAR Y SEGUIR COMPRANDO */}

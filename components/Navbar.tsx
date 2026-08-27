@@ -1,7 +1,9 @@
 "use client";
+
 import { useState, useEffect, useRef } from 'react';
 import { useCartStore } from '@/store/cartStore';
 import { supabase } from '@/lib/supabase';
+import { User } from '@supabase/supabase-js';
 import CartDrawer from './CartDrawer';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -12,6 +14,7 @@ export default function Navbar() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -35,24 +38,22 @@ export default function Navbar() {
       setIsScrolled(window.scrollY > 40);
     };
 
-    const checkAdminStatus = (userEmail: string | undefined) => {
-      if (userEmail && ADMIN_EMAILS.includes(userEmail.toLowerCase().trim())) {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
+    const handleUserData = (currentUser: User | null) => {
+      setUser(currentUser);
+      const email = currentUser?.email?.toLowerCase().trim();
+      setIsAdmin(!!email && ADMIN_EMAILS.includes(email));
     };
 
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      checkAdminStatus(session?.user?.email);
+      handleUserData(session?.user ?? null);
     };
 
     initAuth();
     window.addEventListener('scroll', handleScroll);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      checkAdminStatus(session?.user?.email);
+      handleUserData(session?.user ?? null);
     });
 
     return () => {
@@ -71,10 +72,16 @@ export default function Navbar() {
     }
   };
 
-  // Función para cerrar el drawer
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
+
   const handleCloseCart = () => {
     setIsCartOpen(false);
   };
+
+  const userDisplayName = user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Cliente';
 
   return (
     <>
@@ -92,7 +99,7 @@ export default function Navbar() {
         >
           <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
 
-            {/* LOGO PRINCIPAL IZQUIERDA - CON UNOPTIMIZED */}
+            {/* LOGO PRINCIPAL IZQUIERDA */}
             <div className="flex items-center">
               <Link
                 href="/"
@@ -112,7 +119,7 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* LOGO MINI CENTRO - CON UNOPTIMIZED */}
+            {/* LOGO MINI CENTRO */}
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
               <Link
                 href="/"
@@ -122,7 +129,6 @@ export default function Navbar() {
                     ? 'opacity-100 translate-y-0 scale-100'
                     : 'opacity-0 -translate-y-4 scale-90 pointer-events-none'}`}
               >
-                {/* Logo mini con redondeo */}
                 <div className="relative hidden md:block w-8 h-8 mr-2">
                   <Image
                     src="/images/Krustyburgerheader.webp"
@@ -140,12 +146,40 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* BOTÓN CARRITO */}
-            <div className="flex items-center">
+            {/* USUARIO Y CARRITO DERECHA */}
+            <div className="flex items-center gap-3">
+
+              {/* AUTH USER / LOGIN BUTTON */}
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div className="hidden md:flex flex-col text-right leading-none">
+                    <span className="text-[9px] font-black uppercase text-stone-600">Hola</span>
+                    <span className="text-xs font-black uppercase text-[#D32F2F] truncate max-w-22.5">
+                      {userDisplayName}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    title="Cerrar Sesión"
+                    className="h-11 px-3 flex items-center justify-center rounded-2xl bg-stone-900 text-white font-black text-xs uppercase hover:bg-red-700 transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_black] cursor-pointer"
+                  >
+                    🚪 <span className="hidden sm:inline ml-1">Salir</span>
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="h-11 px-4 flex items-center justify-center rounded-2xl bg-[#FFCA28] text-black font-black text-xs uppercase hover:bg-yellow-400 transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_black]"
+                >
+                  👤 <span className="hidden sm:inline ml-1">Ingresar</span>
+                </Link>
+              )}
+
+              {/* BOTÓN CARRITO */}
               <button
                 id="carrito-btn"
                 onClick={() => setIsCartOpen(true)}
-                className={`relative flex items-center gap-2 h-11 px-4 md:px-6 rounded-2xl font-black transition-all active:scale-95 border-2
+                className={`relative flex items-center gap-2 h-11 px-3 md:px-5 rounded-2xl font-black transition-all active:scale-95 border-2 cursor-pointer
                   ${isScrolled
                     ? 'bg-[#D32F2F] text-white border-transparent shadow-md'
                     : 'bg-white text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'}`}
