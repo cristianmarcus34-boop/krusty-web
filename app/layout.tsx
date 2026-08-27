@@ -104,20 +104,19 @@ export default function RootLayout({
           <ActiveOrderFloating />
 
           {/* ============================================
-              CONTENIDO PRINCIPAL
+              CONTENIDO PRINCIPAL - ✅ CORREGIDO
               ============================================ */}
-          <main className="min-h-[calc(100vh-64px)] pb-32 relative z-10">
+          <main className="min-h-[calc(100vh-64px)] pb-8 relative z-10">
             {children}
-
           </main>
 
           {/* ============================================
               FOOTER
               ============================================ */}
-          <footer className="bg-[#1A1A1A] text-stone-300 py-16 px-6 border-t-8] border-black relative overflow-hidden">
+          <footer className="bg-[#1A1A1A] text-stone-900 py-16 px-6 border-t-8 border-black relative overflow-hidden">
             {/* Trama de fondo */}
             <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-              style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '10px 10px' }}>
+              style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '5px 5px' }}>
             </div>
 
             <div className="max-w-5xl mx-auto relative z-10 text-center">

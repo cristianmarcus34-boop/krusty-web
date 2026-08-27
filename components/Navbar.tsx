@@ -99,7 +99,7 @@ export default function Navbar() {
         >
           <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
 
-            {/* LOGO PRINCIPAL IZQUIERDA */}
+            {/* LOGO */}
             <div className="flex items-center">
               <Link
                 href="/"
@@ -119,7 +119,7 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* LOGO MINI CENTRO */}
+            {/* LOGO CENTRO */}
             <div className="absolute left-1/2 -translate-x-1/2 flex items-center">
               <Link
                 href="/"
@@ -146,58 +146,51 @@ export default function Navbar() {
               </Link>
             </div>
 
-            {/* USUARIO Y CARRITO DERECHA */}
-            <div className="flex items-center gap-3">
+            {/* ✅ BOTONES - VERSIÓN SIMPLIFICADA */}
+            <div className="flex items-center gap-2 md:gap-3">
+              {/* PERFIL / LOGIN */}
+              <Link
+                href={user ? '/perfil' : '/login'}
+                className={`flex items-center gap-1 md:gap-2 h-11 px-3 md:px-4 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isScrolled
+                    ? 'bg-[#FFCA28] text-black border-black shadow-md hover:bg-[#f5b800]'
+                    : 'bg-[#FFCA28] text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'
+                  }`}
+              >
+                <span className="text-lg">{user ? '👤' : '🔑'}</span>
+                <span className="hidden md:inline font-black uppercase tracking-tighter">
+                  {user ? 'Perfil' : 'Ingresar'}
+                </span>
+              </Link>
 
-              {/* AUTH USER / LOGIN BUTTON */}
-              {user ? (
-                <div className="flex items-center gap-2">
-                  <div className="hidden md:flex flex-col text-right leading-none">
-                    <span className="text-[9px] font-black uppercase text-stone-600">Hola</span>
-                    <span className="text-xs font-black uppercase text-[#D32F2F] truncate max-w-22.5">
-                      {userDisplayName}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    title="Cerrar Sesión"
-                    className="h-11 px-3 flex items-center justify-center rounded-2xl bg-stone-900 text-white font-black text-xs uppercase hover:bg-red-700 transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_black] cursor-pointer"
-                  >
-                    🚪 <span className="hidden sm:inline ml-1">Salir</span>
-                  </button>
-                </div>
-              ) : (
-                <Link
-                  href="/login"
-                  className="h-11 px-4 flex items-center justify-center rounded-2xl bg-[#FFCA28] text-black font-black text-xs uppercase hover:bg-yellow-400 transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_black]"
+              {/* SALIR */}
+              {user && (
+                <button
+                  onClick={handleLogout}
+                  className={`flex items-center gap-1 md:gap-2 h-11 px-3 md:px-4 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isScrolled
+                      ? 'bg-[#D32F2F] text-white border-[#D32F2F] shadow-md hover:bg-[#b0151a]'
+                      : 'bg-[#D32F2F] text-white border-black shadow-[4px_4px_0px_0px_black] hover:bg-[#b0151a] hover:translate-x-px hover:translate-y-px hover:shadow-none'
+                    }`}
                 >
-                  👤 <span className="hidden sm:inline ml-1">Ingresar</span>
-                </Link>
+                  <span className="text-lg">🚪</span>
+                  <span className="hidden md:inline font-black uppercase tracking-tighter">Salir</span>
+                </button>
               )}
 
-              {/* BOTÓN CARRITO */}
+              {/* CARRITO */}
               <button
-                id="carrito-btn"
                 onClick={() => setIsCartOpen(true)}
-                className={`relative flex items-center gap-2 h-11 px-3 md:px-5 rounded-2xl font-black transition-all active:scale-95 border-2 cursor-pointer
-                  ${isScrolled
-                    ? 'bg-[#D32F2F] text-white border-transparent shadow-md'
-                    : 'bg-white text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'}`}
+                className={`relative flex items-center gap-1 md:gap-2 h-11 px-3 md:px-4 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isScrolled
+                    ? 'bg-[#D32F2F] text-white border-[#D32F2F] shadow-md hover:bg-[#b0151a]'
+                    : 'bg-white text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'
+                  }`}
               >
-                <span className="text-xl">🛒</span>
-
-                <div className="hidden sm:flex flex-col items-start leading-none text-left">
-                  <span className="text-[9px] uppercase font-black opacity-80 tracking-tighter">Mi Pedido</span>
-                  <span className="text-sm font-black italic uppercase">
-                    {totalItems > 0 ? `${totalItems} ítems` : 'Vacío'}
-                  </span>
-                </div>
+                <span className="text-lg">🛒</span>
+                <span className="hidden md:inline font-black uppercase tracking-tighter">
+                  {totalItems > 0 ? `${totalItems}` : 'Carrito'}
+                </span>
 
                 {totalItems > 0 && (
-                  <span className={`absolute -top-2 -right-2 min-w-5 h-5 px-1.5 flex items-center justify-center text-[11px] font-black rounded-full border-2
-                    ${isScrolled
-                      ? 'bg-[#FFCA28] text-black border-white'
-                      : 'bg-[#D32F2F] text-white border-black animate-pulse'}`}>
+                  <span className="absolute -top-2 -right-2 min-w-5 h-5 px-1.5 flex items-center justify-center text-[10px] font-black rounded-full border-2 bg-[#D32F2F] text-white border-black">
                     {totalItems}
                   </span>
                 )}
