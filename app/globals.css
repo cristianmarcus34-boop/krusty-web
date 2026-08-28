@@ -295,3 +295,31 @@ h4,
 .dark .bg-stone-50 {
   background-color: var(--bg-secondary) !important;
 }
+
+/* app/globals.css - Agregar al final */
+
+/* Animación para el efecto shimmer */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) skewX(-15deg);
+  }
+
+  100% {
+    transform: translateX(200%) skewX(-15deg);
+  }
+}
+
+/* Animación de rotación inversa para el spinner */
+@keyframes spin-reverse {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-spin-reverse {
+  animation: spin-reverse 1.5s linear infinite;
+}

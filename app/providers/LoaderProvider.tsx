@@ -26,8 +26,10 @@ interface LoaderProviderProps {
 const LOADER_KEY = 'krusty-loader-shown';
 
 export default function LoaderProvider({ children }: LoaderProviderProps) {
+    // ✅ Estado inicial: true para mostrar el loader inmediatamente
     const [isLoading, setIsLoading] = useState(true);
     const [isClient, setIsClient] = useState(false);
+    const [isFirstVisit, setIsFirstVisit] = useState(true);
 
     useEffect(() => {
         setIsClient(true);
@@ -39,19 +41,16 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
             console.log('🔍 Loader check:', hasVisited);
 
             if (!hasVisited) {
-                console.log('🔄 Mostrando loader por primera vez...');
+                console.log('🔄 Primer visita - 15 segundos');
                 sessionStorage.setItem(LOADER_KEY, 'true');
                 localStorage.setItem(LOADER_KEY, 'true');
-                // ✅ Mostrar loader por 4 segundos
-                setIsLoading(true);
+                setIsFirstVisit(true);
+                // ✅ isLoading se mantiene true
             } else {
-                console.log('✅ Loader ya mostrado, omitiendo...');
-                // ✅ Aún así, mostrar loader por 2 segundos para que se vea el logo
-                setIsLoading(true);
-                // ✅ Ocultar después de 2 segundos
-                setTimeout(() => {
-                    setIsLoading(false);
-                }, 4000);
+                console.log('✅ Loader ya mostrado - 3 segundos');
+                setIsFirstVisit(false);
+                // ✅ isLoading se mantiene true
+                // ✅ Se cerrará solo cuando el loader termine
             }
         } catch (error) {
             console.warn('Error:', error);
@@ -60,20 +59,25 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
     }, []);
 
     const handleLoaderComplete = () => {
-        console.log('✅ Loader completado');
+        console.log('✅ Loader completado, ocultando...');
         setIsLoading(false);
     };
 
     if (!isClient) {
         return (
             <div className="fixed inset-0 bg-[#1A1A1A] flex items-center justify-center z-50">
-                <div className="w-16 h-16 border-4 border-[#FFCA28] border-t-transparent rounded-full animate-spin" />
+                <div className="relative w-16 h-16">
+                    <div className="absolute inset-0 border-4 border-[#FFCA28] border-t-transparent rounded-full animate-spin" />
+                    <div className="absolute inset-2 border-4 border-[#D32F2F] border-r-transparent rounded-full animate-spin-reverse" />
+                </div>
             </div>
         );
     }
 
+    // ✅ Si isLoading es true, mostrar el loader
     if (isLoading) {
-        return <KrustyLoader onComplete={handleLoaderComplete} duracion={4000} />;
+        const duracion = isFirstVisit ? 45000 : 25000;
+        return <KrustyLoader onComplete={handleLoaderComplete} duracion={duracion} />;
     }
 
     return <>{children}</>;
