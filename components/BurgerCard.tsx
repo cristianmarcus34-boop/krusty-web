@@ -1,6 +1,6 @@
 "use client";
 
-import { Burger } from '@/types';
+import { Burger } from '../types';
 import { useCartStore } from '@/store/cartStore';
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';

@@ -131,17 +131,14 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
   const isFormValid = useMemo(() => {
     const hasName = customer.nombre.trim().length >= 2;
-    // Ampliado a 16 dígitos para contemplar prefijos de país internacionales cómodamente
     const hasValidPhone = /^[0-9]{8,16}$/.test(customer.telefono.replace(/\s/g, ''));
 
-    // Validaciones según Tipo de Entrega
     if (customer.tipoEntrega === 'Delivery') {
       const hasDireccion = customer.calleAltura.trim().length > 5;
       const isDeliveryAvailable = resultadoEnvio?.disponible ?? false;
       if (!hasDireccion || !isDeliveryAvailable) return false;
     }
 
-    // VALIDACIÓN DE EFECTIVO OBLIGATORIO
     if (customer.metodoPago === 'Efectivo') {
       const pagaCon = parseFloat(montoEfectivo);
       const montoValido = !isNaN(pagaCon) && pagaCon >= montoTotalFinal;
@@ -385,29 +382,31 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         onClick={onClose}
       />
 
-      {/* DRAWER */}
+      {/* DRAWER - ✅ VERSIÓN ANGOSTA EN ESCRITORIO */}
       <div
-        className={`fixed inset-y-0 right-0 z-70 w-full sm:max-w-md bg-white dark:bg-[#1a1a1a] shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
+        className={`fixed inset-y-0 right-0 z-70 bg-white dark:bg-[#1a1a1a] shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
+          }
+        /* ✅ Móvil: 100% | Tablet: 420px | Escritorio: 400px (más angosto) */
+        w-full sm:max-w-105 lg:max-w-100 xl:max-w-100`}
       >
         <div className="flex flex-col h-dvh max-h-dvh bg-white dark:bg-[#1a1a1a] overflow-hidden">
 
           {/* HEADER */}
-          <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-stone-100 dark:border-stone-800 px-4 sm:px-6 pt-4 pb-4 top-0 z-30 relative">
-            <div className="flex justify-between items-start gap-3 relative z-40">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-[#FAD02C] tracking-tighter uppercase leading-none">
+          <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-stone-100 dark:border-stone-800 px-4 sm:px-5 pt-4 pb-4 top-0 z-30 relative">
+            <div className="flex justify-between items-start gap-2 relative z-40">
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-black text-stone-900 dark:text-[#FAD02C] tracking-tighter uppercase leading-none">
                   🛒 Tu Pedido
                 </h2>
-                <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mt-2">
-                  {items.length} {items.length === 1 ? 'producto' : 'productos'} en el carrito
+                <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mt-1">
+                  {items.length} {items.length === 1 ? 'producto' : 'productos'}
                 </p>
               </div>
 
               <button
                 type="button"
                 onClick={onClose}
-                className="w-10 h-10 rounded-full bg-[#D32F2F] text-white border-2 border-black flex items-center justify-center font-black cursor-pointer hover:bg-black transition-colors"
+                className="w-9 h-9 rounded-full bg-[#D32F2F] text-white border-2 border-black flex items-center justify-center font-black cursor-pointer hover:bg-black transition-colors hover:scale-105 active:scale-90 shrink-0"
                 aria-label="Cerrar carrito"
               >
                 ✕
@@ -415,15 +414,15 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             </div>
           </div>
 
-          {/* CONTENIDO PRINCIPAL */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5 space-y-6 dark:bg-[#1a1a1a] no-scrollbar">
+          {/* CONTENIDO - Scrollable */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-5 py-4 space-y-5 dark:bg-[#1a1a1a] no-scrollbar">
 
-            {/* ITEMS EN CARRITO */}
+            {/* ITEMS */}
             <div className="space-y-3">
               {items.length === 0 ? (
-                <div className="text-center py-16 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-dashed border-stone-200 dark:border-stone-700">
-                  <span className="text-5xl block mb-3">🍔</span>
-                  <p className="font-bold text-stone-400 uppercase text-xs tracking-widest">
+                <div className="text-center py-12 bg-stone-50 dark:bg-stone-800/50 rounded-2xl border border-dashed border-stone-200 dark:border-stone-700">
+                  <span className="text-4xl block mb-2">🍔</span>
+                  <p className="font-bold text-stone-400 uppercase text-[10px] tracking-widest">
                     ¿Hambre? Agregá algo rico
                   </p>
                 </div>
@@ -431,39 +430,44 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 items.map((item) => (
                   <div
                     key={`cart-item-${item.cartId}`}
-                    className="flex items-center gap-3 p-3 bg-stone-50 dark:bg-stone-800/40 rounded-2xl border border-stone-100 dark:border-stone-700"
+                    className="flex items-center gap-2.5 p-2.5 bg-stone-50 dark:bg-stone-800/40 rounded-xl border border-stone-100 dark:border-stone-700"
                   >
                     <img
                       src={item.imagen}
-                      className="w-14 h-14 rounded-xl object-cover shrink-0"
+                      className="w-12 h-12 rounded-lg object-cover shrink-0"
                       alt={item.nombre}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/placeholder-burger.jpg';
+                      }}
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-xs uppercase truncate text-stone-900 dark:text-white">
+                      <h4 className="font-bold text-[11px] uppercase truncate text-stone-900 dark:text-white">
                         {item.nombre}
                       </h4>
                       {item.extrasElegidos && item.extrasElegidos.length > 0 && (
-                        <p className="text-[10px] text-stone-400 truncate">
+                        <p className="text-[9px] text-stone-400 truncate">
                           +{item.extrasElegidos.map(e => e.nombre).join(', ')}
                         </p>
                       )}
-                      <p className="font-black text-[#D32F2F] text-xs mt-0.5">
+                      <p className="font-black text-[#D32F2F] text-[11px] mt-0.5">
                         ${(item.precioUnitarioTotal * item.quantity).toLocaleString('es-AR')}
                       </p>
                     </div>
-                    <div className="flex items-center bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl p-1">
+                    <div className="flex items-center bg-white dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-lg p-0.5">
                       <button
                         type="button"
                         onClick={() => decreaseQuantity(item.cartId)}
-                        className="w-6 h-6 flex items-center justify-center font-bold text-stone-500 hover:text-red-500 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center font-bold text-stone-500 hover:text-red-500 transition-colors text-xs"
                       >
                         –
                       </button>
-                      <span className="px-2 font-black text-xs dark:text-white">{item.quantity}</span>
+                      <span className="px-1.5 font-black text-xs dark:text-white min-w-4.5 text-center">
+                        {item.quantity}
+                      </span>
                       <button
                         type="button"
                         onClick={() => addItem(item, item.extrasElegidos)}
-                        className="w-6 h-6 flex items-center justify-center font-bold text-stone-500 hover:text-emerald-500 transition-colors"
+                        className="w-6 h-6 flex items-center justify-center font-bold text-stone-500 hover:text-emerald-500 transition-colors text-xs"
                       >
                         +
                       </button>
@@ -473,59 +477,60 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               )}
             </div>
 
-            {/* FORMULARIO DE CHECKOUT */}
+            {/* FORMULARIO - Solo si hay items */}
             {items.length > 0 && (
-              <div className="space-y-5 border-t border-stone-100 dark:border-stone-800 pt-5">
+              <div className="space-y-4 border-t border-stone-100 dark:border-stone-800 pt-4">
 
                 {/* TIPO DE ENTREGA */}
-                <div className="flex p-1 bg-stone-100 dark:bg-stone-800 rounded-2xl">
+                <div className="flex p-0.5 bg-stone-100 dark:bg-stone-800 rounded-xl">
                   {['Delivery', 'Retiro'].map((tipo) => (
                     <button
                       type="button"
                       key={tipo}
-                      onClick={() => setCustomer({ ...customer, tipoEntrega: tipo })}
-                      className={`flex-1 py-2.5 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all ${customer.tipoEntrega === tipo
+                      onClick={() => setCustomer({ ...customer, tipoEntrega: tipo as 'Delivery' | 'Retiro' })}
+                      className={`flex-1 py-2 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all ${customer.tipoEntrega === tipo
                         ? 'bg-white dark:bg-stone-700 text-stone-900 dark:text-white shadow-sm'
                         : 'text-stone-400'
                         }`}
                     >
-                      {tipo === 'Delivery' ? '🛵 Delivery' : '🏠 Retiro'}
+                      {tipo === 'Delivery' ? '🛵' : '🏠'}
+                      <span className="ml-1">{tipo === 'Delivery' ? 'Delivery' : 'Retiro'}</span>
                     </button>
                   ))}
                 </div>
 
-                {/* DATOS DEL CLIENTE */}
-                <div className="space-y-3">
+                {/* DATOS */}
+                <div className="space-y-2.5">
                   <input
                     type="text"
-                    placeholder="TU NOMBRE"
-                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 p-3.5 rounded-xl font-bold uppercase text-xs outline-none dark:text-white focus:ring-2 focus:ring-[#D32F2F]/30"
+                    placeholder="NOMBRE"
+                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 p-3 rounded-xl font-bold uppercase text-[11px] outline-none dark:text-white focus:ring-2 focus:ring-[#D32F2F]/30"
                     value={customer.nombre}
                     onChange={(e) => setCustomer({ ...customer, nombre: e.target.value })}
                   />
 
                   <input
                     type="tel"
-                    placeholder="TELÉFONO (WhatsApp)"
-                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 p-3.5 rounded-xl font-bold text-xs outline-none dark:text-white focus:ring-2 focus:ring-[#D32F2F]/30"
+                    placeholder="TELÉFONO"
+                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 p-3 rounded-xl font-bold text-[11px] outline-none dark:text-white focus:ring-2 focus:ring-[#D32F2F]/30"
                     value={customer.telefono}
                     onChange={(e) => setCustomer({ ...customer, telefono: e.target.value.replace(/\D/g, '') })}
                   />
 
-                  {/* MAPA Y UBICACIÓN */}
+                  {/* MAPA */}
                   {customer.tipoEntrega === 'Delivery' && (
-                    <div className="space-y-2 pt-2">
-                      <p className="text-[10px] font-black uppercase text-stone-400 tracking-wider">
-                        📍 Ubicación de Entrega
+                    <div className="space-y-2 pt-1">
+                      <p className="text-[9px] font-black uppercase text-stone-400 tracking-wider">
+                        📍 Ubicación
                       </p>
 
                       {!isLoaded ? (
-                        <div className="p-4 bg-stone-50 dark:bg-stone-800 rounded-xl text-center text-xs font-bold text-stone-400 animate-pulse">
-                          ⌛ Cargando Google Maps...
+                        <div className="p-3 bg-stone-50 dark:bg-stone-800 rounded-xl text-center text-[10px] font-bold text-stone-400 animate-pulse">
+                          ⌛ Cargando mapa...
                         </div>
                       ) : loadError ? (
-                        <div className="p-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold border border-red-100">
-                          ❌ No se pudo cargar el mapa. Ingresá tu dirección manualmente.
+                        <div className="p-2.5 bg-red-50 text-red-600 rounded-xl text-[10px] font-bold border border-red-100">
+                          ❌ No se pudo cargar el mapa.
                         </div>
                       ) : (
                         <LocationPicker
@@ -534,28 +539,28 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         />
                       )}
 
-                      {/* DESGLOSE COSTO DE ENVÍO */}
+                      {/* Costo envío */}
                       {ubicacionSeleccionada && (
-                        <div className="bg-stone-50 dark:bg-stone-800 p-3.5 rounded-xl border border-stone-100 dark:border-stone-700">
+                        <div className="bg-stone-50 dark:bg-stone-800 p-3 rounded-xl border border-stone-100 dark:border-stone-700">
                           {calculandoEnvio ? (
                             <div className="flex items-center gap-2">
-                              <div className="w-4 h-4 border-2 border-[#D32F2F] border-t-transparent rounded-full animate-spin" />
-                              <span className="text-xs font-bold text-stone-400">Calculando costo de envío...</span>
+                              <div className="w-3.5 h-3.5 border-2 border-[#D32F2F] border-t-transparent rounded-full animate-spin" />
+                              <span className="text-[10px] font-bold text-stone-400">Calculando...</span>
                             </div>
                           ) : resultadoEnvio ? (
                             resultadoEnvio.disponible ? (
-                              <div className="space-y-1">
-                                <div className="flex justify-between text-xs font-bold text-stone-500">
-                                  <span>Distancia: {resultadoEnvio.distancia_km} km</span>
-                                  <span>Tiempo: ~{resultadoEnvio.tiempo_minutos} min</span>
+                              <div className="space-y-0.5">
+                                <div className="flex justify-between text-[10px] font-bold text-stone-500">
+                                  <span>{resultadoEnvio.distancia_km} km</span>
+                                  <span>~{resultadoEnvio.tiempo_minutos} min</span>
                                 </div>
-                                <div className="flex justify-between text-xs font-black text-emerald-600 dark:text-emerald-400 pt-1 border-t border-stone-200 dark:border-stone-700">
+                                <div className="flex justify-between text-[11px] font-black text-emerald-600 dark:text-emerald-400 pt-1 border-t border-stone-200 dark:border-stone-700">
                                   <span>Envío:</span>
                                   <span>${resultadoEnvio.precio.toLocaleString('es-AR')}</span>
                                 </div>
                               </div>
                             ) : (
-                              <p className="text-xs font-bold text-red-500">{resultadoEnvio.mensaje}</p>
+                              <p className="text-[10px] font-bold text-red-500">{resultadoEnvio.mensaje}</p>
                             )
                           ) : null}
                         </div>
@@ -564,18 +569,18 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   )}
 
                   {/* MÉTODOS DE PAGO */}
-                  <div className="space-y-2 pt-2">
-                    <p className="text-[10px] font-black uppercase text-stone-400 tracking-wider">
-                      Método de Pago
+                  <div className="space-y-2 pt-1">
+                    <p className="text-[9px] font-black uppercase text-stone-400 tracking-wider">
+                      Pago
                     </p>
 
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-3 gap-1.5">
                       {['Efectivo', 'Transferencia', 'Mercado Pago'].map((pago) => (
                         <button
                           type="button"
                           key={pago}
                           onClick={() => setCustomer({ ...customer, metodoPago: pago })}
-                          className={`py-3 rounded-xl border font-black text-[9px] uppercase transition-all ${customer.metodoPago === pago
+                          className={`py-2 rounded-xl border font-black text-[8px] uppercase transition-all ${customer.metodoPago === pago
                             ? 'bg-stone-900 dark:bg-white text-white dark:text-stone-900 border-stone-900 dark:border-white shadow-sm'
                             : 'bg-white dark:bg-stone-800 border-stone-200 dark:border-stone-700 text-stone-400 hover:border-stone-300'
                             }`}
@@ -585,55 +590,47 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       ))}
                     </div>
 
-                    {/* DETALLES POR MÉTODO DE PAGO */}
+                    {/* Efectivo */}
                     {customer.metodoPago === 'Efectivo' && (
-                      <div className="pt-2">
-                        <label className="text-[10px] font-black uppercase text-stone-400 block mb-1">
-                          ¿Con cuánto pagás? <span className="text-red-500">*Requerido</span>
-                        </label>
+                      <div className="pt-1">
                         <input
                           type="number"
                           placeholder={`Mínimo: $${montoTotalFinal.toLocaleString('es-AR')}`}
-                          className={`w-full bg-stone-50 dark:bg-stone-800 border p-3 rounded-xl font-bold text-xs outline-none dark:text-white transition-all ${montoEfectivo && parseFloat(montoEfectivo) < montoTotalFinal
+                          className={`w-full bg-stone-50 dark:bg-stone-800 border p-2.5 rounded-xl font-bold text-[11px] outline-none dark:text-white transition-all ${montoEfectivo && parseFloat(montoEfectivo) < montoTotalFinal
                             ? 'border-red-500 focus:ring-2 focus:ring-red-500/30'
                             : 'border-stone-100 dark:border-stone-700 focus:ring-2 focus:ring-[#D32F2F]/30'
                             }`}
                           value={montoEfectivo}
                           onChange={(e) => setMontoEfectivo(e.target.value)}
-                          required
                         />
-
-                        {/* Alerta si el monto es insuficiente */}
                         {montoEfectivo && parseFloat(montoEfectivo) < montoTotalFinal && (
-                          <p className="text-[10px] font-black text-red-500 mt-1 px-1">
-                            ⚠️ El monto ingresado debe ser mayor o igual al total ($
-                            {montoTotalFinal.toLocaleString('es-AR')})
+                          <p className="text-[9px] font-black text-red-500 mt-0.5 px-1">
+                            ⚠️ Monto insuficiente
                           </p>
                         )}
-
-                        {/* Vuelto calculado */}
                         {vuelto > 0 && (
-                          <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-1.5 px-1">
-                            💵 Tu vuelto: ${vuelto.toLocaleString('es-AR')}
+                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 mt-1 px-1">
+                            💵 Vuelto: ${vuelto.toLocaleString('es-AR')}
                           </p>
                         )}
                       </div>
                     )}
 
+                    {/* Transferencia */}
                     {customer.metodoPago === 'Transferencia' && (
-                      <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-800 p-4 rounded-xl mt-2">
-                        <p className="text-[9px] font-black uppercase text-blue-500 mb-2">
-                          Alias para Transferir
+                      <div className="bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-800 p-3 rounded-xl mt-1">
+                        <p className="text-[8px] font-black uppercase text-blue-500 mb-1.5">
+                          Alias
                         </p>
                         <div
                           onClick={handleCopyAlias}
-                          className="flex items-center justify-between bg-white dark:bg-stone-800 p-3 rounded-xl cursor-pointer border border-blue-100 dark:border-blue-800 hover:border-blue-300 transition-colors"
+                          className="flex items-center justify-between bg-white dark:bg-stone-800 p-2 rounded-lg cursor-pointer border border-blue-100 dark:border-blue-800 hover:border-blue-300 transition-colors"
                         >
-                          <span className="font-black text-blue-900 dark:text-blue-300 text-xs">
+                          <span className="font-black text-blue-900 dark:text-blue-300 text-[11px]">
                             {ALIAS_TRANSFERENCIA}
                           </span>
-                          <span className="text-[9px] font-black uppercase bg-blue-100 text-blue-600 px-2 py-1 rounded-md">
-                            {copied ? '¡Copiado!' : 'Copiar'}
+                          <span className="text-[8px] font-black uppercase bg-blue-100 text-blue-600 px-2 py-0.5 rounded">
+                            {copied ? '✓' : 'Copiar'}
                           </span>
                         </div>
                       </div>
@@ -642,8 +639,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                   {/* NOTAS */}
                   <textarea
-                    placeholder="¿Alguna aclaración? (Sin cebolla, puerta roja, etc.)"
-                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 p-4 rounded-2xl font-bold text-xs h-24 resize-none outline-none focus:ring-2 focus:ring-[#FFCA28]/30 dark:focus:ring-[#FAD02C]/30 dark:text-white"
+                    placeholder="Aclaraciones..."
+                    className="w-full bg-stone-50 dark:bg-stone-800 border border-stone-100 dark:border-stone-700 p-3 rounded-xl font-bold text-[11px] h-16 resize-none outline-none focus:ring-2 focus:ring-[#FFCA28]/30 dark:focus:ring-[#FAD02C]/30 dark:text-white"
                     value={customer.notes}
                     onChange={(e) => setCustomer({ ...customer, notes: e.target.value })}
                   />
@@ -652,15 +649,15 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             )}
           </div>
 
-          {/* FOOTER */}
-          <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-t border-stone-100 dark:border-stone-800 px-4 sm:px-6 pt-4 pb-[max(env(safe-area-inset-bottom),16px)] shadow-[0_-10px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between items-center text-stone-400 dark:text-stone-500 font-bold text-[11px] uppercase tracking-tighter">
+          {/* FOOTER - Siempre visible */}
+          <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-t border-stone-100 dark:border-stone-800 px-4 sm:px-5 pt-3 pb-[max(env(safe-area-inset-bottom),12px)] shadow-[0_-10px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+            <div className="space-y-1.5 mb-3">
+              <div className="flex justify-between items-center text-stone-400 dark:text-stone-500 font-bold text-[10px] uppercase tracking-tighter">
                 <span>Subtotal</span>
                 <span>${subtotal.toLocaleString('es-AR')}</span>
               </div>
-              <div className="flex justify-between items-center text-stone-400 dark:text-stone-500 font-bold text-[11px] uppercase tracking-tighter">
-                <span>Costo de Envío</span>
+              <div className="flex justify-between items-center text-stone-400 dark:text-stone-500 font-bold text-[10px] uppercase tracking-tighter">
+                <span>Envío</span>
                 <span>
                   {customer.tipoEntrega === 'Retiro'
                     ? 'N/A'
@@ -669,24 +666,22 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       : `$${costoEnvio.toLocaleString('es-AR')}`}
                 </span>
               </div>
-              <div className="flex justify-between items-end pt-2 gap-3">
-                <span className="font-black text-stone-900 dark:text-white uppercase tracking-tighter text-sm">
-                  Total Final
+              <div className="flex justify-between items-end pt-1.5 gap-2 border-t border-stone-100 dark:border-stone-700">
+                <span className="font-black text-stone-900 dark:text-white uppercase tracking-tighter text-xs">
+                  Total
                 </span>
-                {/* Corrección de la clase CSS de wrap/break */}
-                <span className="text-3xl sm:text-4xl font-black text-stone-950 dark:text-[#FAD02C] tracking-tighter text-right wrap-break-words">
+                <span className="text-2xl sm:text-3xl font-black text-stone-950 dark:text-[#FAD02C] tracking-tighter text-right wrap-break-words">
                   ${montoTotalFinal.toLocaleString('es-AR')}
                 </span>
               </div>
             </div>
 
-            {/* BOTÓN CONFIRMAR PEDIDO / MERCADO PAGO */}
             <button
               type="button"
               disabled={items.length === 0 || isSending || procesandoPagoMP || !isFormValid}
               onClick={handleCheckout}
-              className={`w-full py-4 rounded-2xl font-black uppercase text-sm tracking-[0.15em] transition-all duration-300 active:scale-[0.98] cursor-pointer shadow-lg ${!isFormValid || items.length === 0
-                ? 'bg-stone-100 dark:bg-stone-800 text-stone-300 dark:text-stone-600 cursor-not-allowed shadow-none'
+              className={`w-full py-3.5 rounded-2xl font-black uppercase text-[11px] tracking-[0.15em] transition-all duration-300 active:scale-[0.98] cursor-pointer shadow-lg ${!isFormValid || items.length === 0
+                ? 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-600 cursor-not-allowed shadow-none'
                 : customer.metodoPago === 'Mercado Pago'
                   ? 'bg-[#009EE3] text-white hover:bg-[#0083c4]'
                   : customer.metodoPago === 'Transferencia'
@@ -698,20 +693,19 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 ? 'PROCESANDO...'
                 : !isFormValid
                   ? customer.metodoPago === 'Efectivo' && (!montoEfectivo || parseFloat(montoEfectivo) < montoTotalFinal)
-                    ? 'Ingresá con cuánto pagás 💵'
+                    ? '💰 Monto insuficiente'
                     : 'Completá tus datos'
                   : customer.metodoPago === 'Mercado Pago'
-                    ? 'Pagar con Mercado Pago ➔'
-                    : 'Confirmar Pedido ➔'}
+                    ? 'Pagar con MP ➔'
+                    : 'Confirmar ➔'}
             </button>
 
-            {/* BOTÓN CERRAR Y SEGUIR COMPRANDO */}
             <button
               type="button"
               onClick={onClose}
-              className="w-full mt-2.5 py-2.5 rounded-xl bg-stone-100 dark:bg-stone-800/80 text-stone-500 dark:text-stone-400 font-black uppercase text-[11px] tracking-wider transition-all hover:bg-stone-200 dark:hover:bg-stone-700 hover:text-stone-700 dark:hover:text-white active:scale-95 cursor-pointer border border-stone-200/60 dark:border-stone-700/60"
+              className="w-full mt-2 py-2 rounded-xl bg-stone-100 dark:bg-stone-900/80 text-stone-600 dark:text-stone-400 font-black uppercase text-[10px] tracking-wider transition-all hover:bg-stone-200 dark:hover:bg-stone-700 hover:text-stone-700 dark:hover:text-white active:scale-95 cursor-pointer border border-stone-200/60 dark:border-stone-700/60"
             >
-              ✕ Seguir comprando
+              ✕ Cerrar
             </button>
           </div>
         </div>

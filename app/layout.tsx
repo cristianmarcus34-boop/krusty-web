@@ -17,6 +17,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { ThemeProvider } from './context/ThemeContext';
 import ThemeToggle from '../components/ThemeToggle';
 
+// ✅ LOADER PROVIDER
+import LoaderProvider from './providers/LoaderProvider';
+
 // 1. Optimizamos Inter con swap para evitar el "Flash of Unstyled Text"
 const inter = Inter({
   subsets: ["latin"],
@@ -96,148 +99,146 @@ export default function RootLayout({
         <ThemeProvider>
 
           {/* ============================================
-              COMPONENTES VISUALES GLOBALES (DENTRO DEL PROVIDER)
+              LOADER PROVIDER - Controla el loader inicial
               ============================================ */}
-          <ThemeToggle />
-          <GestorDeActualizaciones />
-          <Navbar />
-          <ActiveOrderFloating />
+          <LoaderProvider>
 
-          {/* ============================================
-              CONTENIDO PRINCIPAL - ✅ CORREGIDO
-              ============================================ */}
-          <main className="min-h-[calc(100vh-64px)] pb-8 relative z-10">
-            {children}
-          </main>
+            {/* ============================================
+                COMPONENTES VISUALES GLOBALES
+                ============================================ */}
+            <ThemeToggle />
+            <GestorDeActualizaciones />
+            <Navbar />
+            <ActiveOrderFloating />
 
-          {/* ============================================
-              FOOTER
-              ============================================ */}
-          <footer className="bg-[#1A1A1A] text-stone-900 py-16 px-6 border-t-8 border-black relative overflow-hidden">
-            {/* Trama de fondo */}
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
-              style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '5px 5px' }}>
-            </div>
+            {/* ============================================
+                CONTENIDO PRINCIPAL
+                ============================================ */}
+            <main className="min-h-[calc(100vh-64px)] bg-white relative z-10">
+              {children}
+            </main>
 
-            <div className="max-w-5xl mx-auto relative z-10 text-center">
+            {/* ============================================
+                FOOTER
+                ============================================ */}
+            <footer className="bg-[#1A1A1A] text-stone-900 py-16 px-6 border-t-8 border-black relative overflow-hidden">
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '5px 5px' }}>
+              </div>
 
-              <div className="mb-8">
-                <div className="inline-block bg-[#FFCA28] text-black px-4 py-1 rounded-full font-black italic text-[10px] mb-4 border-2 border-black shadow-[3px_3px_0px_0px_black]">
-                  CALIDAD SPRINGFIELD - VILLA LA FLORIDA
+              <div className="max-w-5xl mx-auto relative z-10 text-center">
+
+                <div className="mb-8">
+                  <div className="inline-block bg-[#FFCA28] text-black px-4 py-1 rounded-full font-black italic text-[10px] mb-4 border-2 border-black shadow-[3px_3px_0px_0px_black]">
+                    CALIDAD SPRINGFIELD - VILLA LA FLORIDA
+                  </div>
+                  <h2 className="text-[#FFCA28] font-black italic text-4xl mb-2 tracking-tighter drop-shadow-[2px_2px_0px_black]">
+                    KRUSTY BURGER INC.
+                  </h2>
                 </div>
-                <h2 className="text-[#FFCA28] font-black italic text-4xl mb-2 tracking-tighter drop-shadow-[2px_2px_0px_black]">
-                  KRUSTY BURGER INC.
-                </h2>
-              </div>
 
-              {/* Enlace a Reseñas */}
-              <div className="mb-10">
-                <Link
-                  href="https://g.page/r/CTEcMZ1GEz0LEBI/review"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/20 px-6 py-3 rounded-xl transition-all active:scale-95 group"
-                >
-                  <span className="text-yellow-400 text-lg group-hover:animate-pulse">⭐⭐⭐⭐⭐</span>
-                  <span className="text-stone-100 font-black text-xs tracking-widest group-hover:text-[#FFCA28] transition-colors uppercase">
-                    Dejanos tu reseña en Google
-                  </span>
-                </Link>
-              </div>
-
-              <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-10 text-[11px] font-black uppercase tracking-tighter">
-                <Link href="/" className="hover:text-[#FFCA28] transition-colors">Inicio</Link>
-                <Link href="/privacidad" className="hover:text-[#FFCA28] transition-colors">Privacidad</Link>
-                <Link href="/terminos" className="hover:text-[#FFCA28] transition-colors">Términos</Link>
-                <Link href="/defensa" className="hover:text-white transition-colors underline decoration-[#D32F2F] underline-offset-4">Defensa Consumidor</Link>
-                <Link href="/krusty-legal" className="hover:text-[#FFCA28] transition-colors text-[#FFCA28] animate-pulse">
-                  ⚖️ Propiedad de Alma
-                </Link>
-                <Link href="/mutaciones" className="hover:text-[#FFCA28] transition-colors">
-                  🧬 Mutaciones
-                </Link>
-              </nav>
-
-              <div className="flex justify-center gap-2 mb-10">
-                <div className="h-1.5 w-8 bg-[#D32F2F]/40"></div>
-                <div className="h-1.5 w-8 bg-[#FFCA28]/40"></div>
-                <div className="h-1.5 w-8 bg-[#D32F2F]/40"></div>
-              </div>
-
-              <div className="space-y-8">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
-                  © 2026 Springfield Food Group / Quilmes, Buenos Aires.
-                </p>
-
-                <div className="flex flex-col items-center gap-4">
+                <div className="mb-10">
                   <Link
-                    href="https://agencia-powa.vercel.app/"
+                    href="https://g.page/r/CTEcMZ1GEz0LEBI/review"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
+                    className="inline-flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/20 px-6 py-3 rounded-xl transition-all active:scale-95 group"
                   >
-                    <div className="relative w-10 h-10 opacity-80 group-hover:opacity-100 transition-opacity duration-500 scale-90 group-hover:scale-110">
-                      <Image
-                        src="/images/logo-powa.png"
-                        alt="Agencia Powa"
-                        fill
-                        sizes="40px"
-                        className="object-contain"
-                      />
-                    </div>
-
-                    <div className="text-center">
-                      <p className="text-[9px] text-stone-400 uppercase tracking-[0.2em] mb-1">
-                        Desarrollado con humor por
-                      </p>
-                      <p className="text-xs font-black italic text-[#FFCA28]">
-                        AGENCIA POWA
-                      </p>
-                    </div>
+                    <span className="text-yellow-400 text-lg group-hover:animate-pulse">⭐⭐⭐⭐⭐</span>
+                    <span className="text-stone-100 font-black text-xs tracking-widest group-hover:text-[#FFCA28] transition-colors uppercase">
+                      Dejanos tu reseña en Google
+                    </span>
                   </Link>
+                </div>
 
-                  <p className="text-[10px] text-stone-400 max-w-xs mx-auto italic leading-relaxed">
-                    Arcos de Springfield S.A. - CUIT: 30-12345678-9 <br />
-                    Villa La Florida, Quilmes (CP 1881).
+                <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-10 text-[11px] font-black uppercase tracking-tighter">
+                  <Link href="/" className="hover:text-[#FFCA28] transition-colors">Inicio</Link>
+                  <Link href="/privacidad" className="hover:text-[#FFCA28] transition-colors">Privacidad</Link>
+                  <Link href="/terminos" className="hover:text-[#FFCA28] transition-colors">Términos</Link>
+                  <Link href="/defensa" className="hover:text-white transition-colors underline decoration-[#D32F2F] underline-offset-4">Defensa Consumidor</Link>
+                  <Link href="/krusty-legal" className="hover:text-[#FFCA28] transition-colors text-[#FFCA28] animate-pulse">
+                    ⚖️ Propiedad de Alma
+                  </Link>
+                  <Link href="/mutaciones" className="hover:text-[#FFCA28] transition-colors">
+                    🧬 Mutaciones
+                  </Link>
+                </nav>
+
+                <div className="flex justify-center gap-2 mb-10">
+                  <div className="h-1.5 w-8 bg-[#D32F2F]/40"></div>
+                  <div className="h-1.5 w-8 bg-[#FFCA28]/40"></div>
+                  <div className="h-1.5 w-8 bg-[#D32F2F]/40"></div>
+                </div>
+
+                <div className="space-y-8">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
+                    © 2026 Springfield Food Group / Quilmes, Buenos Aires.
                   </p>
+
+                  <div className="flex flex-col items-center gap-4">
+                    <Link
+                      href="https://agencia-powa.vercel.app/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex flex-col items-center gap-2 transition-transform active:scale-95"
+                    >
+                      <div className="relative w-10 h-10 opacity-80 group-hover:opacity-100 transition-opacity duration-500 scale-90 group-hover:scale-110">
+                        <Image
+                          src="/images/logo-powa.png"
+                          alt="Agencia Powa"
+                          fill
+                          sizes="40px"
+                          className="object-contain"
+                        />
+                      </div>
+
+                      <div className="text-center">
+                        <p className="text-[9px] text-stone-400 uppercase tracking-[0.2em] mb-1">
+                          Desarrollado con humor por
+                        </p>
+                        <p className="text-xs font-black italic text-[#FFCA28]">
+                          AGENCIA POWA
+                        </p>
+                      </div>
+                    </Link>
+
+                    <p className="text-[10px] text-stone-400 max-w-xs mx-auto italic leading-relaxed">
+                      Arcos de Springfield S.A. - CUIT: 30-12345678-9 <br />
+                      Villa La Florida, Quilmes (CP 1881).
+                    </p>
+                  </div>
+                </div>
+
+                <p className="text-[10px] mt-12 text-[#D32F2F] font-black uppercase italic tracking-[0.3em] opacity-80">
+                  "Si no se atraganta, no es una Krusty"
+                </p>
+
+                <div className="mt-12 pt-6 border-t border-stone-800/40 flex justify-center gap-6">
+                  <Link
+                    href="/admin"
+                    className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-500 hover:text-[#FFCA28] transition-colors duration-300"
+                  >
+                    🔐 Acceso Staff
+                  </Link>
+                  <Link
+                    href="/krusty-legal"
+                    className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-500 hover:text-[#FFCA28] transition-colors duration-300"
+                  >
+                    📜 Contrato Legal
+                  </Link>
                 </div>
               </div>
+            </footer>
 
-              <p className="text-[10px] mt-12 text-[#D32F2F] font-black uppercase italic tracking-[0.3em] opacity-80">
-                "Si no se atraganta, no es una Krusty"
-              </p>
+            <StatusBar />
 
-              <div className="mt-12 pt-6 border-t border-stone-800/40 flex justify-center gap-6">
-                <Link
-                  href="/admin"
-                  className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-500 hover:text-[#FFCA28] transition-colors duration-300"
-                >
-                  🔐 Acceso Staff
-                </Link>
-                <Link
-                  href="/krusty-legal"
-                  className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-500 hover:text-[#FFCA28] transition-colors duration-300"
-                >
-                  📜 Contrato Legal
-                </Link>
-              </div>
-            </div>
-          </footer>
+            <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
+            <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[60px] pointer-events-none" />
 
-          <StatusBar />
+            <Analytics />
+            <SpeedInsights />
 
-          {/* ============================================
-              LUCES DE AMBIENTE - Optimizadas
-              ============================================ */}
-          <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
-          <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[60px] pointer-events-none" />
-
-          {/* ============================================
-              ANALYTICS Y SPEED INSIGHTS
-              ============================================ */}
-          <Analytics />
-          <SpeedInsights />
-
+          </LoaderProvider>
         </ThemeProvider>
       </body>
     </html>
