@@ -12,6 +12,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
+// ✅ IMPORTAR NOTIFICACIONES
+import { suscribirNotificaciones } from '@/lib/notificaciones';
+
 // ============================================================
 // 🏠 COMPONENTE PRINCIPAL
 // ============================================================
@@ -22,6 +25,10 @@ export default function PerfilPage() {
     // ✅ Estado LOCAL para puntos
     const [puntosActuales, setPuntosActuales] = useState(0);
     const [cargandoPuntos, setCargandoPuntos] = useState(true);
+
+    // ✅ Estado para notificaciones
+    const [statusNotificaciones, setStatusNotificaciones] = useState('');
+    const [suscripcionActiva, setSuscripcionActiva] = useState<boolean | null>(null);
 
     const { nivel, beneficios } = useBeneficios(
         puntosActuales,
@@ -71,7 +78,6 @@ export default function PerfilPage() {
         }
 
         try {
-            console.log('🔄 Cargando puntos directamente de la DB...');
             const { data, error } = await supabase
                 .from('perfiles')
                 .select('puntos_acumulados')
@@ -84,7 +90,6 @@ export default function PerfilPage() {
             }
 
             if (data) {
-                console.log('✅ Puntos cargados:', data.puntos_acumulados);
                 setPuntosActuales(data.puntos_acumulados);
             }
         } catch (error) {
@@ -92,6 +97,48 @@ export default function PerfilPage() {
         } finally {
             setCargandoPuntos(false);
         }
+    };
+
+    // ============================================================
+    // 🔔 VERIFICAR ESTADO DE SUSCRIPCIÓN
+    // ============================================================
+    const verificarSuscripcion = async () => {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+            setSuscripcionActiva(false);
+            return;
+        }
+
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            setSuscripcionActiva(!!subscription);
+        } catch (error) {
+            setSuscripcionActiva(false);
+        }
+    };
+
+    // ============================================================
+    // 🔄 REINTENTAR SUSCRIPCIÓN
+    // ============================================================
+    const handleReintentarSuscripcion = async () => {
+        if (!perfil?.id) {
+            setStatusNotificaciones('❌ Inicia sesión primero');
+            return;
+        }
+
+        setStatusNotificaciones('⏳ Solicitando permiso...');
+        const result = await suscribirNotificaciones(perfil.id);
+
+        if (result) {
+            setStatusNotificaciones('✅ ¡Notificaciones activas!');
+            setSuscripcionActiva(true);
+        } else {
+            setStatusNotificaciones('❌ Error al suscribir. Verificá los permisos.');
+            setSuscripcionActiva(false);
+        }
+
+        // ✅ Ocultar el mensaje después de 5 segundos
+        setTimeout(() => setStatusNotificaciones(''), 5000);
     };
 
     // ============================================================
@@ -104,6 +151,7 @@ export default function PerfilPage() {
             cargarDatosPerfil();
             cargarEstadisticas();
             verificarEstadoEliminacion();
+            verificarSuscripcion();
             if (perfil.avatar_url) {
                 setImagenPerfil(perfil.avatar_url);
             }
@@ -114,7 +162,6 @@ export default function PerfilPage() {
     useEffect(() => {
         const recargarPuntos = () => {
             if (document.visibilityState === 'visible' && perfil?.id) {
-                console.log('🔄 Página visible, recargando puntos...');
                 cargarPuntosDirectamente();
             }
         };
@@ -442,20 +489,17 @@ export default function PerfilPage() {
     const nivelFallback = obtenerNivel(puntosActuales || 0);
     const nivelActual = nivel || nivelFallback;
 
-    // ✅ En el perfil, asegúrate de que maneje `siguiente: null`
-
     const calcularProgreso = () => {
         const niveles = [
             { nombre: 'Bronce', puntos: 0, icono: '🥉', color: '#CD7F32' },
             { nombre: 'Plata', puntos: 1000, icono: '🥈', color: '#C0C0C0' },
             { nombre: 'Oro', puntos: 2500, icono: '🥇', color: '#FFD700' },
             { nombre: 'Platino', puntos: 5000, icono: '💎', color: '#E5E4E2' },
-            // ✅ NO INCLUIR "Krusty" como nivel - Platino es el máximo
         ];
 
         const puntos = puntosActuales || 0;
 
-        let nivelEncontrado = niveles[niveles.length - 1]; // Por defecto Platino
+        let nivelEncontrado = niveles[niveles.length - 1];
         let nivelIndex = 0;
         for (let i = niveles.length - 1; i >= 0; i--) {
             if (puntos >= niveles[i].puntos) {
@@ -465,7 +509,6 @@ export default function PerfilPage() {
             }
         }
 
-        // ✅ Si es Platino (último nivel), mostrar "Nivel máximo"
         if (nivelEncontrado.nombre === 'Platino') {
             return {
                 progreso: 100,
@@ -560,7 +603,6 @@ export default function PerfilPage() {
                         </div>
                     </div>
 
-                    {/* ✅ BARRA DE PROGRESO MEJORADA */}
                     <div className="mt-4">
                         <div className="w-full h-4 bg-stone-200 rounded-full border-2 border-black overflow-hidden">
                             <motion.div
@@ -586,13 +628,52 @@ export default function PerfilPage() {
                         </div>
                     </div>
 
-                    {/* ✅ Botón actualizar */}
                     <button
                         onClick={() => cargarPuntosDirectamente()}
                         className="mt-4 text-xs font-bold text-[#D32F2F] hover:text-black transition-colors flex items-center gap-1"
                     >
                         🔄 Actualizar puntos
                     </button>
+                </div>
+
+                {/* ============================================================
+                🔔 SECCIÓN DE NOTIFICACIONES PUSH (NUEVA)
+                ============================================================ */}
+                <div className="bg-white border-4 border-black p-6 rounded-4xl shadow-[6px_6px_0px_0px_black]">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl">🔔</span>
+                            <div>
+                                <p className="text-xs font-black uppercase text-stone-400">Notificaciones push</p>
+                                <p className="text-sm font-black">
+                                    {suscripcionActiva === true && '✅ Activas'}
+                                    {suscripcionActiva === false && '❌ Inactivas'}
+                                    {suscripcionActiva === null && '⏳ Verificando...'}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleReintentarSuscripcion}
+                            className="px-4 py-2 bg-[#FAD02C] border-2 border-black rounded-xl font-black text-sm hover:bg-[#e6b800] hover:scale-105 active:scale-95 transition-all"
+                        >
+                            🔄 Reintentar
+                        </button>
+                    </div>
+
+                    {statusNotificaciones && (
+                        <div className={`mt-3 p-3 rounded-xl border-2 text-sm font-bold transition-all ${statusNotificaciones.includes('✅')
+                                ? 'bg-green-100 border-green-400 text-green-800'
+                                : statusNotificaciones.includes('❌')
+                                    ? 'bg-red-100 border-red-400 text-red-800'
+                                    : 'bg-blue-100 border-blue-400 text-blue-800'
+                            }`}>
+                            {statusNotificaciones}
+                        </div>
+                    )}
+
+                    <p className="text-[10px] font-bold text-stone-400 mt-3">
+                        💡 Si no recibís notificaciones, toca "Reintentar" y aceptá los permisos en tu navegador.
+                    </p>
                 </div>
 
                 {/* Beneficios */}
