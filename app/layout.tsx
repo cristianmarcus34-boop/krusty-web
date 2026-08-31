@@ -10,6 +10,7 @@ import GestorDeActualizaciones from '../components/GestorDeActualizaciones';
 import ActiveOrderFloating from '@/components/ActiveOrderFloating';
 import { Analytics } from "@vercel/analytics/next"
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Toaster } from 'react-hot-toast';
 
 // ============================================
 // CONTEXTO DE TEMA
@@ -234,6 +235,37 @@ export default function RootLayout({
 
             <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
             <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[60px] pointer-events-none" />
+
+            {/* ============================================
+                TOASTER - Notificaciones del sistema
+                ============================================ */}
+            <Toaster
+              position="top-center"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#1a1a1a',
+                  color: '#fff',
+                  border: '2px solid #FAD02C',
+                  borderRadius: '12px',
+                  padding: '16px',
+                  fontFamily: 'inherit',
+                  maxWidth: '400px',
+                },
+                success: {
+                  style: {
+                    borderColor: '#22c55e',
+                  },
+                  icon: '✅',
+                },
+                error: {
+                  style: {
+                    borderColor: '#ef4444',
+                  },
+                  icon: '❌',
+                },
+              }}
+            />
 
             <Analytics />
             <SpeedInsights />

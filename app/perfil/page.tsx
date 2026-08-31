@@ -10,15 +10,21 @@ import { formatearPrecio } from '../../lib/formateador';
 import { servicioEliminacionCuenta } from '../../services/servicioEliminacionCuenta';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 // ============================================================
 // 🏠 COMPONENTE PRINCIPAL
 // ============================================================
 export default function PerfilPage() {
     const router = useRouter();
-    const { perfil, sesion, cerrarSesion, actualizarPerfil } = useAuth();
+    const { perfil, sesion, cerrarSesion, actualizarPerfil, recargarPerfil } = useAuth();
+
+    // ✅ Estado LOCAL para puntos
+    const [puntosActuales, setPuntosActuales] = useState(0);
+    const [cargandoPuntos, setCargandoPuntos] = useState(true);
+
     const { nivel, beneficios } = useBeneficios(
-        perfil?.puntos_acumulados || 0,
+        puntosActuales,
         perfil?.id
     );
 
@@ -56,10 +62,44 @@ export default function PerfilPage() {
     const [diasRestantes, setDiasRestantes] = useState(0);
 
     // ============================================================
+    // 🎯 CARGAR PUNTOS DIRECTAMENTE DE LA DB
+    // ============================================================
+    const cargarPuntosDirectamente = async () => {
+        if (!perfil?.id) {
+            setCargandoPuntos(false);
+            return;
+        }
+
+        try {
+            console.log('🔄 Cargando puntos directamente de la DB...');
+            const { data, error } = await supabase
+                .from('perfiles')
+                .select('puntos_acumulados')
+                .eq('id', perfil.id)
+                .single();
+
+            if (error) {
+                console.error('❌ Error cargando puntos:', error);
+                return;
+            }
+
+            if (data) {
+                console.log('✅ Puntos cargados:', data.puntos_acumulados);
+                setPuntosActuales(data.puntos_acumulados);
+            }
+        } catch (error) {
+            console.error('❌ Error:', error);
+        } finally {
+            setCargandoPuntos(false);
+        }
+    };
+
+    // ============================================================
     // 🎬 EFECTOS
     // ============================================================
     useEffect(() => {
         if (perfil?.id) {
+            cargarPuntosDirectamente();
             cargarTotalPedidos();
             cargarDatosPerfil();
             cargarEstadisticas();
@@ -69,6 +109,22 @@ export default function PerfilPage() {
             }
         }
     }, [perfil]);
+
+    // ✅ RECARGAR PUNTOS CUANDO LA PÁGINA SE VUELVE VISIBLE
+    useEffect(() => {
+        const recargarPuntos = () => {
+            if (document.visibilityState === 'visible' && perfil?.id) {
+                console.log('🔄 Página visible, recargando puntos...');
+                cargarPuntosDirectamente();
+            }
+        };
+
+        document.addEventListener('visibilitychange', recargarPuntos);
+
+        return () => {
+            document.removeEventListener('visibilitychange', recargarPuntos);
+        };
+    }, [perfil?.id]);
 
     // ============================================================
     // 🔄 FUNCIONES DE CARGA
@@ -104,8 +160,9 @@ export default function PerfilPage() {
         try {
             const { data: pedidos, error: pedidosError } = await supabase
                 .from('pedidos')
-                .select('total, estado')
-                .eq('id_de_usuario', perfil.id);
+                .select('total, estado, creado_en, id')
+                .eq('id_de_usuario', perfil.id)
+                .order('creado_en', { ascending: false });
 
             if (!pedidosError && pedidos) {
                 const total = pedidos
@@ -113,6 +170,8 @@ export default function PerfilPage() {
                     .reduce((sum, p) => sum + (p.total || 0), 0);
                 setTotalGastado(total);
                 setTotalPedidos(pedidos.length);
+
+                await cargarActividadReciente(pedidos);
             }
 
             const { count: canjesCount } = await supabase
@@ -149,8 +208,6 @@ export default function PerfilPage() {
                 setUltimosCanjes(canjesMapeados);
             }
 
-            await cargarActividadReciente();
-
         } catch (error) {
             console.error('❌ Error cargando estadísticas:', error);
         } finally {
@@ -159,34 +216,43 @@ export default function PerfilPage() {
         }
     };
 
-    const cargarActividadReciente = async () => {
+    const cargarActividadReciente = async (pedidosDelUsuario?: any[]) => {
         if (!perfil?.id) return;
 
         try {
             const actividades: ActividadReciente[] = [];
 
-            const { data: pedidosRecientes } = await supabase
-                .from('pedidos')
-                .select('id, estado, total, creado_en')
-                .eq('id_de_usuario', perfil.id)
-                .order('creado_en', { ascending: false })
-                .limit(3);
+            let pedidos = pedidosDelUsuario;
+            if (!pedidos) {
+                const { data } = await supabase
+                    .from('pedidos')
+                    .select('id, estado, total, creado_en')
+                    .eq('id_de_usuario', perfil.id)
+                    .order('creado_en', { ascending: false })
+                    .limit(5);
+                pedidos = data || [];
+            }
 
-            if (pedidosRecientes) {
-                pedidosRecientes.forEach((p: any) => {
+            if (pedidos && pedidos.length > 0) {
+                const totalPedidosUsuario = pedidos.length;
+
+                pedidos.forEach((p: any, index: number) => {
+                    const numeroSecuencial = totalPedidosUsuario - index;
+
                     const estadoMap: Record<string, { icono: string; texto: string; color: string }> = {
                         'entregado': { icono: '✅', texto: 'Entregado', color: '#22c55e' },
                         'pendiente': { icono: '⏳', texto: 'Pendiente', color: '#eab308' },
-                        'confirmado': { icono: '✅', texto: 'Confirmado', color: '#3b82f6' },
-                        'preparando': { icono: '🍔', texto: 'Preparando', color: '#f97316' },
-                        'en_camino': { icono: '🚴', texto: 'En camino', color: '#06b6d4' },
+                        'pago_pendiente': { icono: '💳', texto: 'Pago Pendiente', color: '#f97316' },
+                        'en cocina': { icono: '👨‍🍳', texto: 'En Cocina', color: '#8b5cf6' },
+                        'en camino': { icono: '🛵', texto: 'En Camino', color: '#06b6d4' },
+                        'cancelado': { icono: '❌', texto: 'Cancelado', color: '#ef4444' },
                     };
                     const estadoInfo = estadoMap[p.estado] || estadoMap.pendiente;
 
                     actividades.push({
                         id: `pedido-${p.id}`,
                         tipo: 'pedido',
-                        descripcion: `Pedido #${String(p.id).slice(-4)} - ${estadoInfo.texto}`,
+                        descripcion: `Pedido #${numeroSecuencial} - ${estadoInfo.texto}`,
                         fecha: p.creado_en,
                         icono: estadoInfo.icono,
                         color: estadoInfo.color,
@@ -225,7 +291,6 @@ export default function PerfilPage() {
         }
     };
 
-    // ✅ VERIFICAR ESTADO DE ELIMINACIÓN
     const verificarEstadoEliminacion = async () => {
         if (!perfil?.id) return;
         const estado = await servicioEliminacionCuenta.obtenerEstadoEliminacion(perfil.id);
@@ -233,7 +298,6 @@ export default function PerfilPage() {
         setDiasRestantes(estado.diasRestantes || 0);
     };
 
-    // ✅ ACTUALIZAR PERFIL
     const actualizarDatosPerfil = async () => {
         if (!perfil || !perfil.id) {
             window.alert('❌ Error\n\nNo se pudo identificar tu cuenta.');
@@ -272,6 +336,7 @@ export default function PerfilPage() {
             }
 
             await actualizarPerfil({ ...perfil, ...datosActualizados });
+            await recargarPerfil();
             window.alert('✅ Éxito\n\nPerfil actualizado correctamente');
             setModoEdicion(false);
         } catch (error) {
@@ -282,7 +347,6 @@ export default function PerfilPage() {
         }
     };
 
-    // ✅ SOLICITAR ELIMINACIÓN DE CUENTA
     const solicitarEliminacionCuenta = async () => {
         if (!perfil || !perfil.id || !perfil.email) {
             window.alert('❌ Error\n\nNo se pudo identificar tu cuenta.');
@@ -344,7 +408,6 @@ export default function PerfilPage() {
         }
     };
 
-    // ✅ CANCELAR ELIMINACIÓN
     const cancelarEliminacion = async () => {
         if (!perfil || !perfil.id) {
             window.alert('❌ Error\n\nNo se pudo identificar tu cuenta.');
@@ -375,9 +438,60 @@ export default function PerfilPage() {
         return partes.length > 0 ? partes.join(', ') : 'No especificada';
     };
 
-    // ✅ OBTENER NIVEL
-    const nivelFallback = obtenerNivel(perfil?.puntos_acumulados || 0);
+    // ✅ OBTENER NIVEL CON PUNTOS ACTUALES
+    const nivelFallback = obtenerNivel(puntosActuales || 0);
     const nivelActual = nivel || nivelFallback;
+
+    // ✅ En el perfil, asegúrate de que maneje `siguiente: null`
+
+    const calcularProgreso = () => {
+        const niveles = [
+            { nombre: 'Bronce', puntos: 0, icono: '🥉', color: '#CD7F32' },
+            { nombre: 'Plata', puntos: 1000, icono: '🥈', color: '#C0C0C0' },
+            { nombre: 'Oro', puntos: 2500, icono: '🥇', color: '#FFD700' },
+            { nombre: 'Platino', puntos: 5000, icono: '💎', color: '#E5E4E2' },
+            // ✅ NO INCLUIR "Krusty" como nivel - Platino es el máximo
+        ];
+
+        const puntos = puntosActuales || 0;
+
+        let nivelEncontrado = niveles[niveles.length - 1]; // Por defecto Platino
+        let nivelIndex = 0;
+        for (let i = niveles.length - 1; i >= 0; i--) {
+            if (puntos >= niveles[i].puntos) {
+                nivelEncontrado = niveles[i];
+                nivelIndex = i;
+                break;
+            }
+        }
+
+        // ✅ Si es Platino (último nivel), mostrar "Nivel máximo"
+        if (nivelEncontrado.nombre === 'Platino') {
+            return {
+                progreso: 100,
+                texto: '🏆 ¡Nivel máximo alcanzado!'
+            };
+        }
+
+        const siguiente = niveles[nivelIndex + 1];
+        if (!siguiente) {
+            return {
+                progreso: 100,
+                texto: '🏆 ¡Nivel máximo alcanzado!'
+            };
+        }
+
+        const puntosSiguiente = siguiente.puntos - nivelEncontrado.puntos;
+        const puntosProgreso = puntos - nivelEncontrado.puntos;
+        const progreso = Math.min(100, Math.round((puntosProgreso / puntosSiguiente) * 100));
+
+        return {
+            progreso,
+            texto: `${progreso}% para ${siguiente.nombre}`
+        };
+    };
+
+    const progresoInfo = calcularProgreso();
 
     // Si no hay sesión, mostrar mensaje
     if (!perfil) {
@@ -395,12 +509,13 @@ export default function PerfilPage() {
         );
     }
 
+    const puntosMostrar = puntosActuales || perfil?.puntos_acumulados || 0;
+
     return (
         <div className="min-h-screen bg-[#fafafa] pb-32 selection:bg-[#FFCA28]/30 text-[#292929]">
             {/* Header */}
             <div className="relative bg-white border-b-4 border-black pt-8 pb-6 px-6">
                 <div className="max-w-4xl mx-auto flex items-center gap-6">
-                    {/* Avatar */}
                     <div className="relative w-24 h-24 rounded-full border-4 border-black overflow-hidden shadow-[4px_4px_0px_0px_black] shrink-0 bg-white">
                         {imagenPerfil ? (
                             <img
@@ -415,26 +530,28 @@ export default function PerfilPage() {
                         )}
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1">
                         <h1 className="font-krusty text-3xl text-black uppercase">
                             {perfil.nombre_cliente || 'Invitado'}
                         </h1>
                         <p className="text-sm font-bold text-stone-500">{perfil.email}</p>
+                        {cargandoPuntos && (
+                            <p className="text-xs text-stone-400 animate-pulse">Cargando puntos...</p>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Contenido */}
             <div className="max-w-4xl mx-auto px-6 py-6 space-y-6">
-                {/* Puntos y Nivel */}
+                {/* Puntos y Nivel - MEJORADO */}
                 <div className="bg-white border-4 border-black p-6 rounded-4xl shadow-[6px_6px_0px_0px_black]">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">⭐</span>
                             <div>
                                 <p className="text-xs font-black uppercase text-stone-400">Krusty Points</p>
-                                <p className="font-krusty text-2xl text-[#D32F2F]">{perfil.puntos_acumulados || 0}</p>
+                                <p className="font-krusty text-3xl text-[#D32F2F]">{puntosMostrar.toLocaleString()}</p>
                             </div>
                         </div>
                         <div className="flex items-center gap-3 bg-[#FFCA28] px-4 py-2 rounded-full border-2 border-black">
@@ -442,20 +559,40 @@ export default function PerfilPage() {
                             <span className="font-black text-sm uppercase">Nivel {nivelActual.nombre}</span>
                         </div>
                     </div>
+
+                    {/* ✅ BARRA DE PROGRESO MEJORADA */}
                     <div className="mt-4">
-                        <div className="w-full h-3 bg-stone-200 rounded-full border-2 border-black overflow-hidden">
-                            <div
-                                className="h-full rounded-full transition-all duration-500"
+                        <div className="w-full h-4 bg-stone-200 rounded-full border-2 border-black overflow-hidden">
+                            <motion.div
+                                className="h-full rounded-full transition-all duration-700"
                                 style={{
-                                    width: `${nivelActual.progreso}%`,
-                                    backgroundColor: nivelActual.color
+                                    width: `${progresoInfo.progreso}%`,
+                                    backgroundColor: nivelActual.color || '#FFCA28',
+                                    backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent)',
+                                    backgroundSize: '1rem 1rem',
                                 }}
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progresoInfo.progreso}%` }}
+                                transition={{ duration: 0.8, ease: "easeOut" }}
                             />
                         </div>
-                        <p className="text-xs font-bold text-stone-400 mt-1 text-right">
-                            {Math.round(nivelActual.progreso)}% para {nivelActual.siguiente}
-                        </p>
+                        <div className="flex justify-between items-center mt-2">
+                            <p className="text-xs font-bold text-stone-400">
+                                {nivelActual.nombre} ({puntosMostrar} pts)
+                            </p>
+                            <p className="text-xs font-bold text-[#D32F2F]">
+                                {progresoInfo.texto}
+                            </p>
+                        </div>
                     </div>
+
+                    {/* ✅ Botón actualizar */}
+                    <button
+                        onClick={() => cargarPuntosDirectamente()}
+                        className="mt-4 text-xs font-bold text-[#D32F2F] hover:text-black transition-colors flex items-center gap-1"
+                    >
+                        🔄 Actualizar puntos
+                    </button>
                 </div>
 
                 {/* Beneficios */}
@@ -491,17 +628,17 @@ export default function PerfilPage() {
                     </div>
                 )}
 
-                {/* Estadísticas */}
+                {/* Estadísticas - MEJORADO */}
                 <div className="grid grid-cols-3 gap-4">
-                    <div className="bg-white border-4 border-black p-4 rounded-4xl shadow-[6px_6px_0px_0px_black] text-center">
+                    <div className="bg-white border-4 border-black p-4 rounded-4xl shadow-[6px_6px_0px_0px_black] text-center hover:shadow-[8px_8px_0px_0px_#D32F2F] transition-shadow">
                         <p className="font-krusty text-3xl text-[#D32F2F]">{totalPedidos}</p>
                         <p className="text-xs font-black uppercase text-stone-400">Pedidos</p>
                     </div>
-                    <div className="bg-white border-4 border-black p-4 rounded-4xl shadow-[6px_6px_0px_0px_black] text-center">
+                    <div className="bg-white border-4 border-black p-4 rounded-4xl shadow-[6px_6px_0px_0px_black] text-center hover:shadow-[8px_8px_0px_0px_#FAD02C] transition-shadow">
                         <p className="font-krusty text-3xl text-[#D32F2F]">{formatearPrecio(totalGastado)}</p>
                         <p className="text-xs font-black uppercase text-stone-400">Gastado</p>
                     </div>
-                    <div className="bg-white border-4 border-black p-4 rounded-4xl shadow-[6px_6px_0px_0px_black] text-center">
+                    <div className="bg-white border-4 border-black p-4 rounded-4xl shadow-[6px_6px_0px_0px_black] text-center hover:shadow-[8px_8px_0px_0px_#22c55e] transition-shadow">
                         <p className="font-krusty text-3xl text-[#D32F2F]">{totalCanjes}</p>
                         <p className="text-xs font-black uppercase text-stone-400">Canjes</p>
                     </div>
@@ -512,10 +649,10 @@ export default function PerfilPage() {
                     <div className="bg-white border-4 border-black p-6 rounded-4xl shadow-[6px_6px_0px_0px_black]">
                         <h2 className="font-krusty text-xl text-black uppercase mb-4">📈 Actividad Reciente</h2>
                         <div className="space-y-3">
-                            {actividadesRecientes.slice(0, 4).map((actividad) => (
+                            {actividadesRecientes.slice(0, 5).map((actividad) => (
                                 <div
                                     key={actividad.id}
-                                    className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl border-2 border-black/20"
+                                    className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl border-2 border-black/20 hover:bg-stone-100 transition-colors"
                                 >
                                     <span className="text-2xl">{actividad.icono}</span>
                                     <div className="flex-1">
@@ -544,7 +681,7 @@ export default function PerfilPage() {
                             {ultimosCanjes.map((canje) => (
                                 <div
                                     key={canje.id}
-                                    className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border-2 border-black/20"
+                                    className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border-2 border-black/20 hover:bg-stone-100 transition-colors"
                                 >
                                     <div className="flex items-center gap-3">
                                         <span className="text-2xl">🎯</span>

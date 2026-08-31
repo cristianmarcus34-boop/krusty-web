@@ -1,5 +1,4 @@
 // lib/tipos.ts
-
 // ============================================================
 // 📋 TIPOS BÁSICOS
 // ============================================================
@@ -397,15 +396,15 @@ export interface ActividadReciente {
 }
 
 // ============================================================
-// 📋 NIVELES Y PROGRESO (CON ID AGREGADO PARA WEB)
+// 📋 NIVELES Y PROGRESO - CORREGIDO
 // ============================================================
 
 export interface NivelCliente {
-    id: number; // ✅ AGREGADO PARA WEB
+    id: number;
     icono: string;
     nombre: 'Bronce' | 'Plata' | 'Oro' | 'Platino';
     color: string;
-    siguiente: string;
+    siguiente: string | null;
     progreso: number;
     puntos_requeridos: number;
 }
@@ -418,51 +417,147 @@ export const NIVELES = {
 } as const;
 
 export function obtenerNivel(puntos: number): NivelCliente {
-    if (puntos >= 5000) {
+    // ✅ Nivel 1: Sin nivel (puntos < 0, no debería pasar)
+    if (puntos < 0) {
         return {
-            id: 5, // ✅ AGREGADO
-            icono: NIVELES.PLATINO.icono,
-            nombre: NIVELES.PLATINO.nombre,
-            color: NIVELES.PLATINO.color,
-            siguiente: '—',
-            progreso: 100,
-            puntos_requeridos: 5000,
+            id: 1,
+            icono: '👤',
+            nombre: 'Bronce',
+            color: '#A1887F',
+            siguiente: 'Bronce',
+            progreso: 0,
+            puntos_requeridos: 0,
         };
     }
-    if (puntos >= 1500) {
-        const progreso = ((puntos - 1500) / (5000 - 1500)) * 100;
+    // ✅ Nivel 2: Bronce (0-499 puntos)
+    if (puntos < 500) {
+        const progreso = (puntos / 500) * 100;
         return {
-            id: 4, // ✅ AGREGADO
-            icono: NIVELES.ORO.icono,
-            nombre: NIVELES.ORO.nombre,
-            color: NIVELES.ORO.color,
-            siguiente: 'Platino',
+            id: 2,
+            icono: '🥉',
+            nombre: 'Bronce',
+            color: '#A1887F',
+            siguiente: 'Plata',
             progreso: Math.min(progreso, 100),
-            puntos_requeridos: 5000,
+            puntos_requeridos: 500,
         };
     }
-    if (puntos >= 500) {
+    // ✅ Nivel 3: Plata (500-1499 puntos)
+    if (puntos < 1500) {
         const progreso = ((puntos - 500) / (1500 - 500)) * 100;
         return {
-            id: 3, // ✅ AGREGADO
-            icono: NIVELES.PLATA.icono,
-            nombre: NIVELES.PLATA.nombre,
-            color: NIVELES.PLATA.color,
+            id: 3,
+            icono: '🥈',
+            nombre: 'Plata',
+            color: '#BDBDBD',
             siguiente: 'Oro',
             progreso: Math.min(progreso, 100),
             puntos_requeridos: 1500,
         };
     }
-    const progreso = (puntos / 500) * 100;
+    // ✅ Nivel 4: Oro (1500-4999 puntos)
+    if (puntos < 5000) {
+        const progreso = ((puntos - 1500) / (5000 - 1500)) * 100;
+        return {
+            id: 4,
+            icono: '👑',
+            nombre: 'Oro',
+            color: '#F9A825',
+            siguiente: 'Platino',
+            progreso: Math.min(progreso, 100),
+            puntos_requeridos: 5000,
+        };
+    }
+    // ✅ Nivel 5: Platino (5000+ puntos)
     return {
-        id: 2, // ✅ AGREGADO
-        icono: NIVELES.BRONCE.icono,
-        nombre: NIVELES.BRONCE.nombre,
-        color: NIVELES.BRONCE.color,
-        siguiente: 'Plata',
-        progreso: Math.min(progreso, 100),
-        puntos_requeridos: 500,
+        id: 5,
+        icono: '💎',
+        nombre: 'Platino',
+        color: '#78909C',
+        siguiente: null,
+        progreso: 100,
+        puntos_requeridos: 5000,
     };
+}
+
+// ============================================================
+// 📋 BENEFICIOS POR NIVEL - CORREGIDO
+// ============================================================
+
+export interface BeneficiosNivel {
+    descuento: number;
+    descuentoMinimo: number | null;
+    descuentoLimiteDiario: number;
+    envioGratis: boolean;
+    envioGratisMinimo: number | null;
+    productosGratisPorMes: number;
+    accesoAnticipadoOfertas: boolean;
+    soportePrioritario: boolean;
+    prioridadEntrega: number;
+    descripcion: string;
+}
+
+export function obtenerBeneficios(nivelId: number): BeneficiosNivel {
+    const beneficios = {
+        descuento: 0,
+        descuentoMinimo: null as number | null,
+        descuentoLimiteDiario: 0,
+        envioGratis: false,
+        envioGratisMinimo: null as number | null,
+        productosGratisPorMes: 0,
+        accesoAnticipadoOfertas: false,
+        soportePrioritario: false,
+        prioridadEntrega: 0,
+        descripcion: '',
+    };
+
+    switch (nivelId) {
+        case 1: // Cliente sin nivel
+            return {
+                ...beneficios,
+                descripcion: '¡Bienvenido! Hacé tu primer pedido para empezar a acumular puntos.',
+            };
+        case 2: // Bronce (0-499 puntos)
+            return {
+                ...beneficios,
+                descripcion: '¡Seguí acumulando puntos para desbloquear beneficios!',
+            };
+        case 3: // Plata (500-1499 puntos)
+            return {
+                ...beneficios,
+                descuento: 5,
+                envioGratis: true,
+                envioGratisMinimo: 15000,
+                prioridadEntrega: 1,
+                descripcion: '5% de descuento y envío gratis en pedidos mayores a $15.000',
+            };
+        case 4: // Oro (1500-4999 puntos)
+            return {
+                ...beneficios,
+                descuento: 10,
+                envioGratis: true,
+                envioGratisMinimo: 10000,
+                accesoAnticipadoOfertas: true,
+                prioridadEntrega: 2,
+                descripcion: '10% de descuento, envío gratis en pedidos mayores a $10.000 y acceso anticipado a ofertas',
+            };
+        case 5: // Platino (5000+ puntos)
+            return {
+                ...beneficios,
+                descuento: 20,
+                envioGratis: true,
+                envioGratisMinimo: 0,
+                accesoAnticipadoOfertas: true,
+                soportePrioritario: true,
+                prioridadEntrega: 3,
+                descripcion: '20% de descuento, envío gratis en todos tus pedidos, acceso anticipado a ofertas y soporte prioritario',
+            };
+        default:
+            return {
+                ...beneficios,
+                descripcion: 'Beneficios no disponibles',
+            };
+    }
 }
 
 // ============================================================
@@ -505,94 +600,6 @@ export interface EstadoEliminacion {
     tieneSolicitud: boolean;
     solicitud?: SolicitudEliminacion;
     diasRestantes?: number;
-}
-
-// ============================================================
-// 📋 BENEFICIOS POR NIVEL
-// ============================================================
-
-export interface BeneficiosNivel {
-    descuento: number;
-    descuentoMinimo: number | null;
-    descuentoLimiteDiario: number;
-    envioGratis: boolean;
-    envioGratisMinimo: number | null;
-    productosGratisPorMes: number;
-    accesoAnticipadoOfertas: boolean;
-    soportePrioritario: boolean;
-    prioridadEntrega: number;
-    descripcion: string;
-}
-
-// ============================================================
-// 📋 FUNCIÓN PARA OBTENER BENEFICIOS SEGÚN NIVEL
-// ============================================================
-
-export function obtenerBeneficios(nivelId: number): BeneficiosNivel {
-    const beneficios = {
-        descuento: 0,
-        descuentoMinimo: null as number | null,
-        descuentoLimiteDiario: 0,
-        envioGratis: false,
-        envioGratisMinimo: null as number | null,
-        productosGratisPorMes: 0,
-        accesoAnticipadoOfertas: false,
-        soportePrioritario: false,
-        prioridadEntrega: 0,
-        descripcion: '',
-    };
-
-    switch (nivelId) {
-        case 1: // Bronce (sin beneficios)
-            return {
-                ...beneficios,
-                descripcion: '¡Seguí acumulando puntos para desbloquear beneficios!',
-            };
-        case 2: // Plata
-            return {
-                ...beneficios,
-                descuento: 5,
-                envioGratis: true,
-                envioGratisMinimo: 15000,
-                descripcion: '5% de descuento y envío gratis en pedidos mayores a $15.000',
-            };
-        case 3: // Oro
-            return {
-                ...beneficios,
-                descuento: 10,
-                envioGratis: true,
-                envioGratisMinimo: 10000,
-                accesoAnticipadoOfertas: true,
-                descripcion: '10% de descuento, envío gratis en pedidos mayores a $10.000 y acceso anticipado a ofertas',
-            };
-        case 4: // Platino
-            return {
-                ...beneficios,
-                descuento: 15,
-                envioGratis: true,
-                envioGratisMinimo: 5000,
-                accesoAnticipadoOfertas: true,
-                soportePrioritario: true,
-                prioridadEntrega: 1,
-                descripcion: '15% de descuento, envío gratis en pedidos mayores a $5.000, acceso anticipado a ofertas y soporte prioritario',
-            };
-        case 5: // Krusty Legend
-            return {
-                ...beneficios,
-                descuento: 20,
-                envioGratis: true,
-                envioGratisMinimo: 0,
-                accesoAnticipadoOfertas: true,
-                soportePrioritario: true,
-                prioridadEntrega: 2,
-                descripcion: '¡20% de descuento, envío gratis en todos tus pedidos, acceso anticipado a ofertas, soporte prioritario y prioridad en entregas!',
-            };
-        default:
-            return {
-                ...beneficios,
-                descripcion: 'Beneficios no disponibles',
-            };
-    }
 }
 
 // ============================================================

@@ -224,18 +224,14 @@ export default function Home() {
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 bg-[#FF6B00] text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_black]">
               <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse" />
-              🔥 ¡LA FÁBRICA DE LA RISA! 🔥
+              ¡LA FÁBRICA DE LA RISA!
               <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse delay-150" />
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             <div className="text-center lg:text-left flex flex-col justify-center">
-              <div className="flex items-center justify-center lg:justify-start gap-3 mb-4">
-                <span className="text-5xl animate-bounce">🍔</span>
-                <span className="text-5xl animate-bounce delay-100">💥</span>
-                <span className="text-5xl animate-bounce delay-200">🤡</span>
-              </div>
+
 
               <h2 className="font-krusty text-4xl md:text-5xl lg:text-6xl text-black uppercase drop-shadow-[2px_2px_0px_#FF6B00] leading-none mb-4">
                 Hechas con <span className="text-[#FF6B00]">amor</span>
@@ -247,32 +243,19 @@ export default function Home() {
                 Carne 100% premium, queso que se estira hasta Springfield y
                 el toque secreto del payaso más famoso del mundo.
                 <span className="block mt-2 text-[#FF6B00]">
-                  ¡Si no te atragantas, no es una Krusty!
+                  ¡Si no te atraganta, no es una Krusty!
                 </span>
               </p>
 
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 mt-6">
-                <div className="flex items-center gap-2 bg-[#FF6B00]/10 backdrop-blur-sm px-4 py-2 rounded-full border border-[#FF6B00]/20">
-                  <span className="text-2xl">🥩</span>
-                  <span className="text-stone-800 font-black text-sm">Carne Premium</span>
-                </div>
-                <div className="flex items-center gap-2 bg-[#FF6B00]/10 backdrop-blur-sm px-4 py-2 rounded-full border border-[#FF6B00]/20">
-                  <span className="text-2xl">🧀</span>
-                  <span className="text-stone-800 font-black text-sm">Queso Fundido</span>
-                </div>
-                <div className="flex items-center gap-2 bg-[#FF6B00]/10 backdrop-blur-sm px-4 py-2 rounded-full border border-[#FF6B00]/20">
-                  <span className="text-2xl">🤡</span>
-                  <span className="text-stone-800 font-black text-sm">Toque Krusty</span>
-                </div>
-              </div>
+
 
               <div className="bg-[#FFF3E6] p-6 rounded-2xl border-2 border-[#FF6B00]/40 text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-xl">🔮</span>
+
                   <span className="text-[#FF6B00] text-xs font-black uppercase tracking-wider">
                     ¡Ingrediente Secreto Revelado!
                   </span>
-                  <span className="text-xl">🔮</span>
+
                 </div>
                 <h3 className="text-black text-2xl font-krusty">
                   ¿El secreto? <span className="text-[#FF6B00]">¡Risa!</span>
@@ -283,11 +266,7 @@ export default function Home() {
                   <br />
                   <span className="text-xs opacity-60">(No te preocupes, son seguros. Casi siempre.)</span>
                 </p>
-                <div className="flex justify-center gap-3 mt-3 text-3xl">
-                  <span>🤡</span>
-                  <span className="animate-pulse">💥</span>
-                  <span>🍔</span>
-                </div>
+
               </div>
             </div>
           </div>

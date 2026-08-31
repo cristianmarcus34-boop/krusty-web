@@ -146,7 +146,7 @@ export default function BurgerCard({ burger }: { burger: any }) {
       <div className="p-5 flex flex-col grow bg-white text-center items-center">
 
         <div className="mb-2 w-full">
-          <h3 className="font-krusty text-xl md:text-2xl text-[#292929] leading-[1.1] line-clamp-2 min-h-10 flex items-center justify-center transition-colors group-hover:text-[#D32F2F]">
+          <h3 className="font-krusty font-black text-xl md:text-2xl text-[#181818] leading-[1.1] line-clamp-2 min-h-10 flex items-center justify-center transition-colors group-hover:text-[#D32F2F] no-text-shadow [-webkit-text-stroke:0.9px_#181818]">
             {burger?.nombre || 'Sin Nombre'}
           </h3>
         </div>

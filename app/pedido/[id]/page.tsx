@@ -1,21 +1,37 @@
+// app/pedido/[id]/page.tsx - ACTUALIZADO CON VALIDACIÓN POR ID DE USUARIO
 "use client";
+
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import confetti from 'canvas-confetti'; // Necesitás: npm install canvas-confetti
+import confetti from 'canvas-confetti';
+import { useAuth } from '../../hooks/useAuth';
+import BannerNotificaciones from '../../../components/BannerNotificaciones';
+import { useNotificaciones } from '@/app/hooks/useNotificaciones';
 
 export default function SeguimientoPedido() {
     const params = useParams();
     const router = useRouter();
     const id = params?.id as string;
 
+    // ✅ OBTENER USUARIO LOGUEADO
+    const { perfil, sesion, cargando: authCargando } = useAuth();
+
     const [pedido, setPedido] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [puntosGanados, setPuntosGanados] = useState<number | null>(null);
+    const [bannerCerrado, setBannerCerrado] = useState(false);
     const cargadoInicial = useRef(false);
 
-    // Coordenadas actualizadas según el mapa:
+    const {
+        notificacionesPermitidas,
+        mostrarBanner,
+        enviarNotificacion,
+        reactivarNotificaciones,
+    } = useNotificaciones();
+
     const coordenadasMoto: Record<string, { x: string; y: string }> = {
         'pendiente': { x: '41%', y: '36%' },
         'en cocina': { x: '36%', y: '38%' },
@@ -23,6 +39,9 @@ export default function SeguimientoPedido() {
         'entregado': { x: '18%', y: '12%' },
     };
 
+    // ============================================================
+    // 🎬 EFECTO INICIAL
+    // ============================================================
     useEffect(() => {
         if (!id) return;
 
@@ -30,7 +49,6 @@ export default function SeguimientoPedido() {
             setLoading(true);
             setErrorMsg(null);
             try {
-                // 1. Buscamos el pedido en Supabase
                 const { data, error } = await supabase
                     .from('pedidos')
                     .select('*')
@@ -43,16 +61,40 @@ export default function SeguimientoPedido() {
                     return;
                 }
 
-                // 2. Validación de seguridad estricta por LocalStorage
-                const telefonoLocal = localStorage.getItem('krusty_user_telefono');
+                // ✅ VALIDACIÓN POR ID DE USUARIO (MÁS SEGURO)
+                const userId = sesion?.user?.id || null;
 
-                if (!telefonoLocal || data.telefono !== telefonoLocal) {
-                    setErrorMsg('⚠️ Acceso denegado: No tenés permisos para ver este pedido o no pertenece a este dispositivo.');
+                // Si el pedido tiene id_de_usuario, debe coincidir con el usuario logueado
+                if (data.id_de_usuario && userId) {
+                    if (data.id_de_usuario !== userId) {
+                        setErrorMsg('⚠️ Acceso denegado: Este pedido no pertenece a tu usuario.');
+                        setLoading(false);
+                        return;
+                    }
+                }
+                // Si el pedido NO tiene id_de_usuario (pedidos viejos), validar por teléfono
+                else if (!data.id_de_usuario) {
+                    const telefonoLocal = localStorage.getItem('krusty_user_telefono');
+                    if (!telefonoLocal || data.telefono !== telefonoLocal) {
+                        setErrorMsg('⚠️ Acceso denegado: No tenés permisos para ver este pedido.');
+                        setLoading(false);
+                        return;
+                    }
+                }
+                // Si el pedido tiene id_de_usuario pero no hay usuario logueado
+                else if (data.id_de_usuario && !userId) {
+                    setErrorMsg('⚠️ Debes iniciar sesión para ver este pedido.');
                     setLoading(false);
                     return;
                 }
 
                 setPedido(data);
+
+                if (data.estado === 'entregado') {
+                    const puntos = Math.floor(data.total / 100);
+                    setPuntosGanados(puntos);
+                }
+
             } catch (error: any) {
                 console.error("❌ Error:", error.message);
                 setErrorMsg('Ocurrió un error al conectar con la cocina de Krusty.');
@@ -62,7 +104,17 @@ export default function SeguimientoPedido() {
             }
         };
 
-        if (!cargadoInicial.current) fetchPedido();
+        // Esperar a que la autenticación termine
+        if (!authCargando) {
+            fetchPedido();
+        }
+    }, [id, sesion, authCargando]);
+
+    // ============================================================
+    // 📡 SUPABASE REALTIME
+    // ============================================================
+    useEffect(() => {
+        if (!id || !pedido) return;
 
         const channel = supabase
             .channel(`seguimiento-${id}`)
@@ -76,20 +128,40 @@ export default function SeguimientoPedido() {
                         const estadoAnterior = estadoAnteriorPedido?.estado;
 
                         if (nuevoEstado !== estadoAnterior) {
-                            // 1. Sonido Correcaminos: SOLO si cambia a "en camino"
                             if (nuevoEstado === 'en camino') {
-                                const beep = new Audio('/sounds/correcaminos-bip.mp3');
-                                beep.volume = 0.5;
-                                beep.play().catch(() => { });
+                                try {
+                                    const beep = new Audio('/sounds/correcaminos-bip.mp3');
+                                    beep.volume = 0.5;
+                                    beep.play().catch(() => console.log('🔊 Sonido no disponible'));
+                                } catch (e) {
+                                    console.log('🔊 Error con sonido:', e);
+                                }
+
+                                enviarNotificacion(
+                                    '🚀 ¡Tu pedido está en camino!',
+                                    'El repartidor de Krusty Burger está llegando.'
+                                );
                             }
 
-                            // 2. Sonido Yahoo + Confetti: SOLO si cambia a "entregado"
                             if (nuevoEstado === 'entregado') {
-                                const yahoo = new Audio('/sounds/woo-hoo.mp3');
-                                yahoo.volume = 0.5;
-                                yahoo.play().catch(() => console.log("Esperando interacción para sonar Yahoo"));
+                                try {
+                                    const yahoo = new Audio('/sounds/woo-hoo.mp3');
+                                    yahoo.volume = 0.5;
+                                    yahoo.play().catch(() => console.log('🔊 Sonido no disponible'));
+                                } catch (e) {
+                                    console.log('🔊 Error con sonido:', e);
+                                }
 
                                 lanzarConfetti();
+
+                                const puntos = Math.floor(payload.new.total / 100);
+                                setPuntosGanados(puntos);
+
+                                const mensaje = puntos > 0
+                                    ? `🎉 ¡Ganaste ${puntos} puntos! Disfruta tu comida.`
+                                    : '🎉 ¡Disfruta tu comida! Gracias por elegir Krusty Burger.';
+
+                                enviarNotificacion('🍔 ¡Pedido entregado!', mensaje);
                             }
                         }
 
@@ -102,8 +174,11 @@ export default function SeguimientoPedido() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [id]);
+    }, [id, pedido, enviarNotificacion]);
 
+    // ============================================================
+    // 🎊 LANZAR CONFETTI
+    // ============================================================
     const lanzarConfetti = () => {
         const duration = 4 * 1000;
         const end = Date.now() + duration;
@@ -136,40 +211,48 @@ export default function SeguimientoPedido() {
         router.push('/gracias');
     };
 
-    if (loading) return (
-        <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center p-4 text-center">
-            <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                className="w-16 h-16 border-8 border-black border-t-[#D32F2F] rounded-full mb-6"
-            />
-            <p className="font-black italic uppercase text-black animate-pulse">Cocinando seguimiento...</p>
-        </div>
-    );
-
-    // Pantalla de error mejorada si no existe, o si no tiene permisos
-    if (errorMsg || !pedido) return (
-        <div className="min-h-screen bg-[#FFF9E6] flex flex-col items-center justify-center p-6 text-center">
-            <div className="bg-white border-4 border-black p-8 rounded-[2.5rem] shadow-[8px_8px_0px_black] max-w-md w-full">
-                <span className="text-6xl mb-4 block">👮‍♂️</span>
-                <h2 className="text-2xl font-black uppercase italic mb-2 text-black">¡Ay Caramba!</h2>
-                <p className="font-bold text-stone-600 text-sm mb-6">{errorMsg || 'Pedido no encontrado'}</p>
-                <button
-                    onClick={() => router.push('/')}
-                    className="w-full bg-[#FFCA28] text-black font-black py-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_black] hover:bg-[#D32F2F] hover:text-white transition-all uppercase cursor-pointer"
-                >
-                    VOLVER AL MENÚ
-                </button>
+    // ============================================================
+    // 🖥️ RENDERIZADO
+    // ============================================================
+    if (authCargando || loading) {
+        return (
+            <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center p-4 text-center">
+                <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    className="w-16 h-16 border-8 border-black border-t-[#D32F2F] rounded-full mb-6"
+                />
+                <p className="font-black italic uppercase text-black animate-pulse">
+                    {authCargando ? 'Verificando autenticación...' : 'Cocinando seguimiento...'}
+                </p>
             </div>
-        </div>
-    );
+        );
+    }
+
+    if (errorMsg || !pedido) {
+        return (
+            <div className="min-h-screen bg-[#FFF9E6] flex flex-col items-center justify-center p-6 text-center">
+                <div className="bg-white border-4 border-black p-8 rounded-[2.5rem] shadow-[8px_8px_0px_black] max-w-md w-full">
+                    <span className="text-6xl mb-4 block">👮‍♂️</span>
+                    <h2 className="text-2xl font-black uppercase italic mb-2 text-black">¡Ay Caramba!</h2>
+                    <p className="font-bold text-stone-600 text-sm mb-6">{errorMsg || 'Pedido no encontrado'}</p>
+                    <button
+                        onClick={() => router.push('/')}
+                        className="w-full bg-[#FFCA28] text-black font-black py-4 rounded-2xl border-4 border-black shadow-[4px_4px_0px_black] hover:bg-[#D32F2F] hover:text-white transition-all uppercase cursor-pointer"
+                    >
+                        VOLVER AL MENÚ
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const estados = ['pendiente', 'en cocina', 'en camino', 'entregado'];
     const indiceActual = estados.indexOf(pedido.estado);
     const posMoto = coordenadasMoto[pedido.estado] || coordenadasMoto['pendiente'];
 
     return (
-        <div className="min-h-screen bg-stone-100 p-4 font-sans text-black pb-24 overflow-x-hidden">
+        <div className="min-h-screen bg-stone-100 p-4 font-sans text-black pb-32 overflow-x-hidden">
             <div className="max-w-md mx-auto pt-4">
 
                 {/* NAVEGACIÓN */}
@@ -186,7 +269,6 @@ export default function SeguimientoPedido() {
                         className="w-full h-full object-cover scale-110 opacity-90"
                     />
 
-                    {/* ICONO DE LA MOTO / GPS */}
                     <motion.div
                         className="absolute z-20"
                         animate={{ left: posMoto.x, top: posMoto.y }}
@@ -259,6 +341,26 @@ export default function SeguimientoPedido() {
                             {pedido.estado === 'en camino' && 'El repartidor está volando para llegar.'}
                             {pedido.estado === 'entregado' && '¡Gracias por elegir Krusty Burger!'}
                         </p>
+
+                        {/* PUNTOS GANADOS */}
+                        {pedido.estado === 'entregado' && puntosGanados !== null && puntosGanados > 0 && (
+                            <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: 0.5, duration: 0.5 }}
+                                className="mt-6 bg-[#FFCA28]/20 border-2 border-[#FFCA28] rounded-2xl p-4"
+                            >
+                                <div className="flex items-center justify-center gap-3">
+                                    <span className="text-3xl">⭐</span>
+                                    <div>
+                                        <p className="text-xs font-bold text-stone-500 uppercase">Puntos ganados</p>
+                                        <p className="text-3xl font-black text-[#FFCA28]">
+                                            +{puntosGanados} pts
+                                        </p>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
                     </motion.div>
                 </AnimatePresence>
 
@@ -285,6 +387,14 @@ export default function SeguimientoPedido() {
                                 ${Number(pedido.total || 0).toLocaleString('es-AR')}
                             </span>
                         </div>
+                        {pedido.estado === 'entregado' && puntosGanados !== null && puntosGanados > 0 && (
+                            <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                                <span className="text-stone-500 font-black text-[10px] uppercase">⭐ Puntos:</span>
+                                <span className="text-[#FFCA28] font-black text-lg">
+                                    +{puntosGanados} pts
+                                </span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -292,6 +402,13 @@ export default function SeguimientoPedido() {
                     Springfield OS v5.2 • Agencia Powa
                 </p>
             </div>
+
+            {/* ✅ BANNER DE NOTIFICACIONES */}
+            <BannerNotificaciones
+                mostrar={mostrarBanner && !bannerCerrado}
+                onActivar={reactivarNotificaciones}
+                onCerrar={() => setBannerCerrado(true)}
+            />
         </div>
     );
 }

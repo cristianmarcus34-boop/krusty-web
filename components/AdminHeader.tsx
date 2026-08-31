@@ -10,6 +10,13 @@ export default function AdminHeader({ activeTab, setActiveTab }: any) {
     router.push('/admin/login');
   };
 
+  const tabs = [
+    { id: 'pedidos', label: '📋 Comandas' },
+    { id: 'productos', label: '🍔 Menú' },
+    { id: 'adicionales', label: '🧀 Adicionales' },
+    { id: 'recompensas', label: '🎁 Recompensas' },
+  ];
+
   return (
     <header className="sticky top-0 z-50 bg-white border-b-8 border-black p-4 md:p-6 shadow-md">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
@@ -21,16 +28,21 @@ export default function AdminHeader({ activeTab, setActiveTab }: any) {
           <button onClick={handleLogout} className="md:hidden bg-black text-white px-4 py-2 rounded-xl font-black text-[10px]">SALIR</button>
         </div>
         <nav className="flex flex-wrap gap-2 w-full md:w-auto justify-center">
-          {['pedidos', 'productos', 'adicionales'].map((tab) => (
-            <button 
-              key={tab}
-              onClick={() => setActiveTab(tab)} 
-              className={`px-6 py-3 rounded-2xl font-black uppercase italic border-4 border-black transition-all ${activeTab === tab ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1' : 'bg-white'}`}
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 sm:px-6 py-3 rounded-2xl font-black uppercase italic border-4 border-black transition-all text-xs sm:text-sm ${activeTab === tab.id
+                  ? 'bg-[#FFCA28] shadow-[4px_4px_0px_0px_black] -translate-y-1'
+                  : 'bg-white hover:bg-stone-50'
+                }`}
             >
-              {tab === 'pedidos' ? 'Comandas' : tab === 'productos' ? 'Menú' : 'Adicionales'}
+              {tab.label}
             </button>
           ))}
-          <button onClick={handleLogout} className="hidden md:block bg-black text-white px-6 py-3 rounded-2xl border-4 border-black font-black uppercase italic">SALIR</button>
+          <button onClick={handleLogout} className="hidden md:block bg-black text-white px-6 py-3 rounded-2xl border-4 border-black font-black uppercase italic hover:bg-[#D32F2F] transition-colors">
+            🚪 SALIR
+          </button>
         </nav>
       </div>
     </header>
