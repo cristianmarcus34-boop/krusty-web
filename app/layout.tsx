@@ -31,6 +31,9 @@ import { useCartStore } from '@/store/cartStore';
 // ✅ IMPORTAR METADATA DESDE ARCHIVO SEPARADO
 import { metadata, viewport } from './metadata';
 
+// ✅ Notificaciones
+import { registrarServiceWorker, suscribirNotificaciones } from '@/lib/notificaciones';
+
 const inter = Inter({
   subsets: ["latin"],
   display: 'swap',
@@ -42,7 +45,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [mounted, setMounted] = useState(false);
-  const { forzarActualizacion } = useAuthStore();
+  const { forzarActualizacion, user, isAuthenticated } = useAuthStore(); // ✅ Obtener user
   const { setItems } = useCartStore();
 
   // ============================================================
@@ -101,6 +104,26 @@ export default function RootLayout({
   }, []);
 
   // ============================================================
+  // 🔄 EFECTO: REGISTRAR NOTIFICACIONES AL INICIAR
+  // ============================================================
+
+  useEffect(() => {
+    const initNotifications = async () => {
+      // Registrar Service Worker
+      await registrarServiceWorker();
+
+      // Si el usuario está autenticado, suscribirse a notificaciones
+      if (user?.id) {
+        await suscribirNotificaciones(user.id);
+      }
+    };
+
+    if (mounted) {
+      initNotifications();
+    }
+  }, [mounted, user?.id]); // ✅ Dependencias correctas
+
+  // ============================================================
   // 🔄 EFECTO: ESCUCHAR CAMBIOS DE AUTENTICACIÓN (LOGIN/LOGOUT)
   // ============================================================
 
@@ -123,6 +146,9 @@ export default function RootLayout({
               session: session,
             });
             await cargarCarritoDesdeDB(session.user.id);
+
+            // ✅ SUSCRIBIR A NOTIFICACIONES AL INICIAR SESIÓN
+            await suscribirNotificaciones(session.user.id);
           }
 
         } else if (event === 'SIGNED_OUT') {
@@ -140,7 +166,7 @@ export default function RootLayout({
           // ✅ Limpiar localStorage
           localStorage.removeItem('krusty-cart-storage-v5');
           localStorage.removeItem('krusty-auth-storage');
-          localStorage.removeItem('krusty-carrito-abierto'); // ✅ Limpiar flag del carrito
+          localStorage.removeItem('krusty-carrito-abierto');
 
           // ✅ Forzar limpieza del auth store en memoria
           useAuthStore.setState({
