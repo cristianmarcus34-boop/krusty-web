@@ -29,7 +29,7 @@ interface Pedido {
 }
 
 // ============================================================
-// 📦 FUNCIÓN: ENVIAR NOTIFICACIÓN PUSH
+// 📦 FUNCIÓN: ENVIAR NOTIFICACIÓN PUSH (SOLO PARA NUEVOS PEDIDOS)
 // ============================================================
 
 const enviarNotificacion = async (titulo: string, cuerpo: string, url?: string) => {
@@ -69,6 +69,7 @@ export default function TabPedidos() {
   const [pedidoParaBorrar, setPedidoParaBorrar] = useState<Pedido | null>(null);
   const [filtroEstado, setFiltroEstado] = useState<string>('todos');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // ============================================================
@@ -77,6 +78,7 @@ export default function TabPedidos() {
 
   const fetchPedidos = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('pedidos')
@@ -85,12 +87,14 @@ export default function TabPedidos() {
 
       if (error) {
         console.error('Error fetching pedidos:', error);
+        setError(`Error al cargar pedidos: ${error.message}`);
         return;
       }
 
       if (data) setPedidos(data);
     } catch (err) {
       console.error('Error inesperado:', err);
+      setError('Error inesperado al cargar pedidos');
     } finally {
       setLoading(false);
     }
@@ -110,7 +114,6 @@ export default function TabPedidos() {
         audioRef.current?.play().catch(() => { });
         setPedidos((current) => [payload.new as Pedido, ...current]);
 
-        // ✅ Notificar nuevo pedido
         enviarNotificacion(
           '🔔 ¡Nuevo pedido!',
           `Pedido de ${payload.new.cliente_nombre} - $${payload.new.total}`,
@@ -129,72 +132,97 @@ export default function TabPedidos() {
   }, [fetchPedidos]);
 
   // ============================================================
-  // 🔄 CAMBIAR ESTADO CON NOTIFICACIÓN
+  // 🔄 CAMBIAR ESTADO (CON MANEJO DE ERRORES MEJORADO)
   // ============================================================
 
-  const cambiarEstado = async (id: string, nuevoEstado: string, pedido: Pedido) => {
-    try {
-      const { error } = await supabase
-        .from('pedidos')
-        .update({ estado: nuevoEstado })
-        .eq('id', id);
+  const cambiarEstado = async (id: string, nuevoEstado: string) => {
+    // ✅ Convertir ID a número (bigint)
+    const pedidoId = typeof id === 'string' ? parseInt(id, 10) : id;
 
-      if (error) {
-        console.error('Error actualizando estado:', error);
-        alert('Error al actualizar el estado del pedido');
+    if (isNaN(pedidoId)) {
+      console.error('❌ ID inválido:', id);
+      alert('Error: ID de pedido inválido');
+      return;
+    }
+
+    try {
+      console.log('🔄 [cambiarEstado]', { id: pedidoId, nuevoEstado });
+
+      // ✅ Verificar autenticación primero
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.error('❌ Usuario no autenticado');
+        alert('Debes iniciar sesión para modificar pedidos');
         return;
       }
 
-      // ✅ ENVIAR NOTIFICACIÓN AL CLIENTE
-      const mensajes: Record<string, { titulo: string; cuerpo: string }> = {
-        'en cocina': {
-          titulo: '👨‍🍳 ¡Tu pedido está en la cocina!',
-          cuerpo: `Krusty está preparando tu pedido #${String(id).slice(-6).toUpperCase()}`
-        },
-        'en camino': {
-          titulo: '🛵 ¡Tu pedido está en camino!',
-          cuerpo: `El repartidor está llegando con tu pedido #${String(id).slice(-6).toUpperCase()}`
-        },
-        'entregado': {
-          titulo: '🎉 ¡Pedido entregado!',
-          cuerpo: `Disfruta tu comida #${String(id).slice(-6).toUpperCase()}`
-        }
-      };
+      // ✅ Actualizar estado
+      const { data, error } = await supabase
+        .from('pedidos')
+        .update({ estado: nuevoEstado })
+        .eq('id', pedidoId)
+        .select();
 
-      const mensaje = mensajes[nuevoEstado];
-      if (mensaje) {
-        await enviarNotificacion(
-          mensaje.titulo,
-          `${mensaje.cuerpo} - ${pedido.cliente_nombre}`,
-          `/pedido/${id}`
-        );
+      if (error) {
+        console.error('❌ Error de Supabase:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        alert(`Error: ${error.message} (Código: ${error.code || 'sin código'})`);
+        return;
       }
 
+      console.log('✅ Estado actualizado:', data);
+
+      // ✅ Actualizar estado local (optimista)
+      setPedidos((prev) =>
+        prev.map((p) =>
+          Number(p.id) === pedidoId ? { ...p, estado: nuevoEstado } : p
+        )
+      );
+
     } catch (err) {
-      console.error('Error inesperado:', err);
+      console.error('❌ Error inesperado:', err);
+      alert(`Error inesperado: ${err instanceof Error ? err.message : 'Error desconocido'}`);
     }
   };
+
+  // ============================================================
+  // 🗑️ ELIMINAR PEDIDO
+  // ============================================================
 
   const ejecutarEliminacion = async () => {
     if (!pedidoParaBorrar) return;
     const idABorrar = pedidoParaBorrar.id;
 
+    // ✅ Convertir ID a número
+    const pedidoId = typeof idABorrar === 'string' ? parseInt(idABorrar, 10) : idABorrar;
+
+    if (isNaN(pedidoId)) {
+      console.error('❌ ID inválido para eliminar:', idABorrar);
+      alert('Error: ID de pedido inválido');
+      return;
+    }
+
     try {
-      setPedidos((prev) => prev.filter(p => p.id !== idABorrar));
+      setPedidos((prev) => prev.filter(p => Number(p.id) !== pedidoId));
       setPedidoParaBorrar(null);
 
       const { error } = await supabase
         .from('pedidos')
         .delete()
-        .eq('id', idABorrar);
+        .eq('id', pedidoId);
 
       if (error) {
         console.error("Error al borrar:", error.message);
+        alert(`Error al eliminar: ${error.message}`);
         fetchPedidos();
-        alert("No se pudo eliminar de la base de datos");
       }
     } catch (err) {
       console.error("Error inesperado:", err);
+      alert('Error inesperado al eliminar');
       fetchPedidos();
     }
   };
@@ -292,6 +320,23 @@ export default function TabPedidos() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center max-w-md">
+          <span className="text-6xl block mb-4">⚠️</span>
+          <p className="font-black text-red-500 text-lg">{error}</p>
+          <button
+            onClick={() => fetchPedidos()}
+            className="mt-4 px-6 py-2 bg-[#FAD02C] border-2 border-black rounded-xl font-black text-sm hover:bg-[#e6b800] transition-colors"
+          >
+            🔄 Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* FILTROS */}
@@ -302,8 +347,8 @@ export default function TabPedidos() {
             key={estado}
             onClick={() => setFiltroEstado(estado)}
             className={`px-4 py-2 rounded-full border-2 border-black font-black text-[10px] uppercase transition-all ${filtroEstado === estado
-                ? 'bg-[#FAD02C] text-black'
-                : 'bg-white text-stone-400 hover:bg-stone-100'
+              ? 'bg-[#FAD02C] text-black'
+              : 'bg-white text-stone-400 hover:bg-stone-100'
               }`}
           >
             {estado === 'todos' ? '📋 Todos' : getEstadoTexto(estado)}
@@ -418,21 +463,21 @@ export default function TabPedidos() {
               {/* BOTONES DE ACCIÓN */}
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => cambiarEstado(pedido.id, 'en cocina', pedido)}
+                  onClick={() => cambiarEstado(pedido.id, 'en cocina')}
                   disabled={pedido.estado === 'entregado' || pedido.estado === 'pago_pendiente'}
                   className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-orange-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   👨‍🍳 COCINA
                 </button>
                 <button
-                  onClick={() => cambiarEstado(pedido.id, 'en camino', pedido)}
+                  onClick={() => cambiarEstado(pedido.id, 'en camino')}
                   disabled={pedido.estado === 'entregado' || pedido.estado === 'pago_pendiente'}
                   className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   🛵 ENVÍO
                 </button>
                 <button
-                  onClick={() => cambiarEstado(pedido.id, 'entregado', pedido)}
+                  onClick={() => cambiarEstado(pedido.id, 'entregado')}
                   disabled={pedido.estado === 'entregado' || pedido.estado === 'pago_pendiente'}
                   className="col-span-2 font-black py-3 rounded-2xl border-4 border-black bg-green-500 text-white text-xs hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
