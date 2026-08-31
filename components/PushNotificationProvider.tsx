@@ -1,7 +1,7 @@
 // components/PushNotificationProvider.tsx
 "use client";
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import PushBanner from './PushBanner';
 
@@ -18,13 +18,50 @@ export default function PushNotificationProvider({
     children: React.ReactNode;
 }) {
     const [notifications, setNotifications] = useState<NotificationData[]>([]);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+
+    // ✅ Inicializar el audio de woo-hoo
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            audioRef.current = new Audio('/sounds/woo-hoo.mp3');
+            audioRef.current.volume = 0.7;
+            audioRef.current.preload = 'auto';
+        }
+    }, []);
+
+    // ✅ Reproducir woo-hoo
+    const playWooHoo = useCallback(() => {
+        if (audioRef.current) {
+            try {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play().catch(() => {
+                    console.warn('⚠️ Error reproduciendo woo-hoo');
+                });
+            } catch (error) {
+                console.warn('⚠️ Error con el audio:', error);
+            }
+        }
+    }, []);
 
     // ✅ Escuchar mensajes del Service Worker
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            // Verificar que el mensaje viene del Service Worker
+            console.log('📩 [Provider] Mensaje recibido:', event.data);
+
+            // ✅ Si es un mensaje para reproducir woo-hoo
+            if (event.data?.type === 'PLAY_WOO_HOO') {
+                console.log('🎉 Reproduciendo woo-hoo!');
+                playWooHoo();
+                return;
+            }
+
+            // ✅ Si es una notificación push
             if (event.data?.type === 'PUSH_NOTIFICATION') {
                 const { title, body, url } = event.data.payload;
+                console.log('📩 [Provider] Notificación push:', { title, body, url });
+
+                // ✅ Reproducir woo-hoo
+                playWooHoo();
 
                 // Agregar notificación con ID único
                 const newNotification = {
@@ -48,7 +85,7 @@ export default function PushNotificationProvider({
                 navigator.serviceWorker.removeEventListener('message', handleMessage);
             }
         };
-    }, []);
+    }, [playWooHoo]);
 
     // ✅ Eliminar notificación
     const handleClose = useCallback((id: string) => {

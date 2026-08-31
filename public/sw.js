@@ -1,5 +1,23 @@
 // public/sw.js
 
+// ✅ Reproducir sonido woo-hoo
+const playWooHoo = async () => {
+    try {
+        const clients = await self.clients.matchAll({
+            type: 'window',
+            includeUncontrolled: true
+        });
+
+        clients.forEach(client => {
+            client.postMessage({
+                type: 'PLAY_WOO_HOO'
+            });
+        });
+    } catch (error) {
+        console.error('[SW] Error reproduciendo woo-hoo:', error);
+    }
+};
+
 // ✅ Enviar mensaje a TODOS los clientes
 const sendMessageToAllClients = async (title, body, url) => {
     const clients = await self.clients.matchAll({
@@ -54,7 +72,6 @@ self.addEventListener('push', (event) => {
         requireInteraction: true,
         tag: 'pedido-update',
         renotify: true,
-        // ✅ SILENT: FALSE para que SIEMPRE se muestre la notificación nativa
         silent: false
     };
 
@@ -62,6 +79,9 @@ self.addEventListener('push', (event) => {
         self.clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then(async (clients) => {
                 const hasClients = clients.length > 0;
+
+                // ✅ Reproducir woo-hoo SIEMPRE
+                await playWooHoo();
 
                 // ✅ SIEMPRE intentar enviar mensaje a todos los clientes
                 if (hasClients) {
