@@ -1,32 +1,31 @@
 // public/sw.js
 
-self.addEventListener('install', (event) => {
-    console.log('[SW] Instalando...');
-    event.waitUntil(self.skipWaiting());
-});
-
-self.addEventListener('activate', (event) => {
-    console.log('[SW] Activando...');
-    event.waitUntil(self.clients.claim());
-});
-
-// ✅ Enviar mensaje al cliente
-const sendMessageToClient = async (title, body, url) => {
+// ✅ Enviar mensaje a TODOS los clientes
+const sendMessageToAllClients = async (title, body, url) => {
     const clients = await self.clients.matchAll({
         type: 'window',
         includeUncontrolled: true
     });
 
-    clients.forEach(client => {
-        client.postMessage({
-            type: 'PUSH_NOTIFICATION',
-            payload: {
-                title: title,
-                body: body,
-                url: url
-            }
-        });
+    console.log(`[SW] Enviando mensaje a ${clients.length} clientes`);
+
+    clients.forEach((client, index) => {
+        try {
+            client.postMessage({
+                type: 'PUSH_NOTIFICATION',
+                payload: {
+                    title: title,
+                    body: body,
+                    url: url
+                }
+            });
+            console.log(`[SW] Mensaje enviado al cliente ${index + 1}`);
+        } catch (error) {
+            console.error(`[SW] Error enviando mensaje al cliente ${index + 1}:`, error);
+        }
     });
+
+    return clients.length > 0;
 };
 
 self.addEventListener('push', (event) => {
@@ -55,21 +54,26 @@ self.addEventListener('push', (event) => {
         requireInteraction: true,
         tag: 'pedido-update',
         renotify: true,
-        silent: true // ✅ No mostrar notificación nativa si la app está abierta
+        // ✅ SILENT: FALSE para que SIEMPRE se muestre la notificación nativa
+        silent: false
     };
 
     event.waitUntil(
         self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-            .then(clients => {
-                const hasFocusedClient = clients.some(client => client.focused);
+            .then(async (clients) => {
+                const hasClients = clients.length > 0;
 
-                if (hasFocusedClient) {
-                    // ✅ App en primer plano → enviar mensaje para banner
-                    return sendMessageToClient(title, body, url);
+                // ✅ SIEMPRE intentar enviar mensaje a todos los clientes
+                if (hasClients) {
+                    console.log('[SW] Clientes encontrados, enviando mensaje para banner...');
+                    await sendMessageToAllClients(title, body, url);
                 } else {
-                    // ✅ App en segundo plano → mostrar notificación nativa
-                    return self.registration.showNotification(title, options);
+                    console.log('[SW] No hay clientes abiertos');
                 }
+
+                // ✅ SIEMPRE mostrar notificación nativa
+                console.log('[SW] Mostrando notificación nativa...');
+                return self.registration.showNotification(title, options);
             })
     );
 });
@@ -82,15 +86,15 @@ self.addEventListener('notificationclick', (event) => {
     const urlToOpen = event.notification.data?.url || '/';
 
     event.waitUntil(
-        clients.matchAll({ type: 'window', includeUncontrolled: true })
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
             .then((clientList) => {
                 for (const client of clientList) {
                     if (client.url === urlToOpen && 'focus' in client) {
                         return client.focus();
                     }
                 }
-                if (clients.openWindow) {
-                    return clients.openWindow(urlToOpen);
+                if (self.clients.openWindow) {
+                    return self.clients.openWindow(urlToOpen);
                 }
             })
     );
@@ -98,5 +102,5 @@ self.addEventListener('notificationclick', (event) => {
 
 // ✅ Mensajes desde el cliente
 self.addEventListener('message', (event) => {
-    console.log('[SW] Mensaje recibido:', event.data);
+    console.log('[SW] Mensaje recibido del cliente:', event.data);
 });
