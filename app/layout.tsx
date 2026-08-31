@@ -1,11 +1,12 @@
 // app/layout.tsx
+"use client";
+
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "../components/Navbar";
 import StatusBar from '../components/StatusBar';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Metadata, Viewport } from 'next';
 import GestorDeActualizaciones from '../components/GestorDeActualizaciones';
 import ActiveOrderFloating from '@/components/ActiveOrderFloating';
 import { Analytics } from "@vercel/analytics/next"
@@ -21,61 +22,152 @@ import ThemeToggle from '../components/ThemeToggle';
 // ✅ LOADER PROVIDER
 import LoaderProvider from './providers/LoaderProvider';
 
-// 1. Optimizamos Inter con swap para evitar el "Flash of Unstyled Text"
+// ✅ Manejo de sesión
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/store/authStore';
+import { useCartStore } from '@/store/cartStore';
+
+// ✅ IMPORTAR METADATA DESDE ARCHIVO SEPARADO
+import { metadata, viewport } from './metadata';
+
 const inter = Inter({
   subsets: ["latin"],
   display: 'swap',
 });
-
-export const viewport: Viewport = {
-  themeColor: "#FFCA28",
-};
-
-export const metadata: Metadata = {
-  title: "Krusty Burger ® | Las mejores hamburguesas de Quilmes",
-  description: "¡Si no se atraganta, no es una Krusty! Vení a probar la verdadera experiencia de Springfield en Villa La Florida, Quilmes.",
-  keywords: ["Hamburguesas Quilmes", "Krusty Burger", "Villa La Florida", "Delivery Quilmes", "Bernal"],
-  authors: [{ name: "Krusty Burger Oficial" }],
-  metadataBase: new URL('https://krustyburger.com.ar'),
-  openGraph: {
-    title: "Krusty Burger ® | Springfield en Quilmes",
-    description: "Las mejores hamburguesas de Villa La Florida. ¡Si no se atraganta, no es una Krusty!",
-    url: 'https://krustyburger.com.ar',
-    siteName: 'Krusty Burger Oficial',
-    images: [
-      {
-        url: '/images/Krustyburgerheader.webp',
-        width: 1200,
-        height: 630,
-        alt: 'Krusty Burger Quilmes Header',
-      },
-    ],
-    locale: 'es_AR',
-    type: 'website',
-  },
-  verification: {
-    google: "BhY0Fwmdey1BKMH-f-PoWy_1hQhV1SRxziMpF7V71q4",
-  },
-  icons: {
-    icon: [
-      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
-    ],
-    apple: [
-      { url: '/apple-icon-180x180.png', sizes: '180x180', type: 'image/png' },
-    ],
-  },
-};
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const [mounted, setMounted] = useState(false);
+  const { forzarActualizacion } = useAuthStore();
+  const { setItems } = useCartStore();
+
+  // ============================================================
+  // 📦 FUNCIÓN: CARGAR CARRITO DESDE DB
+  // ============================================================
+
+  const cargarCarritoDesdeDB = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('carritos')
+        .select('items')
+        .eq('usuario_id', userId)
+        .single();
+
+      if (!error && data?.items && data.items.length > 0) {
+        setItems(data.items);
+      }
+    } catch (error) {
+      // Silencioso
+    }
+  };
+
+  // ============================================================
+  // 🔄 EFECTO: INICIALIZAR SESIÓN AL CARGAR LA APP
+  // ============================================================
+
+  useEffect(() => {
+    setMounted(true);
+
+    const iniciarSesion = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const { data: perfilData, error } = await supabase
+            .from('perfiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (!error && perfilData) {
+            forzarActualizacion({
+              user: session.user,
+              perfil: perfilData || undefined,
+              session: session,
+            });
+            await cargarCarritoDesdeDB(session.user.id);
+          }
+        }
+      } catch (error) {
+        // Silencioso
+      }
+    };
+
+    iniciarSesion();
+  }, []);
+
+  // ============================================================
+  // 🔄 EFECTO: ESCUCHAR CAMBIOS DE AUTENTICACIÓN (LOGIN/LOGOUT)
+  // ============================================================
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const { data: perfilData, error } = await supabase
+            .from('perfiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+
+          if (!error && perfilData) {
+            forzarActualizacion({
+              user: session.user,
+              perfil: perfilData || undefined,
+              session: session,
+            });
+            await cargarCarritoDesdeDB(session.user.id);
+          }
+
+        } else if (event === 'SIGNED_OUT') {
+          // ✅ Limpiar autenticación
+          forzarActualizacion({
+            user: null,
+            perfil: undefined,
+            session: null,
+          });
+
+          // ✅ Limpiar carrito
+          const { clearCart } = useCartStore.getState();
+          clearCart();
+
+          // ✅ Limpiar localStorage
+          localStorage.removeItem('krusty-cart-storage-v5');
+          localStorage.removeItem('krusty-auth-storage');
+          localStorage.removeItem('krusty-carrito-abierto'); // ✅ Limpiar flag del carrito
+
+          // ✅ Forzar limpieza del auth store en memoria
+          useAuthStore.setState({
+            user: null,
+            perfil: null,
+            session: null,
+            isAuthenticated: false,
+          });
+
+          // ✅ Forzar limpieza del carrito en memoria
+          useCartStore.setState({ items: [] });
+        }
+      }
+    );
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [mounted]);
+
+  // ============================================================
+  // 🖥️ RENDER
+  // ============================================================
+
   return (
-    <html lang="es" className="scroll-smooth">
+    <html lang="es" className="scroll-smooth" data-scroll-behavior="smooth">
       <head>
-        {/* Preload de la fuente principal */}
         <link
           rel="preload"
           href="/fonts/Simpsonfont.ttf"
@@ -83,8 +175,6 @@ export default function RootLayout({
           type="font/ttf"
           crossOrigin="anonymous"
         />
-
-        {/* Preload de imágenes críticas */}
         <link
           rel="preload"
           href="/images/Krustyburgerheader.webp"
@@ -94,34 +184,18 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
 
-        {/* ============================================
-            THEME PROVIDER - Envuelve TODA la app
-            ============================================ */}
         <ThemeProvider>
-
-          {/* ============================================
-              LOADER PROVIDER - Controla el loader inicial
-              ============================================ */}
           <LoaderProvider>
 
-            {/* ============================================
-                COMPONENTES VISUALES GLOBALES
-                ============================================ */}
             <ThemeToggle />
             <GestorDeActualizaciones />
             <Navbar />
             <ActiveOrderFloating />
 
-            {/* ============================================
-                CONTENIDO PRINCIPAL
-                ============================================ */}
             <main className="min-h-[calc(100vh-64px)] bg-white relative z-10">
               {children}
             </main>
 
-            {/* ============================================
-                FOOTER
-                ============================================ */}
             <footer className="bg-[#1A1A1A] text-stone-900 py-16 px-6 border-t-8 border-black relative overflow-hidden">
               <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
                 style={{ backgroundImage: 'repeating-linear-gradient(45deg, #000 0, #000 1px, transparent 0, transparent 50%)', backgroundSize: '5px 5px' }}>
@@ -187,8 +261,8 @@ export default function RootLayout({
                         <Image
                           src="/images/logo-powa.png"
                           alt="Agencia Powa"
-                          fill
-                          sizes="40px"
+                          width={40}
+                          height={40}
                           className="object-contain"
                         />
                       </div>
@@ -236,9 +310,6 @@ export default function RootLayout({
             <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
             <div className="fixed top-20 left-0 w-[30vw] h-[30vw] bg-[#D32F2F]/5 -z-10 rounded-full blur-[60px] pointer-events-none" />
 
-            {/* ============================================
-                TOASTER - Notificaciones del sistema
-                ============================================ */}
             <Toaster
               position="top-center"
               toastOptions={{
@@ -267,8 +338,8 @@ export default function RootLayout({
               }}
             />
 
-            <Analytics />
-            <SpeedInsights />
+            <Analytics debug={false} />
+            <SpeedInsights debug={false} />
 
           </LoaderProvider>
         </ThemeProvider>

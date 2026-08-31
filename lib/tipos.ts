@@ -550,7 +550,7 @@ export function obtenerBeneficios(nivelId: number): BeneficiosNivel {
                 accesoAnticipadoOfertas: true,
                 soportePrioritario: true,
                 prioridadEntrega: 3,
-                descripcion: '20% de descuento, envío gratis en todos tus pedidos, acceso anticipado a ofertas y soporte prioritario',
+                descripcion: "20% de descuento, acceso anticipado a ofertas y soporte prioritario"
             };
         default:
             return {

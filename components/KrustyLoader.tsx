@@ -40,7 +40,6 @@ export default function KrustyLoader({
 
   useEffect(() => {
     setIsMounted(true);
-    console.log(`⏱️ Loader iniciado con duración: ${duracion}ms`);
   }, []);
 
   useEffect(() => {
@@ -52,17 +51,13 @@ export default function KrustyLoader({
     }, 2000);
 
     const startTime = Date.now();
-    console.log(`🔄 Loader comenzó a las ${startTime}`);
 
     const interval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const progressPercent = Math.min((elapsed / duracion) * 100, 100);
       setProgress(progressPercent);
 
-      console.log(`📊 Progreso: ${Math.round(progressPercent)}% - ${elapsed}ms / ${duracion}ms`);
-
       if (progressPercent >= 100) {
-        console.log(`✅ Loader completado!`);
         clearInterval(interval);
         setIsComplete(true);
         if (onComplete) {
@@ -84,7 +79,6 @@ export default function KrustyLoader({
 
   // ✅ Función para saltar el loader
   const handleSkip = () => {
-    console.log('⏭️ Usuario saltó el loader');
     setIsComplete(true);
     if (onComplete) {
       onComplete();

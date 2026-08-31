@@ -1,21 +1,20 @@
+// store/cartStore.ts - VERSIÓN CORREGIDA Y ROBUSTA (SIN LOGS)
 "use client";
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { Burger } from '@/types';
 
-// Definimos qué es un Adicional dentro del Store
 export interface Adicional {
   id: string | number;
   nombre: string;
   precio: number;
 }
 
-// El CartItem ahora incluye extras y un ID único para la combinación
 export interface CartItem extends Burger {
   quantity: number;
   extrasElegidos: Adicional[];
-  precioUnitarioTotal: number; // Precio base + suma de extras
-  cartId: string; // ID único: productoId + extrasId
+  precioUnitarioTotal: number;
+  cartId: string;
 }
 
 interface CartState {
@@ -25,44 +24,63 @@ interface CartState {
   removeItem: (cartId: string) => void;
   clearCart: () => void;
   total: () => number;
+  setItems: (items: CartItem[]) => void;
+  mergeItems: (items: CartItem[]) => void;
 }
 
 export const useCartStore = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
-      
+
+      setItems: (items: CartItem[]) => set({ items }),
+
+      mergeItems: (newItems: CartItem[]) => {
+        const currentItems = get().items;
+        const mergedItems = [...currentItems];
+
+        newItems.forEach((newItem) => {
+          const existingIndex = mergedItems.findIndex(
+            (item) => item.cartId === newItem.cartId
+          );
+          if (existingIndex >= 0) {
+            mergedItems[existingIndex] = {
+              ...mergedItems[existingIndex],
+              quantity: mergedItems[existingIndex].quantity + newItem.quantity,
+            };
+          } else {
+            mergedItems.push(newItem);
+          }
+        });
+
+        set({ items: mergedItems });
+      },
+
       addItem: (burger, extras = []) => set((state) => {
-        // 1. Calculamos el precio de esta combinación asegurando que sean números
         const precioExtras = extras.reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
         const precioBase = Number(burger.precio || 0);
         const precioUnitarioTotal = precioBase + precioExtras;
 
-        // 2. Creamos un cartId único basado en el producto y los extras elegidos
-        // Usamos sort() para que el ID sea el mismo sin importar el orden en que se elijan
-        const extrasKey = extras.length > 0 
-          ? extras.map(e => e.id).sort().join('-') 
-          : 'base'; // Si no hay extras, usamos 'base'
-        
+        const extrasKey = extras.length > 0
+          ? extras.map(e => e.id).sort().join('-')
+          : 'base';
+
         const cartId = `${burger.id}-${extrasKey}`;
 
-        // Buscamos si ya existe esta combinación EXACTA en el carrito
         const existing = state.items.find(i => i.cartId === cartId);
 
         if (existing) {
-          return { 
-            items: state.items.map(i => 
-              i.cartId === cartId 
-                ? { ...i, quantity: i.quantity + 1 } 
-                : i
-            ) 
-          };
+          const updatedItems = state.items.map(i =>
+            i.cartId === cartId
+              ? { ...i, quantity: i.quantity + 1 }
+              : i
+          );
+          return { items: updatedItems };
         }
 
-        // 3. Si es nuevo, lo agregamos con sus extras y el cartId generado
         const newItem: CartItem = {
           ...burger,
-          cartId, // IMPORTANTE: Aquí se asigna el ID que React usará como key
+          cartId,
           quantity: 1,
           extrasElegidos: extras,
           precioUnitarioTotal: precioUnitarioTotal
@@ -74,13 +92,11 @@ export const useCartStore = create<CartState>()(
       decreaseQuantity: (cartId) => set((state) => {
         const item = state.items.find(i => i.cartId === cartId);
         if (item && item.quantity > 1) {
-          return {
-            items: state.items.map(i => 
-              i.cartId === cartId ? { ...i, quantity: i.quantity - 1 } : i
-            )
-          };
+          const updatedItems = state.items.map(i =>
+            i.cartId === cartId ? { ...i, quantity: i.quantity - 1 } : i
+          );
+          return { items: updatedItems };
         }
-        // Si la cantidad es 1 y bajamos, eliminamos el ítem
         return { items: state.items.filter(i => i.cartId !== cartId) };
       }),
 
@@ -92,15 +108,18 @@ export const useCartStore = create<CartState>()(
 
       total: () => {
         const currentItems = get().items;
-        return currentItems.reduce((acc, item) => 
+        return currentItems.reduce((acc, item) =>
           acc + (Number(item.precioUnitarioTotal || 0) * item.quantity), 0
         );
       },
     }),
-    { 
-      // CAMBIÉ EL NOMBRE AQUÍ (v2) para forzar la limpieza de datos viejos de tu navegador
-      // Esto soluciona el error de "cart-item-undefined" que viene de sesiones anteriores
-      name: 'krusty-cart-storage-v2' 
+    {
+      name: 'krusty-cart-storage-v5',
+      storage: createJSONStorage(() => localStorage),
+      skipHydration: false,
+      onRehydrateStorage: () => (state) => {
+        // Silencioso
+      },
     }
   )
 );

@@ -41,10 +41,8 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
     // ✅ Inicializar autenticación al montar
     useEffect(() => {
         const initAuth = async () => {
-            console.log('🚀 Inicializando autenticación...');
             await inicializarSesion();
             setAuthCheckDone(true);
-            console.log('✅ Autenticación inicializada');
         };
         initAuth();
     }, [inicializarSesion]);
@@ -56,19 +54,15 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
             const hasVisited = sessionStorage.getItem(LOADER_KEY) === 'true' ||
                 localStorage.getItem(LOADER_KEY) === 'true';
 
-            console.log('🔍 Loader check:', hasVisited);
-
             if (!hasVisited) {
-                console.log('🔄 Primer visita - esperando autenticación');
                 sessionStorage.setItem(LOADER_KEY, 'true');
                 localStorage.setItem(LOADER_KEY, 'true');
                 setIsFirstVisit(true);
             } else {
-                console.log('✅ Loader ya mostrado - esperando autenticación');
                 setIsFirstVisit(false);
             }
         } catch (error) {
-            console.warn('Error:', error);
+            // Silencioso
         }
     }, []);
 
@@ -82,7 +76,6 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
 
         // Si la autenticación está completa (tiene usuario o sesión)
         if (user || isAuthenticated) {
-            console.log('🔐 Usuario autenticado, ocultando loader...');
             loaderClosed.current = true;
             setIsLoading(false);
             return;
@@ -90,7 +83,6 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
 
         // Si la autenticación falló o no hay sesión, igual cerramos el loader después de un tiempo
         if (authCheckDone && !authLoading) {
-            console.log('⏰ Autenticación completada sin sesión, cerrando loader...');
             loaderClosed.current = true;
             setIsLoading(false);
         }
@@ -102,7 +94,6 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
 
         const timeoutId = setTimeout(() => {
             if (isLoading && !loaderClosed.current) {
-                console.log('⏰ Timeout de seguridad, forzando cierre del loader...');
                 loaderClosed.current = true;
                 setIsLoading(false);
             }
@@ -114,7 +105,6 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
     // ✅ Función para forzar el cierre del loader (fallback por si el usuario hace clic)
     const handleLoaderComplete = () => {
         if (loaderClosed.current) return;
-        console.log('✅ Loader completado manualmente, ocultando...');
         loaderClosed.current = true;
         setIsLoading(false);
     };

@@ -21,6 +21,26 @@ export default function Navbar() {
   const items = useCartStore((state) => state.items);
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
 
+  // ============================================================
+  // 🔄 EFECTO: ABRIR CARRITO AUTOMÁTICAMENTE DESPUÉS DEL LOGIN
+  // ============================================================
+
+  useEffect(() => {
+    // ✅ Verificar si el carrito estaba abierto antes del login
+    const carritoEstabaAbierto = localStorage.getItem('krusty-carrito-abierto') === 'true';
+
+    if (carritoEstabaAbierto && user) {
+      // ✅ Limpiar el flag
+      localStorage.removeItem('krusty-carrito-abierto');
+      // ✅ Abrir el carrito
+      setIsCartOpen(true);
+    }
+  }, [user]);
+
+  // ============================================================
+  // 🔄 EFECTO: INICIALIZACIÓN
+  // ============================================================
+
   useEffect(() => {
     const handleHashOpenCart = () => {
       if (window.location.hash === '#carrito') {
@@ -35,10 +55,8 @@ export default function Navbar() {
     audioRef.current.volume = 0.4;
 
     const handleScroll = () => {
-      // ✅ Umbral bajo para que se active rápido
       const scrollY = window.scrollY;
       setIsScrolled(scrollY > 10);
-      console.log('📊 Scroll:', scrollY, 'isScrolled:', scrollY > 10);
     };
 
     const handleUserData = (currentUser: User | null) => {
@@ -69,9 +87,7 @@ export default function Navbar() {
   const playKrustyLaugh = () => {
     if (audioRef.current) {
       audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {
-        console.log("Audio interactivo activado");
-      });
+      audioRef.current.play().catch(() => { });
     }
   };
 
@@ -91,7 +107,7 @@ export default function Navbar() {
       <div className={`fixed top-0 left-0 right-0 z-100 flex flex-col transition-all duration-500 transform
         ${isCartOpen ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}
       >
-        {/* ✅ BARRITA SUPERIOR - SE OCULTA COMPLETAMENTE CON SCROLL */}
+        {/* BARRITA SUPERIOR - SE OCULTA COMPLETAMENTE CON SCROLL */}
         <div className={`
           bg-[#FFCA28] text-black text-[10px] md:text-xs font-black text-center uppercase tracking-widest border-b border-black/10 
           transition-all duration-500 overflow-hidden
@@ -103,7 +119,7 @@ export default function Navbar() {
           🍟 ¡Todas nuestras hamburguesas incluyen papas fritas! 🍟
         </div>
 
-        {/* ✅ NAVBAR */}
+        {/* NAVBAR */}
         <nav className={`transition-all duration-700 px-4 md:px-8 transform
           ${isNavbarActive
             ? 'h-14 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-md'
@@ -111,6 +127,7 @@ export default function Navbar() {
         >
           <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
 
+            {/* LOGO - Se oculta y aparece con scroll */}
             <div className="flex items-center transition-all duration-700">
               <Link
                 href="/"
@@ -123,11 +140,12 @@ export default function Navbar() {
                 <Image
                   src="/images/Krustyburgerheader.webp"
                   alt="Krusty Logo"
-                  fill
+                  width={32}
+                  height={32}
                   className="object-cover rounded-full"
                   priority
-                  sizes="(max-width: 768px) 32px, 48px"
-                  unoptimized
+
+
                 />
               </Link>
             </div>
@@ -138,7 +156,6 @@ export default function Navbar() {
                   ? 'opacity-100 translate-y-0 scale-100'
                   : 'opacity-0 translate-y-4 scale-95 pointer-events-none'}`}
             >
-
               <h1 className="text-sm sm:text-base md:text-lg lg:text-xl font-black italic tracking-tighter whitespace-nowrap">
                 <span className="text-[#D32F2F] font-extrabold">KRUSTY</span>
                 <span className="text-black font-extrabold"> BURGER</span>

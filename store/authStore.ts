@@ -36,7 +36,7 @@ interface AuthState {
     refreshUser: () => Promise<void>;
     getPuntos: () => number;
     getUsuarioId: () => string | null;
-    forzarActualizacion: (datos: { user?: any; perfil?: Perfil; session?: any }) => void; // ✅ NUEVO
+    forzarActualizacion: (datos: { user?: any; perfil?: Perfil; session?: any }) => void;
 }
 
 // Key para localStorage
@@ -112,9 +112,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     error: null
                 });
 
-                console.log('✅ [authStore] Usuario autenticado:', session.user.id);
-                console.log('✅ [authStore] Puntos disponibles:', perfil?.puntos_disponibles);
-
                 // ✅ Cargar ubicación guardada
                 await get().cargarUbicacionTemporal();
             } else {
@@ -126,7 +123,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                     session: null,
                     isAuthenticated: false
                 });
-                console.log('ℹ️ [authStore] No hay sesión activa');
             }
         } catch (error: any) {
             console.error('❌ Error al inicializar sesión:', error);
@@ -146,8 +142,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ error: null });
 
         try {
-            console.log('🔍 [Login] Intentando iniciar sesión:', correo);
-
             // ✅ Validaciones
             if (!correo || !contrasena) {
                 return { success: false, error: 'Completa todos los campos' };
@@ -172,8 +166,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 console.error('❌ [Login] Error de autenticación:', error.message);
                 return { success: false, error: String(error.message) };
             }
-
-            console.log('✅ [Login] Usuario autenticado:', data.user.id);
 
             // ✅ Guardar sesión
             set({ session: data.session });
@@ -201,9 +193,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 error: null
             });
 
-            console.log('✅ [Login] Perfil cargado:', perfil);
-            console.log('✅ [Login] Puntos disponibles:', perfil?.puntos_disponibles);
-
             // ✅ Actualizar último acceso
             await supabase
                 .from('perfiles')
@@ -228,8 +217,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ error: null });
 
         try {
-            console.log('📝 [Register] Intentando registrar cliente:', datos.correo);
-
             if (!datos.correo || !datos.contrasena || !datos.nombre || !datos.telefono) {
                 return { success: false, error: 'Completa todos los campos' };
             }
@@ -290,7 +277,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 error: null,
             });
 
-            console.log('✅ [Register] Cliente registrado correctamente:', userId);
             return { success: true };
         } catch (error: any) {
             console.error('❌ [Register] Error inesperado:', error);
@@ -312,7 +298,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 localStorage.removeItem('krusty-customer-v5');
                 localStorage.removeItem('ultimo_pedido_krusty');
             } catch (e) {
-                console.warn('Error al limpiar localStorage:', e);
+                // Silencioso
             }
 
             set({
@@ -327,8 +313,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 isAuthenticated: false,
                 session: null,
             });
-
-            console.log('✅ Sesión cerrada correctamente');
         } catch (error) {
             console.error('❌ Error al cerrar sesión:', error);
             set({
@@ -357,8 +341,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         }
 
         try {
-            console.log('📝 Actualizando perfil:', datos);
-
             const { error } = await supabase
                 .from('perfiles')
                 .update(datos)
@@ -372,7 +354,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             const perfilActualizado = { ...perfil, ...datos };
             set({ perfil: perfilActualizado });
 
-            console.log('✅ Perfil actualizado correctamente');
             return { success: true };
         } catch (error: any) {
             console.error('❌ Error en actualizarPerfil:', error);
@@ -384,8 +365,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // ✅ FORZAR ACTUALIZACIÓN DEL STORE (NUEVO)
     // ============================================================
     forzarActualizacion: (datos: { user?: any; perfil?: Perfil; session?: any }) => {
-        console.log('🔄 [authStore] Forzando actualización:', datos);
-
         set((state) => ({
             ...state,
             user: datos.user || state.user,
@@ -395,11 +374,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             isLoading: false,
             cargando: false,
         }));
-
-        console.log('✅ [authStore] Store actualizado forzadamente');
-        console.log('   - isAuthenticated:', get().isAuthenticated);
-        console.log('   - user?.id:', get().user?.id);
-        console.log('   - perfil:', get().perfil);
     },
 
     // ============================================================
@@ -413,8 +387,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // ✅ NUEVO: REFRESH USER
     // ============================================================
     refreshUser: async () => {
-        console.log('🔄 [authStore] Refrescando usuario...');
-
         try {
             const { data: { session } } = await supabase.auth.getSession();
 
@@ -434,8 +406,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                         esAdministrador: perfil?.rol === 'admin',
                         esRepartidor: perfil?.rol === 'repartidor',
                     });
-                    console.log('✅ [authStore] Usuario refrescado:', session.user.id);
-                    console.log('✅ [authStore] Puntos disponibles:', perfil?.puntos_disponibles);
                 }
             } else {
                 set({
@@ -474,7 +444,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             set({ ubicacionSeleccionada: ubicacion });
             const json = JSON.stringify(ubicacion);
             localStorage.setItem(STORAGE_UBICACION_KEY, json);
-            console.log('✅ Ubicación guardada:', ubicacion);
         } catch (error) {
             console.error('❌ Error guardando ubicación:', error);
         }
@@ -486,7 +455,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             if (data) {
                 const ubicacion = JSON.parse(data) as UbicacionGuardada;
                 set({ ubicacionSeleccionada: ubicacion });
-                console.log('✅ Ubicación cargada desde localStorage');
                 return ubicacion;
             }
             return null;
@@ -500,7 +468,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
             set({ ubicacionSeleccionada: null });
             localStorage.removeItem(STORAGE_UBICACION_KEY);
-            console.log('✅ Ubicación limpiada');
         } catch (error) {
             console.error('❌ Error limpiando ubicación:', error);
         }
@@ -513,8 +480,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ error: null });
 
         try {
-            console.log('📧 [Reset] Intentando para:', correo);
-
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
             if (!emailRegex.test(correo)) {
                 return { success: false, error: 'Ingresa un correo electrónico válido' };
@@ -557,7 +522,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 };
             }
 
-            console.log('✅ [Reset] Correo enviado a:', correo);
             return { success: true };
         } catch (error: any) {
             console.error('❌ Error en resetearContrasena:', error);
@@ -599,7 +563,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 return { success: false, error: String(error.message) };
             }
 
-            console.log('✅ Contraseña actualizada correctamente');
             return { success: true };
         } catch (error: any) {
             console.error('❌ Error en actualizarContrasena:', error);
