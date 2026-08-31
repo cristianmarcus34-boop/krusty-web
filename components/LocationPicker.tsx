@@ -28,16 +28,14 @@ interface LocationPickerProps {
     initialDireccion?: string;
 }
 
-// Tipos para las sugerencias de Places
-interface PlacePrediction {
-    placeId: string;
-    text: {
-        text: string;
+// ✅ Tipos actualizados para AutocompleteSuggestion
+interface AutocompleteSuggestionResult {
+    placePrediction?: {
+        placeId: string;
+        text: {
+            text: string;
+        };
     };
-}
-
-interface Suggestion {
-    placePrediction: PlacePrediction | null;
 }
 
 export default function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPickerProps) {
@@ -45,16 +43,27 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [marker, setMarker] = useState<google.maps.LatLngLiteral | null>(null);
     const [direccion, setDireccion] = useState(initialDireccion);
-    const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [suggestions, setSuggestions] = useState<AutocompleteSuggestionResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
     const autocompleteServiceRef = useRef<any>(null);
 
-    // Inicializar el servicio de autocompletado
+    // ✅ Inicializar el servicio de autocompletado
     useEffect(() => {
         if (isLoaded && !autocompleteServiceRef.current) {
-            // Usar el servicio de autocompletado de Places
-            autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+            try {
+                // ✅ Usar AutocompleteSuggestion (nuevo)
+                autocompleteServiceRef.current = new google.maps.places.AutocompleteSuggestion();
+                console.log('✅ [LocationPicker] AutocompleteSuggestion inicializado');
+            } catch (error) {
+                console.warn('⚠️ [LocationPicker] Error inicializando AutocompleteSuggestion:', error);
+                // Fallback al servicio anterior si falla
+                try {
+                    autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
+                } catch (fallbackError) {
+                    console.error('❌ [LocationPicker] Error con fallback:', fallbackError);
+                }
+            }
         }
     }, [isLoaded]);
 
@@ -96,52 +105,101 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
         }
     }, [onLocationSelect]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setDireccion(value);
-
-        if (value.length < 3) {
+    // ✅ BUSCAR SUGERENCIAS con AutocompleteSuggestion
+    const buscarSugerencias = useCallback((input: string) => {
+        if (!autocompleteServiceRef.current || input.length < 3) {
             setSuggestions([]);
             return;
         }
 
         setIsSearching(true);
 
-        // Usar el servicio de autocompletado
-        const service = new google.maps.places.AutocompleteService();
-        const request = {
-            input: value,
-            types: ['address'] as google.maps.places.AutocompletePrediction['types'],
-            componentRestrictions: { country: 'ar' } as google.maps.places.ComponentRestrictions,
-        };
+        try {
+            // ✅ Usar la API actualizada
+            const service = autocompleteServiceRef.current;
+            const request = {
+                input: input,
+                // ✅ 'address' es el tipo correcto para direcciones
+                types: ['address'] as google.maps.places.AutocompletePrediction['types'],
+                componentRestrictions: { country: 'ar' } as google.maps.places.ComponentRestrictions,
+            };
 
-        service.getPlacePredictions(request, (predictions, status) => {
-            setIsSearching(false);
-
-            if (status === 'OK' && predictions) {
-                const formattedSuggestions: Suggestion[] = predictions.map((prediction: google.maps.places.AutocompletePrediction) => ({
-                    placePrediction: {
-                        placeId: prediction.place_id,
-                        text: {
-                            text: prediction.description,
-                        },
-                    },
-                }));
-                setSuggestions(formattedSuggestions);
+            // ✅ Llamar al método correcto
+            if (typeof service.getPlacePredictions === 'function') {
+                // Para AutocompleteService (fallback)
+                service.getPlacePredictions(request, handlePredictions);
+            } else if (typeof service.getSuggestions === 'function') {
+                // ✅ Para AutocompleteSuggestion (nuevo)
+                service.getSuggestions(request, handleSuggestions);
             } else {
+                console.warn('⚠️ [LocationPicker] Método de búsqueda no encontrado');
                 setSuggestions([]);
+                setIsSearching(false);
             }
-        });
+        } catch (error) {
+            console.warn('⚠️ [LocationPicker] Error en búsqueda:', error);
+            setSuggestions([]);
+            setIsSearching(false);
+        }
+    }, []);
+
+    // ✅ Handler para AutocompleteService (fallback)
+    const handlePredictions = (predictions: google.maps.places.AutocompletePrediction[] | null, status: google.maps.places.PlacesServiceStatus) => {
+        setIsSearching(false);
+
+        if (status === 'OK' && predictions) {
+            const formatted = predictions.map((prediction) => ({
+                placePrediction: {
+                    placeId: prediction.place_id,
+                    text: {
+                        text: prediction.description,
+                    },
+                },
+            }));
+            setSuggestions(formatted);
+        } else {
+            setSuggestions([]);
+        }
     };
 
-    const handleSelectSuggestion = (suggestion: Suggestion) => {
+    // ✅ Handler para AutocompleteSuggestion (nuevo)
+    const handleSuggestions = (suggestions: any[], status: google.maps.places.PlacesServiceStatus) => {
+        setIsSearching(false);
+
+        if (status === 'OK' && suggestions) {
+            // ✅ Mapear el formato de AutocompleteSuggestion
+            const formatted = suggestions.map((suggestion) => ({
+                placePrediction: {
+                    placeId: suggestion.placePrediction?.placeId || '',
+                    text: {
+                        text: suggestion.placePrediction?.text?.text || suggestion.description || '',
+                    },
+                },
+            }));
+            setSuggestions(formatted);
+        } else {
+            setSuggestions([]);
+        }
+    };
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setDireccion(value);
+
+        // ✅ Buscar sugerencias
+        buscarSugerencias(value);
+    };
+
+    const handleSelectSuggestion = (suggestion: AutocompleteSuggestionResult) => {
         const placeId = suggestion.placePrediction?.placeId;
 
         if (!placeId) {
             return;
         }
 
-        const service = new google.maps.places.PlacesService(document.createElement('div'));
+        // ✅ Crear un elemento temporal para PlacesService
+        const container = document.createElement('div');
+        const service = new google.maps.places.PlacesService(container);
 
         service.getDetails(
             { placeId: placeId, fields: ['geometry', 'formatted_address'] },
@@ -160,6 +218,8 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
                         map.panTo({ lat, lng });
                         map.setZoom(15);
                     }
+                } else {
+                    console.warn('⚠️ [LocationPicker] Error obteniendo detalles del lugar:', status);
                 }
             }
         );
@@ -202,19 +262,19 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
 
                 {/* Sugerencias de autocompletado */}
                 {suggestions.length > 0 && (
-                    <ul className="absolute z-50 w-full bg-white dark:bg-stone-800 border-4 border-black mt-1 rounded-xl max-h-60 overflow-y-auto">
+                    <ul className="absolute z-50 w-full bg-white dark:bg-stone-800 border-4 border-black mt-1 rounded-xl max-h-60 overflow-y-auto shadow-[6px_6px_0px_0px_black]">
                         {suggestions.map((suggestion, index) => (
                             <li
                                 key={index}
                                 onClick={() => handleSelectSuggestion(suggestion)}
-                                className="p-3 hover:bg-[#FFCA28]/10 dark:hover:bg-[#FAD02C]/10 cursor-pointer font-bold text-xs border-b border-stone-100 dark:border-stone-700 last:border-0"
+                                className="p-3 hover:bg-[#FFCA28]/20 dark:hover:bg-[#FAD02C]/20 cursor-pointer font-bold text-xs border-b border-stone-100 dark:border-stone-700 last:border-0 transition-colors"
                             >
                                 {suggestion.placePrediction?.text?.text || 'Dirección'}
                             </li>
                         ))}
                         {isSearching && (
                             <li className="p-3 text-center text-stone-400 font-bold text-xs">
-                                Buscando...
+                                🔍 Buscando...
                             </li>
                         )}
                     </ul>

@@ -1,3 +1,4 @@
+// app/page.tsx
 // deno-lint-ignore-file no-sloppy-imports
 'use client';
 import { useState, useEffect, useCallback } from 'react';
@@ -231,8 +232,6 @@ export default function Home() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             <div className="text-center lg:text-left flex flex-col justify-center">
-
-
               <h2 className="font-krusty text-4xl md:text-5xl lg:text-6xl text-black uppercase drop-shadow-[2px_2px_0px_#FF6B00] leading-none mb-4">
                 Hechas con <span className="text-[#FF6B00]">amor</span>
                 <br />
@@ -247,15 +246,11 @@ export default function Home() {
                 </span>
               </p>
 
-
-
               <div className="bg-[#FFF3E6] p-6 rounded-2xl border-2 border-[#FF6B00]/40 text-center">
                 <div className="flex items-center justify-center gap-2 mb-2">
-
                   <span className="text-[#FF6B00] text-xs font-black uppercase tracking-wider">
                     ¡Ingrediente Secreto Revelado!
                   </span>
-
                 </div>
                 <h3 className="text-black text-2xl font-krusty">
                   ¿El secreto? <span className="text-[#FF6B00]">¡Risa!</span>
@@ -266,7 +261,6 @@ export default function Home() {
                   <br />
                   <span className="text-xs opacity-60">(No te preocupes, son seguros. Casi siempre.)</span>
                 </p>
-
               </div>
             </div>
           </div>
@@ -325,9 +319,12 @@ export default function Home() {
 
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-x-8 md:gap-y-12 justify-items-center">
           {filtrados.length > 0 ? (
-            filtrados.map((item) => (
+            filtrados.map((item, index) => (
               <div key={item.id} className="transition-opacity duration-500 w-full max-w-sm">
-                <BurgerCard burger={item} />
+                <BurgerCard
+                  burger={item}
+                  isFirst={index === 0}
+                />
               </div>
             ))
           ) : (

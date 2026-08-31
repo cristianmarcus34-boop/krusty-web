@@ -181,9 +181,15 @@ export default function RootLayout({
           const { clearCart } = useCartStore.getState();
           clearCart();
 
+          // ✅ Limpiar TODOS los datos
           localStorage.removeItem('krusty-cart-storage-v5');
           localStorage.removeItem('krusty-auth-storage');
           localStorage.removeItem('krusty-carrito-abierto');
+
+          // ✅ LIMPIAR UBICACIÓN Y DATOS DEL CLIENTE
+          localStorage.removeItem('krusty-customer-v5');
+          localStorage.removeItem('krusty_user_telefono');
+          localStorage.removeItem('ultimo_pedido_krusty');
 
           useAuthStore.setState({
             user: null,
@@ -203,6 +209,71 @@ export default function RootLayout({
   }, [mounted]);
 
   // ============================================================
+  // 🔄 EFECTO: MANEJAR ERRORES DE AUTENTICACIÓN
+  // ============================================================
+
+  useEffect(() => {
+    // Función para limpiar sesión corrupta
+    const limpiarSesionCorrupta = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error && (
+          error.message?.includes('Invalid Refresh Token') ||
+          error.message?.includes('Refresh Token Not Found') ||
+          error.message?.includes('JWT expired')
+        )) {
+          console.warn('⚠️ [Auth] Token inválido o expirado, limpiando sesión...');
+
+          await supabase.auth.signOut();
+
+          localStorage.removeItem('krusty-auth-storage');
+          localStorage.removeItem('krusty-cart-storage-v5');
+          localStorage.removeItem('krusty-carrito-abierto');
+          localStorage.removeItem('krusty-customer-v5');
+
+          useAuthStore.setState({
+            user: null,
+            perfil: null,
+            session: null,
+            isAuthenticated: false,
+          });
+
+          useCartStore.setState({ items: [] });
+
+          window.location.reload();
+        }
+      } catch (error) {
+        console.error('❌ [Auth] Error limpiando sesión corrupta:', error);
+      }
+    };
+
+    // Ejecutar al montar
+    limpiarSesionCorrupta();
+
+    // Escuchar errores de autenticación globalmente
+    const handleAuthError = (event: any) => {
+      const errorMessage = event?.reason?.message || event?.message || '';
+      if (
+        errorMessage.includes('Invalid Refresh Token') ||
+        errorMessage.includes('Refresh Token Not Found') ||
+        errorMessage.includes('JWT expired')
+      ) {
+        console.warn('⚠️ [Auth] Error de autenticación detectado, limpiando...');
+        limpiarSesionCorrupta();
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleAuthError);
+    window.addEventListener('error', handleAuthError);
+
+    return () => {
+      window.removeEventListener('unhandledrejection', handleAuthError);
+      window.removeEventListener('error', handleAuthError);
+    };
+  }, []);
+
+  // ============================================================
   // 🖥️ RENDER
   // ============================================================
 
@@ -216,12 +287,7 @@ export default function RootLayout({
           type="font/ttf"
           crossOrigin="anonymous"
         />
-        <link
-          rel="preload"
-          href="/images/Krustyburgerheader.webp"
-          as="image"
-          fetchPriority="high"
-        />
+
       </head>
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
 

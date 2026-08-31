@@ -1,3 +1,4 @@
+// components/BurgerCard.tsx
 "use client";
 
 import { Burger } from '../types';
@@ -13,7 +14,13 @@ interface Adicional {
   precio: number;
 }
 
-export default function BurgerCard({ burger }: { burger: any }) {
+export default function BurgerCard({
+  burger,
+  isFirst = false
+}: {
+  burger: any;
+  isFirst?: boolean;
+}) {
   const addItem = useCartStore((state) => state.addItem);
   const [isAdding, setIsAdding] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -122,7 +129,8 @@ export default function BurgerCard({ burger }: { burger: any }) {
           className={`object-cover transition-all duration-500 will-change-transform
             ${isAdding ? 'scale-110 blur-sm' : 'group-hover:scale-105'}
           `}
-          loading="lazy"
+          priority={isFirst}
+          loading={isFirst ? 'eager' : 'lazy'}
           onError={() => setImageError(true)}
         />
 

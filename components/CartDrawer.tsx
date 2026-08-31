@@ -611,6 +611,20 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     []
   );
 
+  // ✅ FUNCIÓN: VACIAR CARRITO
+  const handleClearCart = useCallback(() => {
+    if (items.length === 0) return;
+
+    if (window.confirm('🤡 ¿Estás seguro de vaciar todo el carrito?')) {
+      clearCart();
+      // ✅ Si el usuario está autenticado, limpiar también en DB
+      if (isAuthenticated && user?.id) {
+        guardarCarritoEnDB(user.id, []);
+      }
+      setForceUpdate(prev => prev + 1);
+    }
+  }, [items.length, clearCart, isAuthenticated, user?.id, guardarCarritoEnDB]);
+
   // ============================================================
   // 💳 FUNCIONES DE PAGO
   // ============================================================
@@ -997,7 +1011,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             <div className="flex justify-between items-start gap-2">
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-stone-900 dark:text-[#FAD02C] tracking-tighter uppercase leading-none">
-                  🛒 Tu Pedido
+                  🛒 Tu Carrito
                 </h2>
                 <p className="text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mt-1">
                   {isAuthLoading
@@ -1006,14 +1020,55 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-9 h-9 rounded-full bg-[#D32F2F] text-white border-2 border-black flex items-center justify-center font-black cursor-pointer hover:bg-black transition-colors hover:scale-105 active:scale-90 shrink-0"
-                aria-label="Cerrar carrito"
-              >
-                ✕
-              </button>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* ✅ BOTÓN SEGUIR COMPRANDO */}
+                {items.length > 0 && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      setTimeout(() => {
+                        const menuSection = document.getElementById('menu-section');
+                        if (menuSection) {
+                          menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        } else {
+                          router.push('/');
+                          setTimeout(() => {
+                            const menuSectionFallback = document.getElementById('menu-section');
+                            if (menuSectionFallback) {
+                              menuSectionFallback.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }
+                          }, 300);
+                        }
+                      }, 300);
+                    }}
+                    className="px-2 py-1.5 sm:px-3 rounded-full bg-emerald-500 text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-emerald-700 transition-colors active:scale-95"
+                  >
+                    <span>🛍️</span>
+                    <span className="hidden min-[350px]:inline">Seguir</span>
+                  </button>
+                )}
+
+                {/* ✅ BOTÓN VACIAR CARRITO */}
+                {items.length > 0 && (
+                  <button
+                    onClick={handleClearCart}
+                    className="px-2 py-1.5 sm:px-3 rounded-full bg-red-500 text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-red-700 transition-colors active:scale-95"
+                  >
+                    <span>🗑️</span>
+                    <span className="hidden min-[350px]:inline">Vaciar</span>
+                  </button>
+                )}
+
+                {/* ✅ BOTÓN CERRAR */}
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-2 py-1.5 sm:px-3 rounded-full bg-[#D32F2F] text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-black transition-colors active:scale-95"
+                >
+                  <span>✕</span>
+                  <span className="hidden min-[350px]:inline">Cerrar</span>
+                </button>
+              </div>
             </div>
           </div>
 
