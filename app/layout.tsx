@@ -37,6 +37,7 @@ import { registrarServiceWorker, suscribirNotificaciones } from '@/lib/notificac
 const inter = Inter({
   subsets: ["latin"],
   display: 'swap',
+  preload: false, // ✅ Evita el warning de preload
 });
 
 export default function RootLayout({
@@ -45,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   const [mounted, setMounted] = useState(false);
-  const { forzarActualizacion, user, isAuthenticated } = useAuthStore(); // ✅ Obtener user
+  const { forzarActualizacion, user, isAuthenticated } = useAuthStore();
   const { setItems } = useCartStore();
 
   // ============================================================
@@ -104,24 +105,54 @@ export default function RootLayout({
   }, []);
 
   // ============================================================
-  // 🔄 EFECTO: REGISTRAR NOTIFICACIONES AL INICIAR
+  // 🔄 EFECTO: REGISTRAR NOTIFICACIONES AL INICIAR (MEJORADO)
   // ============================================================
 
   useEffect(() => {
     const initNotifications = async () => {
-      // Registrar Service Worker
-      await registrarServiceWorker();
+      try {
+        console.log('📱 [Layout] Iniciando notificaciones...');
 
-      // Si el usuario está autenticado, suscribirse a notificaciones
-      if (user?.id) {
-        await suscribirNotificaciones(user.id);
+        // ✅ Verificar si estamos en el celular (pantalla pequeña)
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        console.log('📱 [Layout] Dispositivo:', isMobile ? 'Móvil' : 'Escritorio');
+
+        // ✅ Registrar Service Worker
+        const swRegistered = await registrarServiceWorker();
+        if (!swRegistered) {
+          console.warn('⚠️ [Layout] Service Worker no registrado');
+          return;
+        }
+
+        // ✅ Verificar permiso de notificaciones
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+          console.log('📱 [Layout] Solicitando permiso de notificaciones...');
+          const permission = await Notification.requestPermission();
+          console.log('📱 [Layout] Permiso:', permission);
+
+          if (permission !== 'granted') {
+            console.warn('⚠️ [Layout] Permiso denegado');
+            return;
+          }
+        }
+
+        // ✅ Si el usuario está autenticado, suscribirse
+        if (user?.id) {
+          console.log('📱 [Layout] Suscribiendo usuario:', user.id);
+          await suscribirNotificaciones(user.id);
+        } else {
+          console.log('📱 [Layout] Usuario no autenticado, omitiendo suscripción');
+        }
+
+      } catch (error) {
+        console.error('❌ [Layout] Error en notificaciones:', error);
       }
     };
 
     if (mounted) {
       initNotifications();
     }
-  }, [mounted, user?.id]); // ✅ Dependencias correctas
+  }, [mounted, user?.id]);
 
   // ============================================================
   // 🔄 EFECTO: ESCUCHAR CAMBIOS DE AUTENTICACIÓN (LOGIN/LOGOUT)
@@ -148,7 +179,11 @@ export default function RootLayout({
             await cargarCarritoDesdeDB(session.user.id);
 
             // ✅ SUSCRIBIR A NOTIFICACIONES AL INICIAR SESIÓN
-            await suscribirNotificaciones(session.user.id);
+            try {
+              await suscribirNotificaciones(session.user.id);
+            } catch (error) {
+              console.error('❌ [Layout] Error suscribiendo al login:', error);
+            }
           }
 
         } else if (event === 'SIGNED_OUT') {
