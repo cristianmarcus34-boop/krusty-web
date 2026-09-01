@@ -173,7 +173,7 @@ self.addEventListener('push', (event) => {
     const options = {
         body: body,
         icon: '/android-icon-192x192.png',  // ✅ Ruta corregida
-        badge: '/android-icon-72x72.png',    // ✅ Ruta corregida
+        badge: '/android-icon-36x36.png',    // ✅ Ruta corregida
         vibrate: [200, 100, 200],
         data: {
             url: url,
