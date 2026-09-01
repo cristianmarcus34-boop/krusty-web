@@ -16,7 +16,6 @@ self.addEventListener('activate', (event) => {
     console.log('[SW] Activando...');
     event.waitUntil(self.clients.claim());
 
-    // ✅ Notificar a todos los clientes que hay nueva versión
     self.clients.matchAll({ type: 'window', includeUncontrolled: true })
         .then(clients => {
             clients.forEach(client => {
@@ -32,21 +31,48 @@ self.addEventListener('activate', (event) => {
 // 📌 VARIABLES Y CONSTANTES
 // ============================================================
 
-const CACHE_NAME = 'krusty-cache-v2'; // ✅ Cambiar versión para forzar actualización
+const CACHE_NAME = 'krusty-cache-v2';
+
+// ✅ RUTAS CORREGIDAS - Los iconos están en la raíz de public/
 const STATIC_ASSETS = [
-    '/images/krusty-icon-192x192.png',
-    '/images/krusty-icon-72x72.png',
-    '/sounds/woo-hoo.mp3'
+    '/krusty-icon-192x192.png',   // ✅ public/krusty-icon-192x192.png
+    '/krusty-icon-72x72.png',     // ✅ public/krusty-icon-72x72.png
+    '/sounds/woo-hoo.mp3'         // ✅ public/sounds/woo-hoo.mp3
 ];
 
 // ============================================================
-// 📌 CACHÉ DE RECURSOS ESTÁTICOS (OPCIONAL)
+// 📌 CACHÉ DE RECURSOS ESTÁTICOS (ROBUSTO)
 // ============================================================
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then((cache) => cache.addAll(STATIC_ASSETS))
+            .then((cache) => {
+                // ✅ Intentar cachear cada recurso individualmente
+                const promises = STATIC_ASSETS.map(async (url) => {
+                    try {
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            await cache.put(url, response);
+                            console.log(`[SW] ✅ Cacheado: ${url}`);
+                        } else {
+                            console.warn(`[SW] ⚠️ No se pudo cachear: ${url} (${response.status})`);
+                        }
+                    } catch (error) {
+                        console.warn(`[SW] ⚠️ Error cacheando: ${url}`, error.message);
+                    }
+                });
+
+                return Promise.allSettled(promises);
+            })
+            .then((results) => {
+                const fallidos = results.filter(r => r.status === 'rejected').length;
+                if (fallidos > 0) {
+                    console.warn(`[SW] ⚠️ ${fallidos} recursos no se cachearon correctamente`);
+                } else {
+                    console.log('[SW] ✅ Todos los recursos cacheados correctamente');
+                }
+            })
             .catch((error) => console.error('[SW] Error cacheando recursos:', error))
     );
 });
@@ -146,8 +172,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: body,
-        icon: '/krusty-icon-192x192.png',
-        badge: '/krusty-icon-72x72.png',
+        icon: '/krusty-icon-192x192.png',  // ✅ Ruta corregida
+        badge: '/krusty-icon-72x72.png',    // ✅ Ruta corregida
         vibrate: [200, 100, 200],
         data: {
             url: url,
@@ -243,7 +269,6 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('message', (event) => {
     if (!event || !event.data) return;
 
-    // ✅ SI EL CLIENTE PIDE ACTUALIZAR
     if (event.data?.type === 'SKIP_WAITING') {
         console.log('[SW] ⏭️ Saltando waiting para actualizar...');
         self.skipWaiting();
