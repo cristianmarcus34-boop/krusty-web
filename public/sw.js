@@ -146,8 +146,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: body,
-        icon: '/images/krusty-icon-192x192.png',
-        badge: '/images/krusty-icon-72x72.png',
+        icon: '/krusty-icon-192x192.png',
+        badge: '/krusty-icon-72x72.png',
         vibrate: [200, 100, 200],
         data: {
             url: url,
