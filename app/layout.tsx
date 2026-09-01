@@ -35,7 +35,7 @@ import { metadata, viewport } from './metadata';
 import {
   registrarServiceWorker,
   suscribirNotificaciones,
-  limpiarSuscripcionesViejas  // ✅ NUEVO
+  limpiarSuscripcionesViejas
 } from '@/lib/notificaciones';
 
 // ✅ BANNER DE NOTIFICACIONES
@@ -337,27 +337,43 @@ export default function RootLayout({
   }, [mounted, isAuthenticated, user]);
 
   // ============================================================
-  // 🔄 EFECTO: LIMPIAR SUSCRIPCIONES VIEJAS (NUEVO)
+  // 🔄 EFECTO: LIMPIAR SUSCRIPCIONES VIEJAS (CONTROLADO)
   // ============================================================
 
   useEffect(() => {
     if (!mounted) return;
 
+    let ejecutado = false;
+    let timeoutId: NodeJS.Timeout;
+
     const limpiar = async () => {
-      try {
-        await limpiarSuscripcionesViejas();
-      } catch (error) {
-        // Silencioso
-      }
+      if (ejecutado) return;
+      ejecutado = true;
+
+      // ✅ Esperar 5 segundos después de cargar la app
+      timeoutId = setTimeout(async () => {
+        try {
+          await limpiarSuscripcionesViejas();
+        } catch (error) {
+          // Silencioso
+        }
+      }, 5000);
     };
 
     limpiar();
 
+    // ✅ Programar limpieza diaria (una vez al día)
     const intervalo = setInterval(() => {
-      limpiarSuscripcionesViejas();
-    }, 30 * 24 * 60 * 60 * 1000);
+      if (document.visibilityState === 'visible') {
+        limpiarSuscripcionesViejas();
+      }
+    }, 24 * 60 * 60 * 1000);
 
-    return () => clearInterval(intervalo);
+    return () => {
+      clearTimeout(timeoutId);
+      clearInterval(intervalo);
+      ejecutado = true;
+    };
   }, [mounted]);
 
   // ============================================================

@@ -2,7 +2,13 @@
 import { supabase } from './supabase';
 
 // ============================================================
-// 📦 REGISTRAR SERVICE WORKER (MEJORADO)
+// 📦 VARIABLE DE CONTROL PARA LIMPIEZA
+// ============================================================
+
+let limpiezaEnProgreso = false;
+
+// ============================================================
+// 📦 REGISTRAR SERVICE WORKER
 // ============================================================
 
 export const registrarServiceWorker = async () => {
@@ -197,31 +203,71 @@ export const desuscribirNotificaciones = async (userId: string) => {
 };
 
 // ============================================================
-// 🧹 LIMPIAR SUSCRIPCIONES VIEJAS (NUEVO)
+// 🧹 LIMPIAR SUSCRIPCIONES VIEJAS (CORREGIDO)
 // ============================================================
 
 export const limpiarSuscripcionesViejas = async () => {
+    // ✅ Si ya está en progreso, no hacer nada
+    if (limpiezaEnProgreso) {
+        return;
+    }
+
+    // ✅ Solo ejecutar si la página está visible
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+        return;
+    }
+
+    limpiezaEnProgreso = true;
+
     try {
         const fechaLimite = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-        const { error } = await supabase
+        // ✅ Contar cuántas hay - con manejo de null
+        const { count, error: countError } = await supabase
             .from('push_subscriptions')
-            .delete()
+            .select('*', { count: 'exact', head: true })
             .eq('is_active', false)
             .lt('last_used_at', fechaLimite.toISOString());
 
-        if (error) {
-            console.error('❌ Error limpiando suscripciones:', error);
-        } else {
-            console.log('✅ Suscripciones viejas eliminadas');
+        if (countError) {
+            console.error('❌ Error contando suscripciones:', countError);
+            return;
         }
+
+        // ✅ Si count es null o 0, salir
+        if (!count || count === 0) {
+            return;
+        }
+
+        // ✅ Eliminar en lotes pequeños
+        const batchSize = 5;
+        let eliminadas = 0;
+
+        while (eliminadas < count) {
+            const { error } = await supabase
+                .from('push_subscriptions')
+                .delete()
+                .eq('is_active', false)
+                .lt('last_used_at', fechaLimite.toISOString())
+                .limit(batchSize);
+
+            if (error) {
+                console.error('❌ Error eliminando lote:', error);
+                break;
+            }
+
+            eliminadas += batchSize;
+        }
+
     } catch (error) {
-        console.error('❌ Error:', error);
+        // Silencioso
+    } finally {
+        limpiezaEnProgreso = false;
     }
 };
 
 // ============================================================
-// 📊 OBTENER ESTADO DE SUSCRIPCIÓN (NUEVO)
+// 📊 OBTENER ESTADO DE SUSCRIPCIÓN
 // ============================================================
 
 export const obtenerEstadoSuscripcion = async () => {
