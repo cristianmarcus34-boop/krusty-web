@@ -101,6 +101,9 @@ export default function RootLayout({
         }
       } catch (error) {
         // Silencioso
+      } finally {
+        // ✅ SIEMPRE asegurar que el loading se apague
+        useAuthStore.setState({ isLoading: false, cargando: false });
       }
     };
 
@@ -114,18 +117,15 @@ export default function RootLayout({
   useEffect(() => {
     const initNotifications = async () => {
       try {
-        // ✅ Registrar Service Worker
         const swRegistered = await registrarServiceWorker();
         if (!swRegistered) {
           return;
         }
 
-        // ✅ Verificar permiso de notificaciones
         if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
           await Notification.requestPermission();
         }
 
-        // ✅ Si el usuario está autenticado, suscribirse
         if (user?.id) {
           await suscribirNotificaciones(user.id);
         }
@@ -149,6 +149,9 @@ export default function RootLayout({
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        // ✅ Siempre apagar loading al recibir cualquier evento
+        useAuthStore.setState({ isLoading: false, cargando: false });
+
         if (event === 'SIGNED_IN' && session?.user) {
           const { data: perfilData, error } = await supabase
             .from('perfiles')
@@ -181,12 +184,9 @@ export default function RootLayout({
           const { clearCart } = useCartStore.getState();
           clearCart();
 
-          // ✅ Limpiar TODOS los datos
           localStorage.removeItem('krusty-cart-storage-v5');
           localStorage.removeItem('krusty-auth-storage');
           localStorage.removeItem('krusty-carrito-abierto');
-
-          // ✅ LIMPIAR UBICACIÓN Y DATOS DEL CLIENTE
           localStorage.removeItem('krusty-customer-v5');
           localStorage.removeItem('krusty_user_telefono');
           localStorage.removeItem('ultimo_pedido_krusty');
@@ -196,6 +196,8 @@ export default function RootLayout({
             perfil: null,
             session: null,
             isAuthenticated: false,
+            isLoading: false,
+            cargando: false,
           });
 
           useCartStore.setState({ items: [] });
@@ -213,7 +215,6 @@ export default function RootLayout({
   // ============================================================
 
   useEffect(() => {
-    // Función para limpiar sesión corrupta
     const limpiarSesionCorrupta = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -221,7 +222,8 @@ export default function RootLayout({
         if (error && (
           error.message?.includes('Invalid Refresh Token') ||
           error.message?.includes('Refresh Token Not Found') ||
-          error.message?.includes('JWT expired')
+          error.message?.includes('JWT expired') ||
+          error.message?.includes('session_not_found')
         )) {
           console.warn('⚠️ [Auth] Token inválido o expirado, limpiando sesión...');
 
@@ -237,21 +239,28 @@ export default function RootLayout({
             perfil: null,
             session: null,
             isAuthenticated: false,
+            isLoading: false,
+            cargando: false,
           });
 
           useCartStore.setState({ items: [] });
 
-          window.location.reload();
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
         }
+
+        // ✅ SIEMPRE apagar loading, incluso si no hay error
+        useAuthStore.setState({ isLoading: false, cargando: false });
+
       } catch (error) {
         console.error('❌ [Auth] Error limpiando sesión corrupta:', error);
+        useAuthStore.setState({ isLoading: false, cargando: false });
       }
     };
 
-    // Ejecutar al montar
     limpiarSesionCorrupta();
 
-    // Escuchar errores de autenticación globalmente
     const handleAuthError = (event: any) => {
       const errorMessage = event?.reason?.message || event?.message || '';
       if (
@@ -274,6 +283,67 @@ export default function RootLayout({
   }, []);
 
   // ============================================================
+  // 🔄 EFECTO: DETECTAR RETORNO DE MERCADO PAGO (NUEVO)
+  // ============================================================
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    // ✅ Verificar si venimos de Mercado Pago (volviendo atrás)
+    const mpRedirect = localStorage.getItem('krusty_mp_redirect');
+    const mpTimestamp = localStorage.getItem('krusty_mp_timestamp');
+
+    if (mpRedirect === 'true' && mpTimestamp) {
+      const timeElapsed = Date.now() - parseInt(mpTimestamp);
+
+      // ✅ Si pasaron más de 3 segundos, es un retorno
+      if (timeElapsed > 3000) {
+        console.log('🔙 [LAYOUT] Detectado retorno de Mercado Pago');
+
+        // ✅ Limpiar flags
+        localStorage.removeItem('krusty_mp_redirect');
+        localStorage.removeItem('krusty_mp_timestamp');
+        localStorage.removeItem('krusty-customer-v5');
+        localStorage.removeItem('krusty_user_telefono');
+
+        // ✅ Forzar limpieza de estados de carga
+        useAuthStore.setState({
+          isLoading: false,
+          cargando: false
+        });
+
+        // ✅ Si está autenticado pero la sesión se perdió, recargar
+        if (isAuthenticated && !user) {
+          window.location.reload();
+        }
+      }
+    }
+
+    // ✅ Escuchar el evento popstate (cuando el usuario vuelve atrás)
+    const handlePopState = () => {
+      console.log('🔙 [LAYOUT] Evento popstate detectado');
+
+      // ✅ Limpiar flags de Mercado Pago
+      localStorage.removeItem('krusty_mp_redirect');
+      localStorage.removeItem('krusty_mp_timestamp');
+      localStorage.removeItem('krusty-customer-v5');
+      localStorage.removeItem('krusty_user_telefono');
+
+      // ✅ Asegurar que los spinners se apaguen
+      useAuthStore.setState({
+        isLoading: false,
+        cargando: false
+      });
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [mounted, isAuthenticated, user]);
+
+  // ============================================================
   // 🖥️ RENDER
   // ============================================================
 
@@ -287,14 +357,12 @@ export default function RootLayout({
           type="font/ttf"
           crossOrigin="anonymous"
         />
-
       </head>
       <body className={`${inter.className} bg-stone-50 text-stone-900 antialiased selection:bg-[#FFCA28] selection:text-black`}>
 
         <ThemeProvider>
           <LoaderProvider>
 
-            {/* ✅ PROVIDER DE NOTIFICACIONES PUSH (BANNER DESDE ABAJO) */}
             <PushNotificationProvider>
 
               <ThemeToggle />
