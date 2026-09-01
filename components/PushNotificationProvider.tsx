@@ -77,7 +77,9 @@ export default function PushNotificationProvider({
 
         // Escuchar mensajes del Service Worker
         if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
-            navigator.serviceWorker.addEventListener('message', handleMessage);
+            navigator.serviceWorker.ready.then(() => {
+                navigator.serviceWorker.addEventListener('message', handleMessage);
+            });
         }
 
         return () => {

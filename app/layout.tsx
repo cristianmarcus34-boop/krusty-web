@@ -32,7 +32,11 @@ import { useCartStore } from '@/store/cartStore';
 import { metadata, viewport } from './metadata';
 
 // ✅ Notificaciones
-import { registrarServiceWorker, suscribirNotificaciones } from '@/lib/notificaciones';
+import {
+  registrarServiceWorker,
+  suscribirNotificaciones,
+  limpiarSuscripcionesViejas  // ✅ NUEVO
+} from '@/lib/notificaciones';
 
 // ✅ BANNER DE NOTIFICACIONES
 import PushNotificationProvider from '@/components/PushNotificationProvider';
@@ -102,7 +106,6 @@ export default function RootLayout({
       } catch (error) {
         // Silencioso
       } finally {
-        // ✅ SIEMPRE asegurar que el loading se apague
         useAuthStore.setState({ isLoading: false, cargando: false });
       }
     };
@@ -149,7 +152,6 @@ export default function RootLayout({
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        // ✅ Siempre apagar loading al recibir cualquier evento
         useAuthStore.setState({ isLoading: false, cargando: false });
 
         if (event === 'SIGNED_IN' && session?.user) {
@@ -250,7 +252,6 @@ export default function RootLayout({
           }
         }
 
-        // ✅ SIEMPRE apagar loading, incluso si no hay error
         useAuthStore.setState({ isLoading: false, cargando: false });
 
       } catch (error) {
@@ -283,53 +284,45 @@ export default function RootLayout({
   }, []);
 
   // ============================================================
-  // 🔄 EFECTO: DETECTAR RETORNO DE MERCADO PAGO (NUEVO)
+  // 🔄 EFECTO: DETECTAR RETORNO DE MERCADO PAGO
   // ============================================================
 
   useEffect(() => {
     if (!mounted) return;
 
-    // ✅ Verificar si venimos de Mercado Pago (volviendo atrás)
     const mpRedirect = localStorage.getItem('krusty_mp_redirect');
     const mpTimestamp = localStorage.getItem('krusty_mp_timestamp');
 
     if (mpRedirect === 'true' && mpTimestamp) {
       const timeElapsed = Date.now() - parseInt(mpTimestamp);
 
-      // ✅ Si pasaron más de 3 segundos, es un retorno
       if (timeElapsed > 3000) {
         console.log('🔙 [LAYOUT] Detectado retorno de Mercado Pago');
 
-        // ✅ Limpiar flags
         localStorage.removeItem('krusty_mp_redirect');
         localStorage.removeItem('krusty_mp_timestamp');
         localStorage.removeItem('krusty-customer-v5');
         localStorage.removeItem('krusty_user_telefono');
 
-        // ✅ Forzar limpieza de estados de carga
         useAuthStore.setState({
           isLoading: false,
           cargando: false
         });
 
-        // ✅ Si está autenticado pero la sesión se perdió, recargar
         if (isAuthenticated && !user) {
           window.location.reload();
         }
       }
     }
 
-    // ✅ Escuchar el evento popstate (cuando el usuario vuelve atrás)
     const handlePopState = () => {
       console.log('🔙 [LAYOUT] Evento popstate detectado');
 
-      // ✅ Limpiar flags de Mercado Pago
       localStorage.removeItem('krusty_mp_redirect');
       localStorage.removeItem('krusty_mp_timestamp');
       localStorage.removeItem('krusty-customer-v5');
       localStorage.removeItem('krusty_user_telefono');
 
-      // ✅ Asegurar que los spinners se apaguen
       useAuthStore.setState({
         isLoading: false,
         cargando: false
@@ -342,6 +335,30 @@ export default function RootLayout({
       window.removeEventListener('popstate', handlePopState);
     };
   }, [mounted, isAuthenticated, user]);
+
+  // ============================================================
+  // 🔄 EFECTO: LIMPIAR SUSCRIPCIONES VIEJAS (NUEVO)
+  // ============================================================
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const limpiar = async () => {
+      try {
+        await limpiarSuscripcionesViejas();
+      } catch (error) {
+        // Silencioso
+      }
+    };
+
+    limpiar();
+
+    const intervalo = setInterval(() => {
+      limpiarSuscripcionesViejas();
+    }, 30 * 24 * 60 * 60 * 1000);
+
+    return () => clearInterval(intervalo);
+  }, [mounted]);
 
   // ============================================================
   // 🖥️ RENDER
