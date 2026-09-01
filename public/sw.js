@@ -35,8 +35,8 @@ const CACHE_NAME = 'krusty-cache-v2';
 
 // ✅ RUTAS CORREGIDAS - Los iconos están en la raíz de public/
 const STATIC_ASSETS = [
-    '/krusty-icon-192x192.png',   // ✅ public/krusty-icon-192x192.png
-    '/krusty-icon-72x72.png',     // ✅ public/krusty-icon-72x72.png
+    '/android-icon-192x192.png',   // ✅ public/krusty-icon-192x192.png
+    '/android-icon-72x72.png',     // ✅ public/krusty-icon-72x72.png
     '/sounds/woo-hoo.mp3'         // ✅ public/sounds/woo-hoo.mp3
 ];
 
@@ -172,8 +172,8 @@ self.addEventListener('push', (event) => {
 
     const options = {
         body: body,
-        icon: '/krusty-icon-192x192.png',  // ✅ Ruta corregida
-        badge: '/krusty-icon-72x72.png',    // ✅ Ruta corregida
+        icon: '/android-icon-192x192.png',  // ✅ Ruta corregida
+        badge: '/android-icon-72x72.png',    // ✅ Ruta corregida
         vibrate: [200, 100, 200],
         data: {
             url: url,
