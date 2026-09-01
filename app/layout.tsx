@@ -41,6 +41,9 @@ import {
 // ✅ BANNER DE NOTIFICACIONES
 import PushNotificationProvider from '@/components/PushNotificationProvider';
 
+// ✅ VERSION UPDATER (NUEVO)
+import VersionUpdater from '@/components/VersionUpdater';
+
 const inter = Inter({
   subsets: ["latin"],
   display: 'swap',
@@ -397,6 +400,9 @@ export default function RootLayout({
           <LoaderProvider>
 
             <PushNotificationProvider>
+
+              {/* ✅ VERSION UPDATER - AGREGADO */}
+              <VersionUpdater />
 
               <ThemeToggle />
               <GestorDeActualizaciones />

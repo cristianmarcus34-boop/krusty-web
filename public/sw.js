@@ -15,13 +15,24 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     console.log('[SW] Activando...');
     event.waitUntil(self.clients.claim());
+
+    // ✅ Notificar a todos los clientes que hay nueva versión
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then(clients => {
+            clients.forEach(client => {
+                client.postMessage({
+                    type: 'NEW_VERSION_AVAILABLE',
+                    message: '¡Nueva versión disponible! Recargando...'
+                });
+            });
+        });
 });
 
 // ============================================================
 // 📌 VARIABLES Y CONSTANTES
 // ============================================================
 
-const CACHE_NAME = 'krusty-cache-v1';
+const CACHE_NAME = 'krusty-cache-v2'; // ✅ Cambiar versión para forzar actualización
 const STATIC_ASSETS = [
     '/images/krusty-icon-192x192.png',
     '/images/krusty-icon-72x72.png',
@@ -231,6 +242,23 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('message', (event) => {
     if (!event || !event.data) return;
+
+    // ✅ SI EL CLIENTE PIDE ACTUALIZAR
+    if (event.data?.type === 'SKIP_WAITING') {
+        console.log('[SW] ⏭️ Saltando waiting para actualizar...');
+        self.skipWaiting();
+
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+            .then(clients => {
+                clients.forEach(client => {
+                    client.postMessage({
+                        type: 'NEW_VERSION_AVAILABLE',
+                        message: '¡Nueva versión disponible! Recargando...'
+                    });
+                });
+            });
+        return;
+    }
 
     try {
         console.log('[SW] Mensaje del cliente:', event.data.type || 'desconocido');
