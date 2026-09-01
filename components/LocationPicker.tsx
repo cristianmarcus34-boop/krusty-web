@@ -1,6 +1,7 @@
+// components/LocationPicker.tsx - VERSIÓN COMPLETA TIPADA
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback, useEffect, memo } from 'react';
 import { GoogleMap, Marker } from '@react-google-maps/api';
 import { useGoogleMaps } from '@/lib/googleMapsLoader';
 
@@ -21,6 +22,7 @@ const options = {
     zoomControl: true,
     streetViewControl: false,
     mapTypeControl: false,
+    fullscreenControl: false,
 };
 
 interface LocationPickerProps {
@@ -28,7 +30,6 @@ interface LocationPickerProps {
     initialDireccion?: string;
 }
 
-// ✅ Tipos actualizados para AutocompleteSuggestion
 interface AutocompleteSuggestionResult {
     placePrediction?: {
         placeId: string;
@@ -38,117 +39,117 @@ interface AutocompleteSuggestionResult {
     };
 }
 
-export default function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPickerProps) {
+// ✅ Tipos para las sugerencias de Google Maps
+interface GooglePlacePrediction {
+    place_id: string;
+    description: string;
+}
+
+interface GoogleSuggestion {
+    placePrediction?: {
+        placeId: string;
+        text?: {
+            text: string;
+        };
+    };
+    description?: string;
+}
+
+function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPickerProps) {
     const { isLoaded, loadError } = useGoogleMaps();
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [marker, setMarker] = useState<google.maps.LatLngLiteral | null>(null);
     const [direccion, setDireccion] = useState(initialDireccion);
     const [suggestions, setSuggestions] = useState<AutocompleteSuggestionResult[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [isMounted, setIsMounted] = useState(true);
     const inputRef = useRef<HTMLInputElement>(null);
     const autocompleteServiceRef = useRef<any>(null);
+    const geocoderRef = useRef<google.maps.Geocoder | null>(null);
 
-    // ✅ Inicializar el servicio de autocompletado
+    // ✅ Inicializar servicios
     useEffect(() => {
-        if (isLoaded && !autocompleteServiceRef.current) {
+        setIsMounted(true);
+
+        if (isLoaded) {
             try {
-                // ✅ Usar AutocompleteSuggestion (nuevo)
                 autocompleteServiceRef.current = new google.maps.places.AutocompleteSuggestion();
-                console.log('✅ [LocationPicker] AutocompleteSuggestion inicializado');
-            } catch (error) {
-                console.warn('⚠️ [LocationPicker] Error inicializando AutocompleteSuggestion:', error);
-                // Fallback al servicio anterior si falla
+            } catch {
                 try {
                     autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
-                } catch (fallbackError) {
-                    console.error('❌ [LocationPicker] Error con fallback:', fallbackError);
+                } catch {
+                    // Silencioso
                 }
             }
+
+            try {
+                geocoderRef.current = new google.maps.Geocoder();
+            } catch {
+                // Silencioso
+            }
         }
-    }, [isLoaded]);
+
+        return () => {
+            setIsMounted(false);
+            if (map) {
+                try {
+                    google.maps.event.clearInstanceListeners(map);
+                } catch {
+                    // Silencioso
+                }
+            }
+        };
+    }, [isLoaded, map]);
 
     const onLoad = useCallback((mapInstance: google.maps.Map) => {
-        setMap(mapInstance);
-    }, []);
+        if (isMounted) {
+            setMap(mapInstance);
+        }
+    }, [isMounted]);
+
+    const geocodeLocation = useCallback((lat: number, lng: number) => {
+        if (!geocoderRef.current) return;
+
+        geocoderRef.current.geocode(
+            { location: { lat, lng } },
+            (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
+                if (status === 'OK' && results && results[0] && isMounted) {
+                    const direccion = results[0].formatted_address;
+                    setDireccion(direccion);
+                    onLocationSelect(direccion, lat, lng);
+                }
+            }
+        );
+    }, [onLocationSelect, isMounted]);
 
     const onMarkerDragEnd = useCallback((event: google.maps.MapMouseEvent) => {
-        if (event.latLng) {
+        if (event.latLng && isMounted) {
             const lat = event.latLng.lat();
             const lng = event.latLng.lng();
             setMarker({ lat, lng });
-
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                if (status === 'OK' && results && results[0]) {
-                    const direccion = results[0].formatted_address;
-                    setDireccion(direccion);
-                    onLocationSelect(direccion, lat, lng);
-                }
-            });
+            geocodeLocation(lat, lng);
         }
-    }, [onLocationSelect]);
+    }, [geocodeLocation, isMounted]);
 
     const handleMapClick = useCallback((event: google.maps.MapMouseEvent) => {
-        if (event.latLng) {
+        if (event.latLng && isMounted) {
             const lat = event.latLng.lat();
             const lng = event.latLng.lng();
             setMarker({ lat, lng });
-
-            const geocoder = new google.maps.Geocoder();
-            geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-                if (status === 'OK' && results && results[0]) {
-                    const direccion = results[0].formatted_address;
-                    setDireccion(direccion);
-                    onLocationSelect(direccion, lat, lng);
-                }
-            });
+            geocodeLocation(lat, lng);
         }
-    }, [onLocationSelect]);
+    }, [geocodeLocation, isMounted]);
 
-    // ✅ BUSCAR SUGERENCIAS con AutocompleteSuggestion
-    const buscarSugerencias = useCallback((input: string) => {
-        if (!autocompleteServiceRef.current || input.length < 3) {
-            setSuggestions([]);
-            return;
-        }
-
-        setIsSearching(true);
-
-        try {
-            // ✅ Usar la API actualizada
-            const service = autocompleteServiceRef.current;
-            const request = {
-                input: input,
-                // ✅ 'address' es el tipo correcto para direcciones
-                types: ['address'] as google.maps.places.AutocompletePrediction['types'],
-                componentRestrictions: { country: 'ar' } as google.maps.places.ComponentRestrictions,
-            };
-
-            // ✅ Llamar al método correcto
-            if (typeof service.getPlacePredictions === 'function') {
-                // Para AutocompleteService (fallback)
-                service.getPlacePredictions(request, handlePredictions);
-            } else if (typeof service.getSuggestions === 'function') {
-                // ✅ Para AutocompleteSuggestion (nuevo)
-                service.getSuggestions(request, handleSuggestions);
-            } else {
-                console.warn('⚠️ [LocationPicker] Método de búsqueda no encontrado');
-                setSuggestions([]);
-                setIsSearching(false);
-            }
-        } catch (error) {
-            console.warn('⚠️ [LocationPicker] Error en búsqueda:', error);
-            setSuggestions([]);
-            setIsSearching(false);
-        }
-    }, []);
-
-    // ✅ Handler para AutocompleteService (fallback)
-    const handlePredictions = (predictions: google.maps.places.AutocompletePrediction[] | null, status: google.maps.places.PlacesServiceStatus) => {
+    // ✅ Handler para AutocompleteService (fallback) - CON TIPADO
+    const handlePredictions = useCallback((
+        predictions: GooglePlacePrediction[] | null,
+        status: google.maps.places.PlacesServiceStatus
+    ) => {
+        if (!isMounted) return;
         setIsSearching(false);
 
         if (status === 'OK' && predictions) {
-            const formatted = predictions.map((prediction) => ({
+            const formatted: AutocompleteSuggestionResult[] = predictions.map((prediction) => ({
                 placePrediction: {
                     placeId: prediction.place_id,
                     text: {
@@ -160,15 +161,18 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
         } else {
             setSuggestions([]);
         }
-    };
+    }, [isMounted]);
 
-    // ✅ Handler para AutocompleteSuggestion (nuevo)
-    const handleSuggestions = (suggestions: any[], status: google.maps.places.PlacesServiceStatus) => {
+    // ✅ Handler para AutocompleteSuggestion (nuevo) - CON TIPADO
+    const handleSuggestions = useCallback((
+        suggestionsData: GoogleSuggestion[] | null,
+        status: google.maps.places.PlacesServiceStatus
+    ) => {
+        if (!isMounted) return;
         setIsSearching(false);
 
-        if (status === 'OK' && suggestions) {
-            // ✅ Mapear el formato de AutocompleteSuggestion
-            const formatted = suggestions.map((suggestion) => ({
+        if (status === 'OK' && suggestionsData) {
+            const formatted: AutocompleteSuggestionResult[] = suggestionsData.map((suggestion) => ({
                 placePrediction: {
                     placeId: suggestion.placePrediction?.placeId || '',
                     text: {
@@ -180,31 +184,101 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
         } else {
             setSuggestions([]);
         }
-    };
+    }, [isMounted]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = e.target.value;
-        setDireccion(value);
-
-        // ✅ Buscar sugerencias
-        buscarSugerencias(value);
-    };
-
-    const handleSelectSuggestion = (suggestion: AutocompleteSuggestionResult) => {
-        const placeId = suggestion.placePrediction?.placeId;
-
-        if (!placeId) {
+    // ✅ Buscar sugerencias
+    const buscarSugerencias = useCallback((input: string) => {
+        if (!autocompleteServiceRef.current || input.length < 3 || !isMounted) {
+            setSuggestions([]);
             return;
         }
 
-        // ✅ Crear un elemento temporal para PlacesService
+        setIsSearching(true);
+
+        try {
+            const service = autocompleteServiceRef.current;
+            const request = {
+                input: input,
+                types: ['address'] as google.maps.places.AutocompletePrediction['types'],
+                componentRestrictions: { country: 'ar' } as google.maps.places.ComponentRestrictions,
+            };
+
+            if (typeof service.getPlacePredictions === 'function') {
+                // ✅ AutocompleteService (fallback)
+                service.getPlacePredictions(
+                    request,
+                    (predictions: google.maps.places.AutocompletePrediction[] | null, status: google.maps.places.PlacesServiceStatus) => {
+                        if (!isMounted) return;
+                        setIsSearching(false);
+
+                        if (status === 'OK' && predictions) {
+                            const formatted: AutocompleteSuggestionResult[] = predictions.map((prediction) => ({
+                                placePrediction: {
+                                    placeId: prediction.place_id,
+                                    text: {
+                                        text: prediction.description,
+                                    },
+                                },
+                            }));
+                            setSuggestions(formatted);
+                        } else {
+                            setSuggestions([]);
+                        }
+                    }
+                );
+            } else if (typeof service.getSuggestions === 'function') {
+                // ✅ AutocompleteSuggestion (nuevo)
+                service.getSuggestions(
+                    request,
+                    (suggestionsData: GoogleSuggestion[] | null, status: google.maps.places.PlacesServiceStatus) => {
+                        if (!isMounted) return;
+                        setIsSearching(false);
+
+                        if (status === 'OK' && suggestionsData) {
+                            const formatted: AutocompleteSuggestionResult[] = suggestionsData.map((suggestion) => ({
+                                placePrediction: {
+                                    placeId: suggestion.placePrediction?.placeId || '',
+                                    text: {
+                                        text: suggestion.placePrediction?.text?.text || suggestion.description || '',
+                                    },
+                                },
+                            }));
+                            setSuggestions(formatted);
+                        } else {
+                            setSuggestions([]);
+                        }
+                    }
+                );
+            } else {
+                setSuggestions([]);
+                setIsSearching(false);
+            }
+        } catch {
+            if (isMounted) {
+                setSuggestions([]);
+                setIsSearching(false);
+            }
+        }
+    }, [isMounted]);
+
+    const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setDireccion(value);
+        buscarSugerencias(value);
+    }, [buscarSugerencias]);
+
+    const handleSelectSuggestion = useCallback((suggestion: AutocompleteSuggestionResult) => {
+        const placeId = suggestion.placePrediction?.placeId;
+
+        if (!placeId) return;
+
         const container = document.createElement('div');
         const service = new google.maps.places.PlacesService(container);
 
         service.getDetails(
             { placeId: placeId, fields: ['geometry', 'formatted_address'] },
             (place: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
-                if (status === 'OK' && place?.geometry?.location) {
+                if (status === 'OK' && place?.geometry?.location && isMounted) {
                     const lat = place.geometry.location.lat();
                     const lng = place.geometry.location.lng();
                     const direccion = place.formatted_address || suggestion.placePrediction?.text?.text || '';
@@ -218,14 +292,11 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
                         map.panTo({ lat, lng });
                         map.setZoom(15);
                     }
-                } else {
-                    console.warn('⚠️ [LocationPicker] Error obteniendo detalles del lugar:', status);
                 }
             }
         );
-    };
+    }, [map, onLocationSelect, isMounted]);
 
-    // Muestra el loader mientras carga
     if (!isLoaded) {
         return (
             <div className="flex items-center justify-center h-32 bg-stone-100 rounded-2xl border-4 border-black">
@@ -249,7 +320,6 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
 
     return (
         <div className="space-y-4">
-            {/* Input de búsqueda con sugerencias */}
             <div className="relative">
                 <input
                     ref={inputRef}
@@ -260,7 +330,6 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
                     className="w-full bg-stone-50 dark:bg-stone-800 border-4 border-black p-4 rounded-2xl font-bold text-xs uppercase outline-none focus:ring-2 focus:ring-[#FFCA28]/30 dark:text-white"
                 />
 
-                {/* Sugerencias de autocompletado */}
                 {suggestions.length > 0 && (
                     <ul className="absolute z-50 w-full bg-white dark:bg-stone-800 border-4 border-black mt-1 rounded-xl max-h-60 overflow-y-auto shadow-[6px_6px_0px_0px_black]">
                         {suggestions.map((suggestion, index) => (
@@ -281,7 +350,6 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
                 )}
             </div>
 
-            {/* Mapa */}
             <div className="relative w-full h-75 rounded-2xl overflow-hidden border-4 border-black">
                 <GoogleMap
                     mapContainerStyle={mapContainerStyle}
@@ -306,13 +374,11 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
                     )}
                 </GoogleMap>
 
-                {/* Instrucción */}
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-black px-4 py-2 rounded-full border-2 border-white/20 backdrop-blur-sm">
                     📍 Arrastrá el pin o tocá el mapa para ubicarte
                 </div>
             </div>
 
-            {/* Mostrar dirección seleccionada */}
             {direccion && (
                 <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-800">
                     <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">
@@ -326,3 +392,5 @@ export default function LocationPicker({ onLocationSelect, initialDireccion = ''
         </div>
     );
 }
+
+export default memo(LocationPicker);
