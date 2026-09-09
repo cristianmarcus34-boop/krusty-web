@@ -1,0 +1,8 @@
+{
+    "rewrites": [
+        {
+            "source": "/canjear",
+            "destination": "/canjear"
+        }
+    ]
+}
