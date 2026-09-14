@@ -30,7 +30,7 @@ export default function ThemeToggle() {
         return (
             <button
                 type="button"
-                className="fixed bottom-6 right-6 z-50 p-3.5 rounded-full border-2 border-black bg-black text-white text-xl opacity-0"
+                className="fixed bottom-20 right-6 z-50 p-3.5 rounded-full border-2 border-black bg-black text-white text-xl opacity-0"
                 aria-label="Cargando tema..."
             >
                 🌙
@@ -47,7 +47,7 @@ export default function ThemeToggle() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className={`fixed bottom-6 right-6 z-50 p-3.5 rounded-full border-2 transition-all text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5
+            className={`fixed bottom-20 right-6 z-50 p-3.5 rounded-full border-2 transition-all text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5
                 ${theme === 'light'
                     ? 'bg-black text-white border-black'
                     : 'bg-white text-black border-white'

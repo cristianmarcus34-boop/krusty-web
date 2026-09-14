@@ -25,6 +25,10 @@ const ALIAS_TRANSFERENCIA = "krustyburger2025";
 const DIRECCION_LOCAL = "CALLE 853 N° 1149, VILLA LA FLORIDA";
 const MINIMO_ENVIO_GRATIS = 19000;
 
+// ✅ NUEVAS REGLAS DE NEGOCIO
+const MAX_DESCUENTO_TOTAL = 0.25;        // Descuento total acumulado máximo
+const MINIMO_PARA_PUNTOS = 15000;        // Mínimo de compra para usar puntos
+
 // ============================================================
 // 📌 INTERFACES
 // ============================================================
@@ -116,7 +120,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           .from('perfiles')
           .select('puntos_disponibles, puntos_acumulados')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error('❌ [CARRITO] Error cargando puntos:', error);
@@ -183,12 +187,9 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         .from('carritos')
         .select('items')
         .eq('usuario_id', userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
-        if (error.code === 'PGRST116') {
-          return null;
-        }
         console.error('❌ [CARRITO] Error cargando carrito:', error);
         return null;
       }
@@ -270,7 +271,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             .from('perfiles')
             .select('*')
             .eq('id', supabaseSession.user.id)
-            .single();
+            .maybeSingle();
 
           if (error) {
             console.error('❌ [FIX] Error cargando perfil:', error);
@@ -508,55 +509,150 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     return null;
   }, [customer.tipoEntrega, resultadoEnvio, subtotal]);
 
-  const totalConDescuentoNivel = useMemo(() => {
-    const envio = costoEnvio === null ? 0 : costoEnvio;
-    return Math.max(0, subtotal - descuentoNivelAplicado + envio);
-  }, [subtotal, descuentoNivelAplicado, costoEnvio]);
-
   // ============================================================
   // 💰 FUNCIONES DE PUNTOS
   // ============================================================
 
+  const puedeUsarPuntos = useMemo(() => {
+    return (
+      isAuthenticated &&
+      puntosDisponibles > 0 &&
+      subtotal >= MINIMO_PARA_PUNTOS
+    );
+  }, [isAuthenticated, puntosDisponibles, subtotal]);
+
+  const faltaParaUsarPuntos = useMemo(() => {
+    if (subtotal >= MINIMO_PARA_PUNTOS) return 0;
+    return MINIMO_PARA_PUNTOS - subtotal;
+  }, [subtotal]);
+
+  // El descuento total de nivel + puntos nunca puede superar el 25%.
+  const maxDescuentoTotalPermitido = useMemo(() => {
+    return Math.floor(subtotal * MAX_DESCUENTO_TOTAL);
+  }, [subtotal]);
+
+  // Lo que queda disponible para puntos después del descuento de nivel.
+  const maxDescuentoDisponibleParaPuntos = useMemo(() => {
+    return Math.max(
+      0,
+      maxDescuentoTotalPermitido - descuentoNivelAplicado
+    );
+  }, [maxDescuentoTotalPermitido, descuentoNivelAplicado]);
+
+  const maxPuntosPermitidos = useMemo(() => {
+    if (!puedeUsarPuntos) return 0;
+
+    return Math.min(
+      puntosDisponibles,
+      maxDescuentoDisponibleParaPuntos
+    );
+  }, [
+    puedeUsarPuntos,
+    puntosDisponibles,
+    maxDescuentoDisponibleParaPuntos,
+  ]);
+
   const calcularDescuentoPorPuntos = useCallback(
     (puntos: number) => {
-      const descuento = puntos;
-      const maxDescuento = totalConDescuentoNivel * 0.5;
-      return Math.min(descuento, maxDescuento);
+      const puntosSeguros = Math.max(0, Math.floor(puntos));
+
+      return Math.min(
+        puntosSeguros,
+        maxDescuentoDisponibleParaPuntos
+      );
     },
-    [totalConDescuentoNivel]
+    [maxDescuentoDisponibleParaPuntos]
   );
 
   const handlePuntosChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const valor = parseInt(e.target.value) || 0;
-      const maxPuntos = Math.min(valor, puntosDisponibles);
-      setPuntosAUsar(maxPuntos);
-      setDescuentoPorPuntos(calcularDescuentoPorPuntos(maxPuntos));
+      const valor = e.target.value;
+
+      if (valor === '') {
+        setPuntosAUsar(0);
+        setDescuentoPorPuntos(0);
+        return;
+      }
+
+      let puntos = Number(valor);
+
+      if (!Number.isFinite(puntos)) {
+        puntos = 0;
+      }
+
+      puntos = Math.floor(puntos);
+      puntos = Math.max(0, puntos);
+      puntos = Math.min(puntos, maxPuntosPermitidos);
+
+      const descuento = calcularDescuentoPorPuntos(puntos);
+
+      setPuntosAUsar(puntos);
+      setDescuentoPorPuntos(descuento);
     },
-    [puntosDisponibles, calcularDescuentoPorPuntos]
+    [maxPuntosPermitidos, calcularDescuentoPorPuntos]
   );
 
   const usarTodosLosPuntos = useCallback(() => {
-    const maxPuntos = Math.min(
-      puntosDisponibles,
-      Math.floor(totalConDescuentoNivel * 0.5)
-    );
-    setPuntosAUsar(maxPuntos);
-    setDescuentoPorPuntos(calcularDescuentoPorPuntos(maxPuntos));
-  }, [puntosDisponibles, totalConDescuentoNivel, calcularDescuentoPorPuntos]);
+    const puntos = maxPuntosPermitidos;
+
+    setPuntosAUsar(puntos);
+    setDescuentoPorPuntos(calcularDescuentoPorPuntos(puntos));
+  }, [maxPuntosPermitidos, calcularDescuentoPorPuntos]);
 
   const resetearPuntos = useCallback(() => {
     setPuntosAUsar(0);
     setDescuentoPorPuntos(0);
   }, []);
 
+  // Si cambia el carrito y baja el límite de puntos, ajustamos automáticamente.
+  useEffect(() => {
+    if (puntosAUsar <= maxPuntosPermitidos) return;
+
+    setPuntosAUsar(maxPuntosPermitidos);
+    setDescuentoPorPuntos(
+      calcularDescuentoPorPuntos(maxPuntosPermitidos)
+    );
+  }, [
+    puntosAUsar,
+    maxPuntosPermitidos,
+    calcularDescuentoPorPuntos,
+  ]);
+
   // ============================================================
   // 🧮 MONTOS Y VALIDACIONES
   // ============================================================
 
+  // El nivel y los puntos se acumulan, pero respetando el tope global del 25%.
+  const descuentoFinalAplicado = useMemo(() => {
+    return Math.min(
+      descuentoNivelAplicado + descuentoPorPuntos,
+      maxDescuentoTotalPermitido
+    );
+  }, [
+    descuentoNivelAplicado,
+    descuentoPorPuntos,
+    maxDescuentoTotalPermitido,
+  ]);
+
   const montoTotalFinal = useMemo(() => {
-    return Math.max(0, totalConDescuentoNivel - descuentoPorPuntos);
-  }, [totalConDescuentoNivel, descuentoPorPuntos]);
+    const envio = costoEnvio === null ? 0 : costoEnvio;
+
+    return Math.max(
+      0,
+      subtotal + envio - descuentoFinalAplicado
+    );
+  }, [subtotal, costoEnvio, descuentoFinalAplicado]);
+
+  const descuentoGanador = useMemo(() => {
+    if (descuentoNivelAplicado > 0 && descuentoPorPuntos > 0) {
+      return 'ambos';
+    }
+
+    if (descuentoNivelAplicado > 0) return 'nivel';
+    if (descuentoPorPuntos > 0) return 'puntos';
+
+    return null;
+  }, [descuentoNivelAplicado, descuentoPorPuntos]);
 
   const vuelto = useMemo(() => {
     const paga = parseFloat(montoEfectivo);
@@ -611,7 +707,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     []
   );
 
-  // ✅ FUNCIÓN: VACIAR CARRITO
   const handleClearCart = useCallback(() => {
     if (items.length === 0) return;
 
@@ -671,23 +766,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         descuento_puntos: descuentoPorPuntos,
       };
 
-      if (puntosAUsar > 0 && userId) {
-        const nuevosPuntos = (perfil?.puntos_disponibles || 0) - puntosAUsar;
-        await supabase
-          .from('perfiles')
-          .update({ puntos_disponibles: nuevosPuntos })
-          .eq('id', userId);
-
-        if (actualizarPerfil) {
-          await actualizarPerfil({ puntos_disponibles: nuevosPuntos });
-        }
-      }
-
       const { data: pedidoGuardado, error } = await supabase
         .from('pedidos')
         .insert([pedidoData])
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Error al guardar pedido:', error);
@@ -715,9 +798,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         `📍 *DIR:* ${direccionCompleta}\n` +
         `💳 *PAGO:* Mercado Pago\n` +
         (customer.notes ? `📝 *NOTAS:* ${customer.notes}\n` : '') +
-        (descuentoNivelAplicado > 0 ? `🎯 *DESCUENTO ${nivel?.nombre?.toUpperCase()}:* ${descuentoNivelAplicado}% (${nivel?.icono || '⭐'})\n` : '') +
+        (descuentoNivelAplicado > 0 ? `🎯 *DESCUENTO ${nivel?.nombre?.toUpperCase()}:* ${beneficios?.descuento}% (-$${descuentoNivelAplicado.toLocaleString('es-AR')}) (${nivel?.icono || '⭐'})\n` : '') +
         (envioGratisAplicado ? `🆓 *ENVÍO GRATIS* (${subtotal >= MINIMO_ENVIO_GRATIS ? 'por superar $19.000' : `Beneficio ${nivel?.nombre || ''}`})\n` : '') +
-        (puntosAUsar > 0 ? `⭐ *PUNTOS USADOS:* ${puntosAUsar} pts (-$${descuentoPorPuntos.toLocaleString('es-AR')})\n` : '') +
+        (descuentoPorPuntos > 0 ? `⭐ *PUNTOS USADOS:* ${puntosAUsar} pts (-$${descuentoPorPuntos.toLocaleString('es-AR')})\n` : '') +
+        (descuentoNivelAplicado > 0 && descuentoPorPuntos > 0 ? `ℹ️ *Descuento acumulado limitado al 25% del subtotal*\n` : '') +
+
         `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
         items
           .map((item) => {
@@ -732,8 +817,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           .join('\n\n') +
         `\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `💵 *SUBTOTAL:* $${subtotal.toLocaleString('es-AR')}\n` +
-        (descuentoNivelAplicado > 0 ? `🎯 *DESCUENTO:* -$${descuentoNivelAplicado.toLocaleString('es-AR')}\n` : '') +
-        (puntosAUsar > 0 ? `⭐ *PUNTOS:* -$${descuentoPorPuntos.toLocaleString('es-AR')}\n` : '') +
+        (descuentoNivelAplicado > 0 ? `🎯 *DESCUENTO ${nivel?.nombre} (${beneficios?.descuento}%):* -$${descuentoNivelAplicado.toLocaleString('es-AR')}\n` : '') +
+        (descuentoPorPuntos > 0 ? `⭐ *PUNTOS (${puntosAUsar.toLocaleString('es-AR')} pts):* -$${descuentoPorPuntos.toLocaleString('es-AR')}\n` : '') +
         `🛵 *ENVÍO:* ${customer.tipoEntrega === 'Retiro'
           ? 'N/A'
           : envioGratisAplicado
@@ -852,27 +937,46 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         descuento_puntos: descuentoPorPuntos,
       };
 
-      if (puntosAUsar > 0 && userId) {
-        const nuevosPuntos = (perfil?.puntos_disponibles || 0) - puntosAUsar;
-        await supabase
-          .from('perfiles')
-          .update({ puntos_disponibles: nuevosPuntos })
-          .eq('id', userId);
-
-        if (actualizarPerfil) {
-          await actualizarPerfil({ puntos_disponibles: nuevosPuntos });
-        }
-      }
-
       const { data: pedidoGuardado, error } = await supabase
         .from('pedidos')
         .insert([pedidoData])
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Error al guardar pedido:', error);
         throw new Error(`Error al guardar pedido: ${error.message}`);
+      }
+
+      // Los puntos se consumen después de guardar correctamente el pedido.
+      // En efectivo se pueden descontar inmediatamente porque el pedido se confirma.
+      // En transferencia/Mercado Pago deben descontarse al confirmar el pago.
+      if (
+        puntosAUsar > 0 &&
+        userId &&
+        customer.metodoPago === 'Efectivo'
+      ) {
+        const nuevosPuntos = Math.max(
+          0,
+          puntosDisponibles - puntosAUsar
+        );
+
+        const { error: errorPuntos } = await supabase
+          .from('perfiles')
+          .update({ puntos_disponibles: nuevosPuntos })
+          .eq('id', userId);
+
+        if (errorPuntos) {
+          console.error('❌ Error descontando puntos:', errorPuntos);
+        } else {
+          setPuntosDisponibles(nuevosPuntos);
+
+          if (actualizarPerfil) {
+            await actualizarPerfil({
+              puntos_disponibles: nuevosPuntos,
+            });
+          }
+        }
       }
 
       const infoPedido = {
@@ -898,7 +1002,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         `💳 *PAGO:* ${detallePago}\n` +
         (customer.notes ? `📝 *NOTAS:* ${customer.notes}\n` : '') +
         (descuentoNivelAplicado > 0
-          ? `🎯 *DESCUENTO ${nivel?.nombre?.toUpperCase()}:* ${descuentoNivelAplicado}% (${nivel?.icono || '⭐'})\n`
+          ? `🎯 *DESCUENTO ${nivel?.nombre?.toUpperCase()}:* ${beneficios?.descuento}% (-$${descuentoNivelAplicado.toLocaleString('es-AR')}) (${nivel?.icono || '⭐'})\n`
           : '') +
         (envioGratisAplicado
           ? `🆓 *ENVÍO GRATIS* (${subtotal >= MINIMO_ENVIO_GRATIS
@@ -906,11 +1010,13 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             : `Beneficio ${nivel?.nombre || ''}`
           })\n`
           : '') +
-        (puntosAUsar > 0
-          ? `⭐ *PUNTOS USADOS:* ${puntosAUsar} pts (-$${descuentoPorPuntos.toLocaleString(
+        (descuentoPorPuntos > 0
+          ? `⭐ *PUNTOS USADOS:*  ${puntosAUsar} pts (-$${descuentoPorPuntos.toLocaleString(
             'es-AR'
           )})\n`
           : '') +
+        (descuentoNivelAplicado > 0 && descuentoPorPuntos > 0 ? `ℹ️ *Descuento acumulado limitado al 25% del subtotal*\n` : '') +
+
         `━━━━━━━━━━━━━━━━━━━━━━━━\n\n` +
         items
           .map((item) => {
@@ -928,10 +1034,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         `\n\n━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `💵 *SUBTOTAL:* $${subtotal.toLocaleString('es-AR')}\n` +
         (descuentoNivelAplicado > 0
-          ? `🎯 *DESCUENTO:* -$${descuentoNivelAplicado.toLocaleString('es-AR')}\n`
+          ? `🎯 *DESCUENTO ${nivel?.nombre} (${beneficios?.descuento}%):* -$${descuentoNivelAplicado.toLocaleString('es-AR')}\n`
           : '') +
-        (puntosAUsar > 0
-          ? `⭐ *PUNTOS:* -$${descuentoPorPuntos.toLocaleString('es-AR')}\n`
+        (descuentoPorPuntos > 0
+          ? `⭐ *PUNTOS (${puntosAUsar.toLocaleString('es-AR')} pts):* -$${descuentoPorPuntos.toLocaleString('es-AR')}\n`
           : '') +
         `🛵 *ENVÍO:* ${customer.tipoEntrega === 'Retiro'
           ? 'N/A'
@@ -1080,58 +1186,59 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 {/* BENEFICIOS */}
                 {perfil && beneficios && nivel && (
                   <div className="bg-[#FAD02C]/10 border border-[#FAD02C]/20 rounded-xl p-3.5 sm:p-4">
-                    <div className="flex items-center gap-3">
+
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FAD02C]/20 flex items-center justify-center text-xl sm:text-2xl shrink-0">
                         {nivel.icono || '⭐'}
                       </div>
 
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 overflow-hidden">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-xs sm:text-sm font-black uppercase text-stone-700 dark:text-stone-300">
+                          <p className="text-xs sm:text-sm font-black uppercase text-stone-700 dark:text-stone-300 truncate">
                             {nivel.nombre}
                           </p>
                           {beneficios.descuento > 0 && (
-                            <span className="text-[8px] sm:text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-500/20 px-2 py-0.5 rounded-full">
+                            <span className="text-[8px] sm:text-[10px] font-bold text-red-500 bg-red-50 dark:bg-red-500/20 px-2 py-0.5 rounded-full whitespace-nowrap">
                               {beneficios.descuento}% OFF
                             </span>
                           )}
                         </div>
-                        <p className="text-[9px] sm:text-[10px] text-stone-500 dark:text-stone-400 leading-tight">
+                        <p className="text-[9px] sm:text-[10px] text-stone-500 dark:text-stone-400 leading-tight truncate">
                           {descripcionBeneficios}
                         </p>
                       </div>
 
-                      <div className="text-right shrink-0">
-                        <p className="text-[8px] sm:text-[9px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider">
+                      <div className="shrink-0 text-right min-w-[70px] sm:min-w-[90px]">
+                        <p className="text-[8px] sm:text-[9px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-wider whitespace-nowrap">
                           Puntos
                         </p>
-                        <p className="text-base sm:text-lg font-black text-[#FAD02C]">
-                          {cargandoPuntos ? '...' : puntosDisponibles}
+                        <p className="text-lg sm:text-2xl font-black text-[#FAD02C] whitespace-nowrap tabular-nums leading-none">
+                          {cargandoPuntos ? '...' : puntosDisponibles.toLocaleString('es-AR')}
                         </p>
                       </div>
                     </div>
 
                     {(descuentoNivelAplicado > 0 ||
                       envioGratisAplicado ||
-                      puntosAUsar > 0) && (
+                      descuentoPorPuntos > 0) && (
                         <div className="flex flex-wrap gap-1.5 mt-2.5 pt-2.5 border-t border-[#FAD02C]/20">
                           {descuentoNivelAplicado > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-red-500 border border-stone-200 dark:border-stone-700">
-                              🎯 -${descuentoNivelAplicado.toLocaleString('es-AR')}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-red-500 border border-stone-200 dark:border-stone-700 whitespace-nowrap">
+                              🎯 -${descuentoNivelAplicado.toLocaleString('es-AR')} ({nivel?.nombre})
                             </span>
                           )}
-                          {envioGratisAplicado && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-emerald-500 border border-stone-200 dark:border-stone-700">
-                              🆓 Envío gratis
-                            </span>
-                          )}
-                          {puntosAUsar > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-[#FAD02C] border border-stone-200 dark:border-stone-700">
+                          {descuentoPorPuntos > 0 && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-[#FAD02C] border border-stone-200 dark:border-stone-700 whitespace-nowrap">
                               ⭐ -${descuentoPorPuntos.toLocaleString('es-AR')} (puntos)
                             </span>
                           )}
+                          {envioGratisAplicado && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-emerald-500 border border-stone-200 dark:border-stone-700 whitespace-nowrap">
+                              🆓 Envío gratis
+                            </span>
+                          )}
                           {beneficios.prioridadEntrega > 1 && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-blue-500 border border-stone-200 dark:border-stone-700">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-white dark:bg-stone-800 rounded-full text-[9px] sm:text-[10px] font-bold text-blue-500 border border-stone-200 dark:border-stone-700 whitespace-nowrap">
                               ⚡ Prioridad {beneficios.prioridadEntrega}
                             </span>
                           )}
@@ -1372,7 +1479,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         </div>
                       )}
 
-                      {/* SECCIÓN DE CANJE DE PUNTOS */}
+                      {/* SECCIÓN DE CANJE DE PUNTOS - NUEVA LÓGICA */}
                       {items.length > 0 && (
                         <>
                           {cargandoPuntos && (
@@ -1391,18 +1498,20 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             </div>
                           )}
 
+                          {/* ✅ CASO 1: Tiene puntos Y supera el mínimo → muestra selector */}
                           {!cargandoPuntos &&
                             !errorPuntos &&
                             isAuthenticated &&
-                            puntosDisponibles > 0 && (
+                            puntosDisponibles > 0 &&
+                            puedeUsarPuntos && (
                               <div className="bg-[#FAD02C]/5 border-2 border-[#FAD02C]/30 rounded-xl p-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-base sm:text-lg">⭐</span>
-                                    <span className="text-[10px] sm:text-xs font-black uppercase text-stone-500">
-                                      Puntos disponibles:{' '}
-                                      <span className="text-[#FAD02C] text-xs sm:text-sm">
-                                        {puntosDisponibles}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="text-base sm:text-lg shrink-0">⭐</span>
+                                    <span className="text-[10px] sm:text-xs font-black uppercase text-stone-500 truncate">
+                                      Puntos:{' '}
+                                      <span className="text-[#FAD02C] text-xs sm:text-sm tabular-nums">
+                                        {puntosDisponibles.toLocaleString('es-AR')}
                                       </span>
                                     </span>
                                   </div>
@@ -1412,7 +1521,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                         !mostrarSelectorPuntos
                                       )
                                     }
-                                    className="text-[10px] sm:text-xs font-black text-[#D32F2F] hover:text-black transition-colors px-3 py-1 rounded-full bg-[#D32F2F]/10 hover:bg-[#D32F2F]/20"
+                                    className="text-[10px] sm:text-xs font-black text-[#D32F2F] hover:text-black transition-colors px-3 py-1 rounded-full bg-[#D32F2F]/10 hover:bg-[#D32F2F]/20 whitespace-nowrap shrink-0"
                                   >
                                     {mostrarSelectorPuntos
                                       ? '✕ Ocultar'
@@ -1422,29 +1531,34 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                                 {mostrarSelectorPuntos && (
                                   <div className="mt-3 space-y-2 bg-white dark:bg-stone-800 p-3 rounded-lg">
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] sm:text-xs font-bold text-stone-400">
-                                        ⭐
-                                      </span>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max={Math.min(
-                                          puntosDisponibles,
-                                          Math.floor(totalConDescuentoNivel * 0.5)
-                                        )}
-                                        value={puntosAUsar || ''}
-                                        onChange={handlePuntosChange}
-                                        placeholder="0"
-                                        className="w-20 sm:w-24 bg-stone-50 dark:bg-stone-700 border-2 border-stone-200 dark:border-stone-600 p-2 rounded-xl font-bold text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#FAD02C]/30 dark:text-white"
-                                      />
-                                      <span className="text-[10px] sm:text-xs font-bold text-stone-400">
-                                        pts
-                                      </span>
-                                      <span className="text-[10px] sm:text-xs font-bold text-[#FAD02C] ml-1">
-                                        = -$
-                                        {descuentoPorPuntos.toLocaleString('es-AR')}
-                                      </span>
+
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-[10px] sm:text-xs font-bold text-stone-400 shrink-0">
+                                          ⭐
+                                        </span>
+                                        <input
+                                          type="number"
+                                          inputMode="numeric"
+                                          min={0}
+                                          max={maxPuntosPermitidos}
+                                          step={1}
+                                          value={puntosAUsar === 0 ? '' : puntosAUsar}
+                                          onChange={handlePuntosChange}
+                                          placeholder={`Máx: ${maxPuntosPermitidos.toLocaleString('es-AR')}`}
+                                          disabled={!puedeUsarPuntos || maxPuntosPermitidos <= 0}
+                                          className="flex-1 min-w-0 bg-stone-50 dark:bg-stone-700 border-2 border-stone-200 dark:border-stone-600 px-2 py-2 rounded-xl font-bold text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#FAD02C]/30 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                        />
+                                        <span className="text-[10px] sm:text-xs font-bold text-stone-400 shrink-0">
+                                          pts
+                                        </span>
+                                      </div>
+
+                                      <div className="text-right">
+                                        <span className="text-[10px] sm:text-xs font-bold text-[#FAD02C] whitespace-nowrap tabular-nums">
+                                          = -${descuentoPorPuntos.toLocaleString('es-AR')}
+                                        </span>
+                                      </div>
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
@@ -1465,21 +1579,41 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                                     </div>
 
                                     <p className="text-[7px] sm:text-[8px] font-bold text-stone-400">
-                                      💡 Máximo 50% del total (
-                                      {Math.floor(totalConDescuentoNivel * 0.5).toLocaleString(
-                                        'es-AR'
-                                      )}{' '}
-                                      pts = -$
-                                      {(totalConDescuentoNivel * 0.5).toLocaleString(
-                                        'es-AR'
-                                      )}
-                                      )
+                                      💡 Podés usar hasta {maxPuntosPermitidos.toLocaleString('es-AR')} puntos (-$
+                                      {calcularDescuentoPorPuntos(maxPuntosPermitidos).toLocaleString('es-AR')})
                                     </p>
+
+                                    <p className="text-[7px] sm:text-[8px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-lg p-2 text-center">
+                                      🎯 El descuento total de nivel + puntos no puede superar el <strong>25%</strong> del subtotal.
+                                    </p>
+
+                                    {descuentoNivelAplicado > 0 && descuentoPorPuntos > 0 && (
+                                      <p className="text-[7px] sm:text-[8px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/30 rounded p-1.5 text-center">
+                                        🎯 Descuento combinado limitado al 25% del subtotal.
+                                      </p>
+                                    )}
                                   </div>
                                 )}
                               </div>
                             )}
 
+                          {/* ✅ CASO 2: Tiene puntos pero NO supera el mínimo → muestra mensaje */}
+                          {!cargandoPuntos &&
+                            !errorPuntos &&
+                            isAuthenticated &&
+                            puntosDisponibles > 0 &&
+                            !puedeUsarPuntos && (
+                              <div className="bg-amber-50 dark:bg-amber-950/30 border-2 border-amber-400 dark:border-amber-600 rounded-xl p-3 text-center">
+                                <p className="text-[10px] sm:text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                                  🛒 Agregá ${faltaParaUsarPuntos.toLocaleString('es-AR')} más para usar tus puntos
+                                </p>
+                                <p className="text-[8px] sm:text-[9px] font-bold text-amber-600 dark:text-amber-500 mt-1">
+                                  Mínimo de compra: ${MINIMO_PARA_PUNTOS.toLocaleString('es-AR')} · Tenés {puntosDisponibles.toLocaleString('es-AR')} pts
+                                </p>
+                              </div>
+                            )}
+
+                          {/* ✅ CASO 3: No tiene puntos */}
                           {!cargandoPuntos &&
                             !errorPuntos &&
                             isAuthenticated &&
@@ -1494,6 +1628,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                               </div>
                             )}
 
+                          {/* ✅ CASO 4: No está autenticado */}
                           {!cargandoPuntos &&
                             !errorPuntos &&
                             !isAuthenticated && (
@@ -1615,7 +1750,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           </div>
 
           {/* ========================================================== */}
-          {/* FOOTER - OPTIMIZADO */}
+          {/* FOOTER - DESCUENTO ACUMULADO CON TOPE DEL 25% */}
           {/* ========================================================== */}
           {!isAuthLoading && items.length > 0 && (
             <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-t border-stone-100 dark:border-stone-800 px-3 sm:px-5 pt-3 sm:pt-4 pb-[max(env(safe-area-inset-bottom),12px)] sm:pb-[max(env(safe-area-inset-bottom),16px)] shadow-[0_-10px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
@@ -1625,16 +1760,18 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   <span>${subtotal.toLocaleString('es-AR')}</span>
                 </div>
 
+                {/* 🎯 Descuento por nivel */}
                 {descuentoNivelAplicado > 0 && (
                   <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold text-[10px] sm:text-[12px] uppercase tracking-tighter">
-                    <span>🎯 Descuento {nivel?.nombre}</span>
+                    <span>🎯 Descuento {nivel?.nombre} ({beneficios?.descuento}%)</span>
                     <span>-${descuentoNivelAplicado.toLocaleString('es-AR')}</span>
                   </div>
                 )}
 
-                {puntosAUsar > 0 && (
+                {/* ⭐ Descuento por puntos */}
+                {descuentoPorPuntos > 0 && (
                   <div className="flex justify-between items-center text-[#FAD02C] font-bold text-[10px] sm:text-[12px] uppercase tracking-tighter">
-                    <span>⭐ Puntos</span>
+                    <span>⭐ Puntos ({puntosAUsar} pts)</span>
                     <span>-${descuentoPorPuntos.toLocaleString('es-AR')}</span>
                   </div>
                 )}
@@ -1658,7 +1795,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   <span className="font-black text-stone-900 dark:text-white uppercase tracking-tighter text-xs sm:text-sm">
                     Total
                   </span>
-                  <span className="text-xl sm:text-3xl font-black text-stone-950 dark:text-[#f6fa2c] tracking-tighter text-right wrap-break-words">
+                  <span className="text-xl sm:text-3xl font-black text-stone-950 dark:text-[#f6fa2c] tracking-tighter text-right wrap-break-word">
                     ${montoTotalFinal.toLocaleString('es-AR')}
                   </span>
                 </div>
@@ -1680,7 +1817,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       Puntos restantes
                     </span>
                     <span className="text-[8px] sm:text-[10px] font-black text-stone-500">
-                      {puntosDisponibles - puntosAUsar}
+                      {(puntosDisponibles - puntosAUsar).toLocaleString('es-AR')}
                     </span>
                   </div>
                 )}

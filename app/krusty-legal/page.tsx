@@ -113,7 +113,7 @@ export default function KrustyLegalPage() {
 
             <Link
                 href="/"
-                className="absolute top-4 left-4 bg-white text-black text-xs font-black p-2 border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all z-10 uppercase tracking-wider"
+                className="absolute top-8 left-4 bg-white text-black text-xs font-black p-2 border-2 border-black rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-px hover:translate-y-px hover:shadow-none transition-all z-10 uppercase tracking-wider"
             >
                 ⬅️ Volver
             </Link>
@@ -121,13 +121,13 @@ export default function KrustyLegalPage() {
             <button
                 type="button"
                 onClick={() => setAudioMuted(!audioMuted)}
-                className="absolute top-4 right-4 bg-black text-white text-xs font-black p-2 border-2 border-white rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all z-10"
+                className="absolute top-8 right-4 bg-black text-white text-xs font-black p-2 border-2 border-white rounded shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-x-px hover:translate-y-px hover:shadow-none transition-all z-10"
                 aria-label={audioMuted ? "Activar efectos de sonido" : "Mutear efectos de sonido"}
             >
                 {audioMuted ? '🔇 MUTED' : '🔊 AUDIO: ON'}
             </button>
 
-            <div className="w-full max-w-2xl flex flex-col items-center justify-center flex-grow py-12">
+            <div className="w-full max-w-2xl flex flex-col items-center justify-center grow py-12">
                 <AnimatePresence mode="wait">
                     {!isSigned ? (
                         <motion.div
@@ -138,7 +138,7 @@ export default function KrustyLegalPage() {
                             transition={{ type: "spring", stiffness: 260, damping: 20 }}
                             className="w-full bg-[#FFFDF0] border-4 border-black rounded-xl shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] p-6 md:p-10 text-black relative overflow-hidden"
                         >
-                            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-transparent via-[#E21B22] to-transparent opacity-20" />
+                            <div className="absolute top-0 left-0 right-0 h-2 bg-linear-to-r from-transparent via-[#E21B22] to-transparent opacity-20" />
 
                             <header className="border-b-4 border-dashed border-black pb-4 mb-6 text-center">
                                 <motion.h1
@@ -154,7 +154,7 @@ export default function KrustyLegalPage() {
                             </header>
 
                             <div
-                                className="space-y-6 max-h-[380px] overflow-y-auto pr-2 text-sm leading-relaxed border-2 border-black p-4 bg-white rounded-lg"
+                                className="space-y-6 max-h-95 overflow-y-auto pr-2 text-sm leading-relaxed border-2 border-black p-4 bg-white rounded-lg"
                                 style={{ scrollBehavior: 'smooth' }}
                             >
                                 <div className="bg-[#E21B22]/10 p-3 rounded border border-[#E21B22] text-xs font-bold uppercase text-[#E21B22] text-center mb-4">
@@ -194,8 +194,8 @@ export default function KrustyLegalPage() {
                                     onClick={handleSignContract}
                                     disabled={!accepted || isPending}
                                     className={`w-full sm:w-auto px-6 py-3 font-black uppercase tracking-wider text-white border-4 border-black rounded-lg transition-colors ${accepted && !isPending
-                                            ? 'bg-[#E21B22] hover:bg-black cursor-pointer'
-                                            : 'bg-gray-400 cursor-not-allowed opacity-50'
+                                        ? 'bg-[#E21B22] hover:bg-black cursor-pointer'
+                                        : 'bg-gray-400 cursor-not-allowed opacity-50'
                                         }`}
                                 >
                                     {isPending ? (

@@ -139,14 +139,14 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#fafafa] flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#D32F2F] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <main className="min-h-screen pb-32 bg-[#fafafa] selection:bg-[#FFCA28]/30 text-[#292929]">
+    <main className="min-h-screen pb-32 bg-white selection:bg-[#FFCA28]/30 text-[#292929]">
 
       <script
         type="application/ld+json"
@@ -178,9 +178,13 @@ export default function Home() {
           </div>
 
           <div className={`relative flex justify-center items-center w-full ${screen.spacing}`}>
-            <div className="absolute inset-0 bg-[#FFCA28]/20 blur-[80px] rounded-full scale-[2] pointer-events-none" aria-hidden="true" />
             <div className={`relative ${screen.isSquare ? 'w-48 h-48 md:w-56 md:h-56' : screen.logoSize} animate-float`}>
-              <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]">
+              {/* Glow contenido, solo detrás del logo */}
+              <div
+                className="absolute inset-0 bg-[#FFCA28]/40 blur-2x1 rounded-full pointer-events-none"
+                aria-hidden="true"
+              />
+              <svg viewBox="0 0 100 100" className="relative w-full h-full drop-shadow-[0_20px_20px_rgba(0,0,0,0.2)]">
                 <defs>
                   <clipPath id="heroLogoClip">
                     <circle cx="50" cy="50" r="50" />
@@ -221,7 +225,7 @@ export default function Home() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1/2 h-1/3 border-2 border-[#FF6B00]/10 rounded-full" />
         </div>
 
-        <div className="max-w-6xl mx-auto relative z-10">
+        <div className="max-w-3xl mx-auto relative z-10 flex flex-col items-center text-center">
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 bg-[#FF6B00] text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_black]">
               <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse" />
@@ -230,38 +234,36 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-            <div className="text-center lg:text-left flex flex-col justify-center">
-              <h2 className="font-krusty text-4xl md:text-5xl lg:text-6xl text-black uppercase drop-shadow-[2px_2px_0px_#FF6B00] leading-none mb-4">
-                Hechas con <span className="text-[#FF6B00]">amor</span>
-                <br />
-                y <span className="text-[#FF6B00]">explosivos</span>
-              </h2>
+          <div className="flex flex-col items-center text-center">
+            <h2 className="font-krusty text-4xl md:text-5xl lg:text-6xl text-black uppercase drop-shadow-[2px_2px_0px_#FF6B00] leading-none mb-4">
+              Hechas con <span className="text-[#FF6B00]">amor</span>
+              <br />
+              y <span className="text-[#FF6B00]">explosivos</span>
+            </h2>
 
-              <p className="text-stone-700 text-sm md:text-base font-bold leading-relaxed max-w-lg mx-auto lg:mx-0">
-                Carne 100% premium, queso que se estira hasta Springfield y
-                el toque secreto del payaso más famoso del mundo.
-                <span className="block mt-2 text-[#FF6B00]">
-                  ¡Si no te atraganta, no es una Krusty!
+            <p className="text-stone-700 text-sm md:text-base font-bold leading-relaxed max-w-lg mx-auto">
+              Carne 100% premium, queso que se estira hasta Springfield y
+              el toque secreto del payaso más famoso del mundo.
+              <span className="block mt-2 text-[#FF6B00]">
+                ¡Si no te atraganta, no es una Krusty!
+              </span>
+            </p>
+
+            <div className="bg-[#FFF3E6] p-6 rounded-2xl border-2 border-[#FF6B00]/40 text-center mt-6 max-w-lg w-full">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-[#FF6B00] text-xs font-black uppercase tracking-wider">
+                  ¡Ingrediente Secreto Revelado!
                 </span>
-              </p>
-
-              <div className="bg-[#FFF3E6] p-6 rounded-2xl border-2 border-[#FF6B00]/40 text-center">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <span className="text-[#FF6B00] text-xs font-black uppercase tracking-wider">
-                    ¡Ingrediente Secreto Revelado!
-                  </span>
-                </div>
-                <h3 className="text-black text-2xl font-krusty">
-                  ¿El secreto? <span className="text-[#FF6B00]">¡Risa!</span>
-                </h3>
-                <p className="text-stone-700 text-sm mt-2">
-                  Y un toque de <span className="text-[#FF6B00] font-bold">explosivos</span>
-                  {" "}que hacen cada bocado una <span className="text-[#FF6B00] font-bold">fiesta</span>.
-                  <br />
-                  <span className="text-xs opacity-60">(No te preocupes, son seguros. Casi siempre.)</span>
-                </p>
               </div>
+              <h3 className="text-black text-2xl font-krusty">
+                ¿El secreto? <span className="text-[#FF6B00]">¡Risa!</span>
+              </h3>
+              <p className="text-stone-700 text-sm mt-2">
+                Y un toque de <span className="text-[#FF6B00] font-bold">explosivos</span>
+                {" "}que hacen cada bocado una <span className="text-[#FF6B00] font-bold">fiesta</span>.
+                <br />
+                <span className="text-xs opacity-60">(No te preocupes, son seguros. Casi siempre.)</span>
+              </p>
             </div>
           </div>
         </div>
@@ -305,22 +307,22 @@ export default function Home() {
           SECCIÓN DE PRODUCTOS
           ============================================ */}
       <section id="menu-section" className={`${screen.isSquare ? 'w-full max-w-full' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 mt-10 md:mt-20`}>
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 md:mb-12 gap-4">
-          <div>
-            <h2 className="font-krusty text-3xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase text-center md:text-left">
+        <div className="flex flex-col items-center justify-center mb-8 md:mb-12 gap-4">
+          <div className="flex flex-col items-center">
+            <h2 className="font-krusty text-3xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase text-center">
               <span className="text-[#D32F2F]">El</span> Menú
             </h2>
-            <div className="w-16 sm:w-20 h-2 bg-[#FFCA28] border border-black mt-2 mx-auto md:mx-0" />
+            <div className="w-16 sm:w-20 h-2 bg-[#FFCA28] border border-black mt-2" />
           </div>
-          <p className="text-[10px] font-black text-[#52525b] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full text-center md:text-right">
+          <p className="text-[10px] font-black text-[#52525b] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full text-center">
             {filtrados.length} OPCIONES DISPONIBLES
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 md:gap-x-8 md:gap-y-12 justify-items-center">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-x-6 md:gap-y-10 justify-items-center">
           {filtrados.length > 0 ? (
             filtrados.map((item, index) => (
-              <div key={item.id} className="transition-opacity duration-500 w-full max-w-sm">
+              <div key={item.id} className="transition-opacity duration-500 w-full max-w-60">
                 <BurgerCard
                   burger={item}
                   isFirst={index === 0}
