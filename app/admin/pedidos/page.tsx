@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { normalizarEstadoPedido } from '@/lib/estadoPedido';
 
 interface Pedido {
     id: number;
@@ -48,14 +49,17 @@ export default function AdminPedidos() {
             } else if (filtro === 'entregados') {
                 query = query.eq('estado', 'entregado');
             } else if (filtro === 'en_camino') {
-                query = query.eq('estado', 'en camino');
+                query = query.in('estado', ['en_camino', 'en camino']);
             }
 
             const { data, error } = await query;
 
             if (error) throw error;
 
-            const pedidosData = data || [];
+            const pedidosData = (data || []).map((pedido) => ({
+                ...pedido,
+                estado: normalizarEstadoPedido(pedido.estado),
+            }));
             setPedidos(pedidosData);
 
             const pendientes = pedidosData.filter((p: Pedido) =>
@@ -118,7 +122,10 @@ export default function AdminPedidos() {
         const colores: Record<string, string> = {
             pendiente: 'bg-yellow-500',
             pago_pendiente: 'bg-orange-400',
-            'en camino': 'bg-blue-500',
+            confirmado: 'bg-blue-500',
+            preparando: 'bg-purple-500',
+            listo: 'bg-green-600',
+            en_camino: 'bg-blue-500',
             entregado: 'bg-green-500',
             cancelado: 'bg-red-500'
         };
@@ -129,7 +136,10 @@ export default function AdminPedidos() {
         const labels: Record<string, string> = {
             pendiente: '⏳ Pendiente',
             pago_pendiente: '💳 Pago Pendiente',
-            'en camino': '🚲 En Camino',
+            confirmado: '✅ Confirmado',
+            preparando: '👨‍🍳 Preparando',
+            listo: '✅ Listo',
+            en_camino: '🚲 En Camino',
             entregado: '✅ Entregado',
             cancelado: '❌ Cancelado'
         };

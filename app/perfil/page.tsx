@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 
 // ✅ IMPORTAR NOTIFICACIONES
 import { suscribirNotificaciones } from '@/lib/notificaciones';
+import { normalizarEstadoPedido } from '@/lib/estadoPedido';
 
 // ============================================================
 // 🏠 COMPONENTE PRINCIPAL
@@ -290,11 +291,13 @@ export default function PerfilPage() {
                         'entregado': { icono: '✅', texto: 'Entregado', color: '#22c55e' },
                         'pendiente': { icono: '⏳', texto: 'Pendiente', color: '#eab308' },
                         'pago_pendiente': { icono: '💳', texto: 'Pago Pendiente', color: '#f97316' },
-                        'en cocina': { icono: '👨‍🍳', texto: 'En Cocina', color: '#8b5cf6' },
-                        'en camino': { icono: '🛵', texto: 'En Camino', color: '#06b6d4' },
+                        'confirmado': { icono: '✅', texto: 'Confirmado', color: '#3b82f6' },
+                        'preparando': { icono: '👨‍🍳', texto: 'Preparando', color: '#8b5cf6' },
+                        'listo': { icono: '🍔', texto: 'Listo', color: '#16a34a' },
+                        'en_camino': { icono: '🛵', texto: 'En Camino', color: '#06b6d4' },
                         'cancelado': { icono: '❌', texto: 'Cancelado', color: '#ef4444' },
                     };
-                    const estadoInfo = estadoMap[p.estado] || estadoMap.pendiente;
+                    const estadoInfo = estadoMap[normalizarEstadoPedido(p.estado)] || estadoMap.pendiente;
 
                     actividades.push({
                         id: `pedido-${p.id}`,

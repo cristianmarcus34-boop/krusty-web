@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useAuth } from '../hooks/useAuth';
+import { esEstadoActivo, normalizarEstadoPedido } from '@/lib/estadoPedido';
 
 interface Pedido {
     id: number;
@@ -87,11 +88,14 @@ export default function MisPedidos() {
     };
 
     const getEstadoColor = (estado: string) => {
+        estado = normalizarEstadoPedido(estado);
         const colores: Record<string, string> = {
             pendiente: 'bg-yellow-500',
             pago_pendiente: 'bg-orange-400',
-            'en cocina': 'bg-purple-500',
-            'en camino': 'bg-blue-500',
+            confirmado: 'bg-blue-500',
+            preparando: 'bg-purple-500',
+            listo: 'bg-green-600',
+            en_camino: 'bg-blue-500',
             entregado: 'bg-green-500',
             cancelado: 'bg-red-500'
         };
@@ -99,11 +103,14 @@ export default function MisPedidos() {
     };
 
     const getEstadoLabel = (estado: string) => {
+        estado = normalizarEstadoPedido(estado);
         const labels: Record<string, string> = {
             pendiente: '⏳ Pendiente',
             pago_pendiente: '💳 Pago Pendiente',
-            'en cocina': '👨‍🍳 En Cocina',
-            'en camino': '🚲 En Camino',
+            confirmado: '✅ Confirmado',
+            preparando: '👨‍🍳 Preparando',
+            listo: '✅ Listo',
+            en_camino: '🚲 En Camino',
             entregado: '✅ Entregado',
             cancelado: '❌ Cancelado'
         };
@@ -111,11 +118,14 @@ export default function MisPedidos() {
     };
 
     const getEstadoIcono = (estado: string) => {
+        estado = normalizarEstadoPedido(estado);
         const iconos: Record<string, string> = {
             pendiente: '📩',
             pago_pendiente: '💳',
-            'en cocina': '👨‍🍳',
-            'en camino': '🛵',
+            confirmado: '✅',
+            preparando: '👨‍🍳',
+            listo: '🍔',
+            en_camino: '🛵',
             entregado: '🍔',
             cancelado: '❌'
         };
@@ -125,10 +135,10 @@ export default function MisPedidos() {
     const pedidosFiltrados = pedidos.filter(pedido => {
         if (filtro === 'todos') return true;
         if (filtro === 'activos') {
-            return ['pendiente', 'pago_pendiente', 'en cocina', 'en camino'].includes(pedido.estado);
+            return esEstadoActivo(pedido.estado);
         }
         if (filtro === 'entregados') {
-            return pedido.estado === 'entregado';
+            return normalizarEstadoPedido(pedido.estado) === 'entregado';
         }
         return true;
     });
@@ -278,7 +288,7 @@ export default function MisPedidos() {
                                                 ${pedido.total?.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                                             </p>
 
-                                            {pedido.estado === 'entregado' && (
+                                            {normalizarEstadoPedido(pedido.estado) === 'entregado' && (
                                                 <span className="text-xs font-bold text-green-500">
                                                     ⭐ {Math.floor(pedido.total / 100)} pts ganados
                                                 </span>

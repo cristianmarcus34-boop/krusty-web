@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import ModalBorrarKrusty from './ModalBorrarKrusty';
+import { normalizarEstadoPedido } from '@/lib/estadoPedido';
 
 interface Pedido {
   id: string;
@@ -232,23 +233,29 @@ export default function TabPedidos() {
   // ============================================================
 
   const getEstadoEstilo = (estado: string) => {
-    switch (estado) {
+    switch (normalizarEstadoPedido(estado)) {
       case 'pendiente': return 'bg-[#D32F2F] text-white animate-pulse';
       case 'pago_pendiente': return 'bg-amber-500 text-white animate-pulse';
-      case 'en cocina': return 'bg-orange-500 text-white';
-      case 'en camino': return 'bg-blue-500 text-white';
+      case 'confirmado': return 'bg-blue-500 text-white';
+      case 'preparando': return 'bg-orange-500 text-white';
+      case 'listo': return 'bg-green-500 text-white';
+      case 'en_camino': return 'bg-blue-500 text-white';
       case 'entregado': return 'bg-green-600 text-white opacity-50';
+      case 'cancelado': return 'bg-red-600 text-white opacity-50';
       default: return 'bg-stone-200 text-black';
     }
   };
 
   const getEstadoTexto = (estado: string) => {
-    switch (estado) {
+    switch (normalizarEstadoPedido(estado)) {
       case 'pendiente': return '⏳ Pendiente';
       case 'pago_pendiente': return '💰 Pago pendiente';
-      case 'en cocina': return '👨‍🍳 En cocina';
-      case 'en camino': return '🛵 En camino';
+      case 'confirmado': return '✅ Confirmado';
+      case 'preparando': return '👨‍🍳 Preparando';
+      case 'listo': return '✅ Listo';
+      case 'en_camino': return '🛵 En camino';
       case 'entregado': return '✅ Entregado';
+      case 'cancelado': return '❌ Cancelado';
       default: return estado || '📌';
     }
   };
@@ -300,10 +307,10 @@ export default function TabPedidos() {
 
   const pedidosFiltrados = pedidos.filter(pedido => {
     if (filtroEstado === 'todos') return true;
-    return pedido.estado === filtroEstado;
+    return normalizarEstadoPedido(pedido.estado) === filtroEstado;
   });
 
-  const estadosDisponibles = ['todos', 'pendiente', 'pago_pendiente', 'en cocina', 'en camino', 'entregado'];
+  const estadosDisponibles = ['todos', 'pendiente', 'pago_pendiente', 'confirmado', 'preparando', 'listo', 'en_camino', 'entregado', 'cancelado'];
 
   // ============================================================
   // 🖥️ RENDER
@@ -370,7 +377,7 @@ export default function TabPedidos() {
           {pedidosFiltrados.map((pedido) => (
             <div
               key={pedido.id}
-              className={`relative border-4 border-black p-6 rounded-[2.5rem] bg-white transition-all shadow-[8px_8px_0px_0px_black] hover:shadow-[12px_12px_0px_0px_black] hover:-translate-y-1 ${pedido.estado === 'entregado' && 'grayscale opacity-60'
+              className={`relative border-4 border-black p-6 rounded-[2.5rem] bg-white transition-all shadow-[8px_8px_0px_0px_black] hover:shadow-[12px_12px_0px_0px_black] hover:-translate-y-1 ${normalizarEstadoPedido(pedido.estado) === 'entregado' && 'grayscale opacity-60'
                 }`}
             >
               {/* BOTÓN ELIMINAR */}
@@ -463,22 +470,22 @@ export default function TabPedidos() {
               {/* BOTONES DE ACCIÓN */}
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => cambiarEstado(pedido.id, 'en cocina')}
-                  disabled={pedido.estado === 'entregado' || pedido.estado === 'pago_pendiente'}
+                  onClick={() => cambiarEstado(pedido.id, 'preparando')}
+                  disabled={['entregado', 'cancelado', 'pago_pendiente'].includes(normalizarEstadoPedido(pedido.estado))}
                   className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-orange-400 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   👨‍🍳 COCINA
                 </button>
                 <button
-                  onClick={() => cambiarEstado(pedido.id, 'en camino')}
-                  disabled={pedido.estado === 'entregado' || pedido.estado === 'pago_pendiente'}
+                  onClick={() => cambiarEstado(pedido.id, 'en_camino')}
+                  disabled={['entregado', 'cancelado', 'pago_pendiente'].includes(normalizarEstadoPedido(pedido.estado))}
                   className="font-black py-3 rounded-xl border-[3px] border-black text-[10px] uppercase bg-white hover:bg-blue-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   🛵 ENVÍO
                 </button>
                 <button
                   onClick={() => cambiarEstado(pedido.id, 'entregado')}
-                  disabled={pedido.estado === 'entregado' || pedido.estado === 'pago_pendiente'}
+                  disabled={['entregado', 'cancelado', 'pago_pendiente'].includes(normalizarEstadoPedido(pedido.estado))}
                   className="col-span-2 font-black py-3 rounded-2xl border-4 border-black bg-green-500 text-white text-xs hover:bg-green-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                 >
                   ENTREGAR ✅
@@ -486,7 +493,7 @@ export default function TabPedidos() {
               </div>
 
               {/* AVISO DE PAGO PENDIENTE */}
-              {pedido.estado === 'pago_pendiente' && (
+              {normalizarEstadoPedido(pedido.estado) === 'pago_pendiente' && (
                 <div className="mt-3 bg-amber-50 border-2 border-amber-400 rounded-xl p-2 text-center">
                   <p className="text-[10px] font-black text-amber-700">
                     ⚠️ PAGO PENDIENTE - No se puede avanzar hasta confirmar

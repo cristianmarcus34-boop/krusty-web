@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 import { useAuth } from '../../hooks/useAuth';
 import BannerNotificaciones from '../../../components/BannerNotificaciones';
 import { useNotificaciones } from '@/app/hooks/useNotificaciones';
+import { normalizarEstadoPedido } from '@/lib/estadoPedido';
 
 export default function SeguimientoPedido() {
     const params = useParams();
@@ -34,8 +35,10 @@ export default function SeguimientoPedido() {
 
     const coordenadasMoto: Record<string, { x: string; y: string }> = {
         'pendiente': { x: '41%', y: '36%' },
-        'en cocina': { x: '36%', y: '38%' },
-        'en camino': { x: '30%', y: '55%' },
+        'confirmado': { x: '39%', y: '37%' },
+        'preparando': { x: '36%', y: '38%' },
+        'listo': { x: '34%', y: '42%' },
+        'en_camino': { x: '30%', y: '55%' },
         'entregado': { x: '18%', y: '12%' },
     };
 
@@ -88,9 +91,10 @@ export default function SeguimientoPedido() {
                     return;
                 }
 
-                setPedido(data);
+                const pedidoNormalizado = { ...data, estado: normalizarEstadoPedido(data.estado) };
+                setPedido(pedidoNormalizado);
 
-                if (data.estado === 'entregado') {
+                if (pedidoNormalizado.estado === 'entregado') {
                     const puntos = Math.floor(data.total / 100);
                     setPuntosGanados(puntos);
                 }
@@ -122,7 +126,7 @@ export default function SeguimientoPedido() {
                 'postgres_changes',
                 { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `id=eq.${id}` },
                 (payload) => {
-                    const nuevoEstado = payload.new.estado;
+                    const nuevoEstado = normalizarEstadoPedido(payload.new.estado);
 
                     setPedido((estadoAnteriorPedido: any) => {
                         const estadoAnterior = estadoAnteriorPedido?.estado;
@@ -165,7 +169,7 @@ export default function SeguimientoPedido() {
                             }
                         }
 
-                        return payload.new;
+                        return { ...payload.new, estado: normalizarEstadoPedido(nuevoEstado) };
                     });
                 }
             )
@@ -247,9 +251,10 @@ export default function SeguimientoPedido() {
         );
     }
 
-    const estados = ['pendiente', 'en cocina', 'en camino', 'entregado'];
-    const indiceActual = estados.indexOf(pedido.estado);
-    const posMoto = coordenadasMoto[pedido.estado] || coordenadasMoto['pendiente'];
+    const estados = ['pendiente', 'confirmado', 'preparando', 'listo', 'en_camino', 'entregado'];
+    const estadoActual = normalizarEstadoPedido(pedido.estado);
+    const indiceActual = Math.max(0, estados.indexOf(estadoActual));
+    const posMoto = coordenadasMoto[estadoActual] || coordenadasMoto['pendiente'];
 
     return (
         <div className="min-h-screen bg-stone-100 p-4 font-sans text-black pb-32 overflow-x-hidden">
@@ -276,9 +281,9 @@ export default function SeguimientoPedido() {
                     >
                         <div className="relative -translate-x-1/2 -translate-y-1/2">
                             <span className="text-4xl drop-shadow-[2px_2px_0px_rgba(255,255,255,1)]">
-                                {pedido.estado === 'en camino' ? '🛵' : '📍'}
+                                {estadoActual === 'en_camino' ? '🛵' : '📍'}
                             </span>
-                            {pedido.estado === 'en camino' && (
+                            {estadoActual === 'en_camino' && (
                                 <motion.div
                                     animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
                                     transition={{ repeat: Infinity, duration: 1.5 }}
@@ -317,33 +322,45 @@ export default function SeguimientoPedido() {
                 {/* TARJETA DE ESTADO */}
                 <AnimatePresence mode="wait">
                     <motion.div
-                        key={pedido.estado}
+                        key={estadoActual}
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         exit={{ scale: 1.1, opacity: 0 }}
                         className="bg-white border-4 border-black p-10 rounded-[3rem] shadow-[12px_12px_0px_black] text-center mb-10"
                     >
                         <div className="mb-6 text-8xl drop-shadow-lg">
-                            {pedido.estado === 'pendiente' && '📩'}
-                            {pedido.estado === 'en cocina' && '👨‍🍳'}
-                            {pedido.estado === 'en camino' && '🛵'}
-                            {pedido.estado === 'entregado' && '🍔'}
+                            {estadoActual === 'pendiente' && '📩'}
+                            {estadoActual === 'pago_pendiente' && '💳'}
+                            {estadoActual === 'cancelado' && '❌'}
+                            {estadoActual === 'confirmado' && '✅'}
+                            {estadoActual === 'preparando' && '👨‍🍳'}
+                            {estadoActual === 'listo' && '🍔'}
+                            {estadoActual === 'en_camino' && '🛵'}
+                            {estadoActual === 'entregado' && '🍔'}
                         </div>
                         <h2 className="text-3xl font-black uppercase italic leading-none mb-4 tracking-tighter transform -skew-x-2">
-                            {pedido.estado === 'pendiente' && '¡Orden Recibida!'}
-                            {pedido.estado === 'en cocina' && '¡Al Fuego!'}
-                            {pedido.estado === 'en camino' && '¡A Toda Marcha!'}
-                            {pedido.estado === 'entregado' && '¡Buen Provecho!'}
+                            {estadoActual === 'pendiente' && '¡Orden Recibida!'}
+                            {estadoActual === 'pago_pendiente' && 'Pago pendiente'}
+                            {estadoActual === 'cancelado' && 'Pedido cancelado'}
+                            {estadoActual === 'confirmado' && '¡Pedido confirmado!'}
+                            {estadoActual === 'preparando' && '¡Al Fuego!'}
+                            {estadoActual === 'listo' && '¡Listo para salir!'}
+                            {estadoActual === 'en_camino' && '¡A Toda Marcha!'}
+                            {estadoActual === 'entregado' && '¡Buen Provecho!'}
                         </h2>
                         <p className="font-bold text-stone-500 text-sm uppercase italic px-4">
-                            {pedido.estado === 'pendiente' && 'Estamos preparando todo para empezar.'}
-                            {pedido.estado === 'en cocina' && 'Tu burger está en la parrilla ahora mismo.'}
-                            {pedido.estado === 'en camino' && 'El repartidor está volando para llegar.'}
-                            {pedido.estado === 'entregado' && '¡Gracias por elegir Krusty Burger!'}
+                            {estadoActual === 'pendiente' && 'Estamos preparando todo para empezar.'}
+                            {estadoActual === 'pago_pendiente' && 'Estamos esperando la confirmación de tu pago.'}
+                            {estadoActual === 'cancelado' && 'Si necesitás ayuda, escribinos por WhatsApp.'}
+                            {estadoActual === 'confirmado' && 'Tu pedido ya está confirmado.'}
+                            {estadoActual === 'preparando' && 'Tu burger está en la parrilla ahora mismo.'}
+                            {estadoActual === 'listo' && 'Tu pedido está listo para salir.'}
+                            {estadoActual === 'en_camino' && 'El repartidor está volando para llegar.'}
+                            {estadoActual === 'entregado' && '¡Gracias por elegir Krusty Burger!'}
                         </p>
 
                         {/* PUNTOS GANADOS */}
-                        {pedido.estado === 'entregado' && puntosGanados !== null && puntosGanados > 0 && (
+                        {estadoActual === 'entregado' && puntosGanados !== null && puntosGanados > 0 && (
                             <motion.div
                                 initial={{ scale: 0.8, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1 }}
@@ -387,7 +404,7 @@ export default function SeguimientoPedido() {
                                 ${Number(pedido.total || 0).toLocaleString('es-AR')}
                             </span>
                         </div>
-                        {pedido.estado === 'entregado' && puntosGanados !== null && puntosGanados > 0 && (
+                        {estadoActual === 'entregado' && puntosGanados !== null && puntosGanados > 0 && (
                             <div className="flex justify-between items-center pt-2 border-t border-white/10">
                                 <span className="text-stone-500 font-black text-[10px] uppercase">⭐ Puntos:</span>
                                 <span className="text-[#FFCA28] font-black text-lg">

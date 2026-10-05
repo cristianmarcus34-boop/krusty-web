@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { esEstadoFinalizado, normalizarEstadoPedido } from '@/lib/estadoPedido';
 
 export default function StatusBar() {
   const [pedido, setPedido] = useState<any>(null);
@@ -35,19 +36,20 @@ export default function StatusBar() {
         return;
       }
 
-      if (data && data.estado !== 'entregado') {
+      if (data && !esEstadoFinalizado(data.estado)) {
+        const pedidoNormalizado = { ...data, estado: normalizarEstadoPedido(data.estado) };
         // Si el estado en la DB es distinto al que teníamos guardado, y no es la primera carga...
-        if (ultimoEstadoRef.current && data.estado !== ultimoEstadoRef.current) {
+        if (ultimoEstadoRef.current && pedidoNormalizado.estado !== ultimoEstadoRef.current) {
           playStatusSound();
         }
 
-        setPedido(data);
+        setPedido(pedidoNormalizado);
         setVisible(true);
-        ultimoEstadoRef.current = data.estado;
+        ultimoEstadoRef.current = pedidoNormalizado.estado;
       } else {
         setVisible(false);
         setPedido(null);
-        if (!data || data.estado === 'entregado') {
+        if (!data || esEstadoFinalizado(data.estado)) {
           localStorage.removeItem('pedido_id');
         }
       }
@@ -71,19 +73,19 @@ export default function StatusBar() {
           'postgres_changes',
           { event: 'UPDATE', schema: 'public', table: 'pedidos', filter: `id=eq.${currentId}` },
           (payload) => {
-            const nuevoEstado = payload.new.estado;
+            const nuevoEstado = normalizarEstadoPedido(payload.new.estado);
 
             // Si el estado cambió, disparamos sonido
             if (nuevoEstado !== ultimoEstadoRef.current) {
               playStatusSound();
             }
 
-            if (nuevoEstado === 'entregado') {
+            if (esEstadoFinalizado(nuevoEstado)) {
               setVisible(false);
               setPedido(null);
               localStorage.removeItem('pedido_id');
             } else {
-              setPedido(payload.new);
+              setPedido({ ...payload.new, estado: nuevoEstado });
               setVisible(true);
               ultimoEstadoRef.current = nuevoEstado;
             }
@@ -108,10 +110,13 @@ export default function StatusBar() {
         <div className="bg-black border-4 border-[#FFCA28] p-4 rounded-[2.5rem] shadow-[0_8px_0_0_#D32F2F] flex items-center justify-between group active:scale-95 transition-all duration-300 animate-in fade-in slide-in-from-bottom-5">
 
           <div className="flex items-center gap-4">
-            <div className={`text-3xl ${pedido.estado === 'en camino' ? 'animate-bounce' : 'animate-pulse'}`}>
+            <div className={`text-3xl ${pedido.estado === 'en_camino' ? 'animate-bounce' : 'animate-pulse'}`}>
               {pedido.estado === 'pendiente' && '📩'}
-              {pedido.estado === 'en cocina' && '👨‍🍳'}
-              {pedido.estado === 'en camino' && '🛵'}
+              {pedido.estado === 'pago_pendiente' && '💳'}
+              {pedido.estado === 'confirmado' && '✅'}
+              {pedido.estado === 'preparando' && '👨‍🍳'}
+              {pedido.estado === 'listo' && '🍔'}
+              {pedido.estado === 'en_camino' && '🛵'}
             </div>
 
             <div>
@@ -120,8 +125,11 @@ export default function StatusBar() {
               </p>
               <p className="text-white font-black uppercase italic text-sm tracking-tight">
                 {pedido.estado === 'pendiente' && 'Recibido'}
-                {pedido.estado === 'en cocina' && 'En la parrilla'}
-                {pedido.estado === 'en camino' && '¡Yendo a tu casa!'}
+                {pedido.estado === 'pago_pendiente' && 'Pago pendiente'}
+                {pedido.estado === 'confirmado' && 'Confirmado'}
+                {pedido.estado === 'preparando' && 'En la parrilla'}
+                {pedido.estado === 'listo' && 'Listo para salir'}
+                {pedido.estado === 'en_camino' && '¡Yendo a tu casa!'}
               </p>
             </div>
           </div>
