@@ -30,62 +30,26 @@ interface LocationPickerProps {
     initialDireccion?: string;
 }
 
-interface AutocompleteSuggestionResult {
-    placePrediction?: {
-        placeId: string;
-        text: {
-            text: string;
-        };
-    };
-}
-
-// ✅ Tipos para las sugerencias de Google Maps
-interface GooglePlacePrediction {
-    place_id: string;
-    description: string;
-}
-
-interface GoogleSuggestion {
-    placePrediction?: {
-        placeId: string;
-        text?: {
-            text: string;
-        };
-    };
-    description?: string;
-}
-
 function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPickerProps) {
     const { isLoaded, loadError } = useGoogleMaps();
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [marker, setMarker] = useState<google.maps.LatLngLiteral | null>(null);
     const [direccion, setDireccion] = useState(initialDireccion);
-    const [suggestions, setSuggestions] = useState<AutocompleteSuggestionResult[]>([]);
+    const [suggestions, setSuggestions] = useState<google.maps.places.PlacePrediction[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+    const [searchError, setSearchError] = useState(false);
     const [isMounted, setIsMounted] = useState(true);
-    const inputRef = useRef<HTMLInputElement>(null);
-    const autocompleteServiceRef = useRef<any>(null);
+    const searchRequestRef = useRef(0);
     const geocoderRef = useRef<google.maps.Geocoder | null>(null);
 
-    // ✅ Inicializar servicios
     useEffect(() => {
         setIsMounted(true);
 
         if (isLoaded) {
             try {
-                autocompleteServiceRef.current = new google.maps.places.AutocompleteSuggestion();
-            } catch {
-                try {
-                    autocompleteServiceRef.current = new google.maps.places.AutocompleteService();
-                } catch {
-                    // Silencioso
-                }
-            }
-
-            try {
                 geocoderRef.current = new google.maps.Geocoder();
-            } catch {
-                // Silencioso
+            } catch (error) {
+                console.error('No se pudo inicializar el geocodificador de Google Maps:', error);
             }
         }
 
@@ -140,122 +104,41 @@ function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPic
         }
     }, [geocodeLocation, isMounted]);
 
-    // ✅ Handler para AutocompleteService (fallback) - CON TIPADO
-    const handlePredictions = useCallback((
-        predictions: GooglePlacePrediction[] | null,
-        status: google.maps.places.PlacesServiceStatus
-    ) => {
-        if (!isMounted) return;
-        setIsSearching(false);
-
-        if (status === 'OK' && predictions) {
-            const formatted: AutocompleteSuggestionResult[] = predictions.map((prediction) => ({
-                placePrediction: {
-                    placeId: prediction.place_id,
-                    text: {
-                        text: prediction.description,
-                    },
-                },
-            }));
-            setSuggestions(formatted);
-        } else {
+    const buscarSugerencias = useCallback(async (input: string) => {
+        const requestId = ++searchRequestRef.current;
+        if (input.trim().length < 3 || !isMounted) {
             setSuggestions([]);
-        }
-    }, [isMounted]);
-
-    // ✅ Handler para AutocompleteSuggestion (nuevo) - CON TIPADO
-    const handleSuggestions = useCallback((
-        suggestionsData: GoogleSuggestion[] | null,
-        status: google.maps.places.PlacesServiceStatus
-    ) => {
-        if (!isMounted) return;
-        setIsSearching(false);
-
-        if (status === 'OK' && suggestionsData) {
-            const formatted: AutocompleteSuggestionResult[] = suggestionsData.map((suggestion) => ({
-                placePrediction: {
-                    placeId: suggestion.placePrediction?.placeId || '',
-                    text: {
-                        text: suggestion.placePrediction?.text?.text || suggestion.description || '',
-                    },
-                },
-            }));
-            setSuggestions(formatted);
-        } else {
-            setSuggestions([]);
-        }
-    }, [isMounted]);
-
-    // ✅ Buscar sugerencias
-    const buscarSugerencias = useCallback((input: string) => {
-        if (!autocompleteServiceRef.current || input.length < 3 || !isMounted) {
-            setSuggestions([]);
+            setSearchError(false);
+            setIsSearching(false);
             return;
         }
 
         setIsSearching(true);
+        setSearchError(false);
 
         try {
-            const service = autocompleteServiceRef.current;
-            const request = {
-                input: input,
-                types: ['address'] as google.maps.places.AutocompletePrediction['types'],
-                componentRestrictions: { country: 'ar' } as google.maps.places.ComponentRestrictions,
-            };
+            const { suggestions: results } =
+                await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+                    input: input.trim(),
+                    includedRegionCodes: ['ar'],
+                    includedPrimaryTypes: ['street_address', 'route', 'premise'],
+                });
 
-            if (typeof service.getPlacePredictions === 'function') {
-                // ✅ AutocompleteService (fallback)
-                service.getPlacePredictions(
-                    request,
-                    (predictions: google.maps.places.AutocompletePrediction[] | null, status: google.maps.places.PlacesServiceStatus) => {
-                        if (!isMounted) return;
-                        setIsSearching(false);
-
-                        if (status === 'OK' && predictions) {
-                            const formatted: AutocompleteSuggestionResult[] = predictions.map((prediction) => ({
-                                placePrediction: {
-                                    placeId: prediction.place_id,
-                                    text: {
-                                        text: prediction.description,
-                                    },
-                                },
-                            }));
-                            setSuggestions(formatted);
-                        } else {
-                            setSuggestions([]);
-                        }
-                    }
+            if (isMounted && requestId === searchRequestRef.current) {
+                setSuggestions(
+                    results.flatMap(({ placePrediction }) =>
+                        placePrediction ? [placePrediction] : []
+                    )
                 );
-            } else if (typeof service.getSuggestions === 'function') {
-                // ✅ AutocompleteSuggestion (nuevo)
-                service.getSuggestions(
-                    request,
-                    (suggestionsData: GoogleSuggestion[] | null, status: google.maps.places.PlacesServiceStatus) => {
-                        if (!isMounted) return;
-                        setIsSearching(false);
-
-                        if (status === 'OK' && suggestionsData) {
-                            const formatted: AutocompleteSuggestionResult[] = suggestionsData.map((suggestion) => ({
-                                placePrediction: {
-                                    placeId: suggestion.placePrediction?.placeId || '',
-                                    text: {
-                                        text: suggestion.placePrediction?.text?.text || suggestion.description || '',
-                                    },
-                                },
-                            }));
-                            setSuggestions(formatted);
-                        } else {
-                            setSuggestions([]);
-                        }
-                    }
-                );
-            } else {
-                setSuggestions([]);
-                setIsSearching(false);
             }
-        } catch {
-            if (isMounted) {
+        } catch (error) {
+            console.error('Error buscando direcciones en Google Maps:', error);
+            if (isMounted && requestId === searchRequestRef.current) {
                 setSuggestions([]);
+                setSearchError(true);
+            }
+        } finally {
+            if (isMounted && requestId === searchRequestRef.current) {
                 setIsSearching(false);
             }
         }
@@ -267,34 +150,36 @@ function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPic
         buscarSugerencias(value);
     }, [buscarSugerencias]);
 
-    const handleSelectSuggestion = useCallback((suggestion: AutocompleteSuggestionResult) => {
-        const placeId = suggestion.placePrediction?.placeId;
-
-        if (!placeId) return;
-
-        const container = document.createElement('div');
-        const service = new google.maps.places.PlacesService(container);
-
-        service.getDetails(
-            { placeId: placeId, fields: ['geometry', 'formatted_address'] },
-            (place: google.maps.places.PlaceResult | null, status: google.maps.places.PlacesServiceStatus) => {
-                if (status === 'OK' && place?.geometry?.location && isMounted) {
-                    const lat = place.geometry.location.lat();
-                    const lng = place.geometry.location.lng();
-                    const direccion = place.formatted_address || suggestion.placePrediction?.text?.text || '';
-
-                    setMarker({ lat, lng });
-                    setDireccion(direccion);
-                    setSuggestions([]);
-                    onLocationSelect(direccion, lat, lng);
-
-                    if (map) {
-                        map.panTo({ lat, lng });
-                        map.setZoom(15);
-                    }
-                }
+    const handleSelectSuggestion = useCallback(async (prediction: google.maps.places.PlacePrediction) => {
+        try {
+            const place = prediction.toPlace();
+            const { place: placeDetails } = await place.fetchFields({
+                fields: ['location', 'formattedAddress'],
+            });
+            const location = placeDetails.location;
+            if (!location || !isMounted) {
+                setSearchError(true);
+                return;
             }
-        );
+
+            const lat = location.lat();
+            const lng = location.lng();
+            const selectedAddress = placeDetails.formattedAddress || prediction.text.toString();
+
+            setMarker({ lat, lng });
+            setDireccion(selectedAddress);
+            setSuggestions([]);
+            setSearchError(false);
+            onLocationSelect(selectedAddress, lat, lng);
+
+            if (map) {
+                map.panTo({ lat, lng });
+                map.setZoom(15);
+            }
+        } catch (error) {
+            console.error('Error obteniendo la dirección seleccionada:', error);
+            if (isMounted) setSearchError(true);
+        }
     }, [map, onLocationSelect, isMounted]);
 
     if (!isLoaded) {
@@ -322,7 +207,6 @@ function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPic
         <div className="space-y-4">
             <div className="relative">
                 <input
-                    ref={inputRef}
                     type="text"
                     placeholder="Escribí tu dirección o mové el pin en el mapa..."
                     value={direccion}
@@ -330,20 +214,30 @@ function LocationPicker({ onLocationSelect, initialDireccion = '' }: LocationPic
                     className="w-full bg-stone-50 dark:bg-stone-800 border-4 border-black p-4 rounded-2xl font-bold text-xs uppercase outline-none focus:ring-2 focus:ring-[#FFCA28]/30 dark:text-white"
                 />
 
-                {suggestions.length > 0 && (
+                {(suggestions.length > 0 || isSearching || searchError) && (
                     <ul className="absolute z-50 w-full bg-white dark:bg-stone-800 border-4 border-black mt-1 rounded-xl max-h-60 overflow-y-auto shadow-[6px_6px_0px_0px_black]">
-                        {suggestions.map((suggestion, index) => (
+                        {suggestions.map((prediction) => (
                             <li
-                                key={index}
-                                onClick={() => handleSelectSuggestion(suggestion)}
+                                key={prediction.placeId}
+                                onClick={() => handleSelectSuggestion(prediction)}
                                 className="p-3 hover:bg-[#FFCA28]/20 dark:hover:bg-[#FAD02C]/20 cursor-pointer font-bold text-xs border-b border-stone-100 dark:border-stone-700 last:border-0 transition-colors"
                             >
-                                {suggestion.placePrediction?.text?.text || 'Dirección'}
+                                {prediction.text.toString()}
                             </li>
                         ))}
                         {isSearching && (
                             <li className="p-3 text-center text-stone-400 font-bold text-xs">
                                 🔍 Buscando...
+                            </li>
+                        )}
+                        {searchError && (
+                            <li className="p-3 text-center text-red-500 font-bold text-xs">
+                                No se pudo buscar esa dirección. Probá de nuevo o mové el pin en el mapa.
+                            </li>
+                        )}
+                        {!isSearching && !searchError && suggestions.length === 0 && direccion.trim().length >= 3 && (
+                            <li className="p-3 text-center text-stone-400 font-bold text-xs">
+                                No encontramos direcciones. Probá agregar calle y altura.
                             </li>
                         )}
                     </ul>
