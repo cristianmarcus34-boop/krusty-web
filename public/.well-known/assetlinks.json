@@ -1,14 +1,19 @@
-
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.agenciapowa.KrustyBurger",
       "sha256_cert_fingerprints": [
         "90:F7:9B:09:3F:FF:3B:50:21:BB:08:03:35:27:0A:63:98:80:B2:A5:4C:11:47:C7:27:BE:AB:5E:AE:D4:BD:D6",
         "74:36:1D:AC:74:69:2F:6A:78:7E:C2:67:C2:5E:5A:69:E0:DF:88:6E:94:CF:AE:CF:9E:CE:EA:62:85:EB:17:CA",
-        "9A:28:F1:1A:E5:F2:58:53:8B:5D:2F:70:5B:27:99:2A:D4:76:63:C2"
+        "9A:28:F1:1A:E5:F2:58:53:8B:5D:2F:70:5B:27:99:2A:D4:76:63:C2",
+        "32:D2:EE:6A:C5:41:91:26:91:FC:B7:27:3A:29:C4:52:AC:2A:9B:8F:64:74:2B:D4:A0:C2:BC:8C:1B:CD:03:49",
+        "80:4A:B9:77:15:96:5D:E5:6A:5D:A6:25:EB:67:40:A2:9D:7C:94:E1:62:8A:2F:CB:76:95:CB:E2:9A:67:62:66",
+        "E9:62:61:2C:48:B4:68:AB:17:F4:C8:DE:F0:C7:B9:27:4D:70:14:5C:5A:A5:FE:84:21:18:00:1C:66:FF:C0:3A"
       ]
     }
   }
