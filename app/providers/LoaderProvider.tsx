@@ -37,6 +37,7 @@ const PISTAS = {
     final: '/audio/simpsons-final.mp3',
     peliculas: '/audio/musica-peliculas-19.mp3',
     espera: '/audio/musica-espera.mp3',
+    cocina: '/audio/musica-cocina.mp3',
 } as const;
 
 type Pista = keyof typeof PISTAS;
@@ -111,6 +112,7 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
         if (pistaActual === 'intro') siguiente = 'final';
         else if (pistaActual === 'final') siguiente = 'peliculas';
         else if (pistaActual === 'peliculas') siguiente = 'espera';
+        else if (pistaActual === 'espera') siguiente = 'cocina';
 
         if (siguiente) {
             setPistaActual(siguiente);
@@ -168,10 +170,10 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
                 musicaIniciada,
             }}
         >
-            {/* ✅ El audio SIEMPRE está montado. El loop solo se activa en la última pista */}
+            {/* ✅ El audio SIEMPRE está montado. El loop solo se activa en la última pista (cocina) */}
             <audio
                 ref={referenciaAudio}
-                loop={pistaActual === 'espera'}
+                loop={pistaActual === 'cocina'}
                 onEnded={manejarFinDePista}
             />
 
