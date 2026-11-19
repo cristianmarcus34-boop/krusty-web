@@ -63,7 +63,7 @@ export default function Footer() {
                             </Link>
 
                             <Link
-                                href="https://wa.me/5491127344686"
+                                href="https://wa.me/5491138305837"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 aria-label="WhatsApp"
@@ -162,8 +162,8 @@ export default function Footer() {
                             </li>
                             <li className="flex items-start gap-2 justify-center lg:justify-start">
                                 <span className="text-[#FFCA28]">📞</span>
-                                <Link href="tel:+5491127344686" className="hover:text-white transition-colors">
-                                    +54 9 11 2734-4686
+                                <Link href="tel:+5491138305837" className="hover:text-white transition-colors">
+                                    +54 9 11 3830-5837
                                 </Link>
                             </li>
                         </ul>

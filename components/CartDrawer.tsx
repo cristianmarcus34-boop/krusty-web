@@ -783,7 +783,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       };
       localStorage.setItem('ultimo_pedido_krusty', JSON.stringify(infoPedido));
 
-      const numeroTelefono = '5491127344686';
+      const numeroTelefono = '5491138305837';
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const linkSeguimiento = `${baseUrl}/pedido/${pedidoGuardado.id}`;
 
@@ -986,7 +986,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
       localStorage.setItem('ultimo_pedido_krusty', JSON.stringify(infoPedido));
 
-      const numeroTelefono = '5491127344686';
+      const numeroTelefono = '5491138305837';
       const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
       const linkSeguimiento = `${baseUrl}/pedido/${pedidoGuardado.id}`;
 
