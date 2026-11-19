@@ -2,6 +2,9 @@
 import Link from 'next/link';
 import Image from 'next/image';
 
+const PLAY_STORE_URL =
+    'https://play.google.com/store/apps/details?id=com.agenciapowa.KrustyBurger&pcampaignid=web_share';
+
 export default function Footer() {
     const anio = new Date().getFullYear();
 
@@ -20,8 +23,14 @@ export default function Footer() {
             />
 
             {/* Glow decorativo */}
-            <div className="absolute -top-20 left-1/4 w-64 h-64 bg-[#FFCA28]/10 rounded-full blur-[100px] pointer-events-none" aria-hidden="true" />
-            <div className="absolute -bottom-20 right-1/4 w-64 h-64 bg-[#D32F2F]/10 rounded-full blur-[100px] pointer-events-none" aria-hidden="true" />
+            <div
+                className="absolute -top-20 left-1/4 w-64 h-64 bg-[#FFCA28]/10 rounded-full blur-[100px] pointer-events-none"
+                aria-hidden="true"
+            />
+            <div
+                className="absolute -bottom-20 right-1/4 w-64 h-64 bg-[#D32F2F]/10 rounded-full blur-[100px] pointer-events-none"
+                aria-hidden="true"
+            />
 
             {/* ============ CONTENIDO PRINCIPAL ============ */}
             <div className="relative z-10 max-w-7xl mx-auto px-6 pt-16 pb-10">
@@ -41,7 +50,7 @@ export default function Footer() {
                         </h2>
 
                         <p className="text-stone-400 text-sm max-w-sm leading-relaxed mb-6 italic">
-                            "Si no se atraganta, no es una Krusty."
+                            &ldquo;Si no se atraganta, no es una Krusty.&rdquo;
                             <br />
                             Hamburguesas hechas con amor y explosivos desde Villa La Florida, Quilmes.
                         </p>
@@ -134,7 +143,7 @@ export default function Footer() {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/defensa" className="text-stone-400 hover:text-white transition-colors underline decoration-[#D32F2F] underline-offset-4">
+                                <Link href="/defensa" className="text-stone-400 hover:text-white transition-colors">
                                     Defensa Consumidor
                                 </Link>
                             </li>
@@ -170,8 +179,103 @@ export default function Footer() {
                     </div>
                 </div>
 
+                {/* ============ TARJETA APP OFICIAL GOOGLE PLAY ============ */}
+                <div
+                    id="footer-play-store"
+                    className="scroll-mt-24 mt-12 relative overflow-hidden rounded-2xl bg-linear-to-r from-white/[0.06] via-white/[0.03] to-[#FFCA28]/[0.06] border border-white/15 hover:border-[#FFCA28]/40 p-6 sm:p-7 transition-all duration-300"
+                >
+                    {/* Brillo sutil superior */}
+                    <div
+                        className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-[#FFCA28]/40 to-transparent pointer-events-none"
+                        aria-hidden="true"
+                    />
+
+                    <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
+                        {/* Izquierda: ícono + propuesta de valor */}
+                        <div className="flex flex-col sm:flex-row items-center text-center sm:text-left gap-4 sm:gap-5">
+                            <div className="relative shrink-0 w-14 h-14 rounded-2xl bg-[#121212] border-2 border-[#FFCA28] shadow-[4px_4px_0px_0px_black] flex items-center justify-center overflow-hidden">
+                                <Image
+                                    src="/images/Krustyburgerheader.webp"
+                                    alt="App Krusty Burger"
+                                    width={48}
+                                    height={48}
+                                    className="object-cover rounded-xl"
+                                />
+                            </div>
+
+                            <div>
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1.5">
+                                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-[#FFCA28] bg-[#FFCA28]/10 border border-[#FFCA28]/30 px-2.5 py-0.5 rounded-full">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] animate-pulse" />
+                                        App Oficial Android
+                                    </span>
+                                    <span className="text-[11px] font-semibold text-stone-400">
+                                        Puntos • Cupones QR • Envío en vivo
+                                    </span>
+                                </div>
+
+                                <h3
+                                    className="font-sans text-white font-black text-lg sm:text-xl tracking-tight leading-snug normal-case"
+                                    style={{ fontFamily: 'inherit' }}
+                                >
+                                    Llevá a Krusty en el bolsillo
+                                </h3>
+                                <p className="text-stone-400 text-xs sm:text-sm max-w-xl mt-0.5 leading-relaxed">
+                                    Pedí en segundos, seguí tu hamburguesa en tiempo real por el mapa y canjeá puntos por burgers gratis.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Derecha: Botón oficial Google Play */}
+                        <a
+                            href={PLAY_STORE_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="Descargar Krusty Burger en Google Play"
+                            className="group shrink-0 inline-flex items-center gap-3.5 bg-[#0f0f0f] hover:bg-black text-white px-5 py-3 rounded-xl border-2 border-white/20 hover:border-[#FFCA28] shadow-[4px_4px_0px_0px_black] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+                        >
+                            {/* Ícono oficial Google Play SVG */}
+                            <svg
+                                viewBox="0 0 24 24"
+                                className="w-7 h-7 shrink-0 transition-transform duration-200 group-hover:scale-105"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fill="#4285F4"
+                                    d="M3.61 1.814L13.793 12 3.61 22.186a1.99 1.99 0 0 1-.465-1.28V3.094c0-.496.178-.948.465-1.28z"
+                                />
+                                <path
+                                    fill="#34A853"
+                                    d="M17.223 8.57L13.793 12 3.61 1.814c.426-.488 1.124-.656 1.797-.283l11.816 7.039z"
+                                />
+                                <path
+                                    fill="#FBBC05"
+                                    d="M20.41 10.468c1.053.627 1.053 2.437 0 3.064l-3.187 1.898L13.793 12l3.43-3.43 3.187 1.898z"
+                                />
+                                <path
+                                    fill="#EA4335"
+                                    d="M17.223 15.43L5.407 22.469c-.673.373-1.371.205-1.797-.283L13.793 12l3.43 3.43z"
+                                />
+                            </svg>
+
+                            <div className="text-left">
+                                <span className="block text-[9px] font-bold uppercase tracking-[0.18em] text-stone-400 group-hover:text-[#FFCA28] transition-colors leading-none mb-1">
+                                    Disponible en
+                                </span>
+                                <span className="block text-base font-extrabold tracking-tight text-white leading-none">
+                                    Google Play
+                                </span>
+                            </div>
+
+                            <span className="ml-1 text-stone-500 group-hover:text-[#FFCA28] group-hover:translate-x-0.5 transition-all text-sm font-bold">
+                                →
+                            </span>
+                        </a>
+                    </div>
+                </div>
+
                 {/* ============ BARRA INFERIOR ============ */}
-                <div className="mt-14 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="mt-10 pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
 
                     {/* Copyright */}
                     <div className="text-center md:text-left">
@@ -210,8 +314,8 @@ export default function Footer() {
                     </Link>
 
                     {/* Frase final */}
-                    <p className="text-[9px] text-[#D32F2F] font-black uppercase italic tracking-[0.25em] opacity-70 max-w-w45 text-center md:text-right">
-                        "Si no se atraganta, no es una Krusty"
+                    <p className="text-[9px] text-[#D32F2F] font-black uppercase italic tracking-[0.25em] opacity-70 max-w-45 text-center md:text-right">
+                        &ldquo;Si no se atraganta, no es una Krusty&rdquo;
                     </p>
                 </div>
             </div>

@@ -140,6 +140,13 @@ export default function Home() {
     }
   };
 
+  const handleIrAppFooter = () => {
+    const playStoreCard = document.getElementById('footer-play-store');
+    if (playStoreCard) {
+      playStoreCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+
   // ✅ Maneja el cambio de categoría y reproduce el efecto de Duff al entrar a Bebidas
   const manejarCambioCategoria = (id: string) => {
     if (id === 'bebidas' && categoriaActual !== 'bebidas') {
@@ -196,6 +203,17 @@ export default function Home() {
           <div className={`inline-block bg-[#D32F2F] text-white font-black ${screen.badgeSize} rounded-full ${screen.spacing} uppercase tracking-tighter border-2 border-black shadow-[3px_3px_0px_0px_black]`}>
             Directo de Springfield
           </div>
+
+          <button
+            type="button"
+            onClick={handleIrAppFooter}
+            aria-label="Ir a la descarga de la app en Google Play"
+            className="mb-3 inline-flex items-center gap-1.5 bg-stone-100 hover:bg-[#FFCA28] text-black text-[10px] sm:text-xs font-black uppercase tracking-wider px-3.5 py-1 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_black] transition-all active:translate-y-0.5 cursor-pointer"
+          >
+            <span>📱</span>
+            <span>App en Google Play</span>
+            <span>↓</span>
+          </button>
 
           <div className={`relative flex justify-center items-center w-full ${screen.spacing}`}>
             <div className={`relative ${screen.isSquare ? 'w-48 h-48 md:w-56 md:h-56' : screen.logoSize} animate-float`}>
