@@ -301,7 +301,8 @@ export default function Home() {
         }}
       >
         <div className="max-w-7xl mx-auto overflow-x-auto no-scrollbar">
-          <div className="flex gap-2 md:gap-4 px-4 sm:px-6 py-3 md:py-4 md:justify-center min-w-max">
+          {/* ✅ Sin min-w-max: los botones se ajustan al ancho del viewport */}
+          <div className="flex gap-2 md:gap-4 px-4 sm:px-6 py-3 md:py-4 md:justify-center">
             {categorias.map((cat) => (
               <button
                 type="button"

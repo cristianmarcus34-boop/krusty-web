@@ -15,7 +15,7 @@ import AppInitializer from '../components/AppInitializer';
 import { Toaster } from 'react-hot-toast';
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import BotonMusica from '@/components/BotonMusica';
+import BotonesFlotantes from '@/components/BotonesFlotantes';
 
 export { metadata, viewport } from './metadata';
 
@@ -86,11 +86,10 @@ export default function RootLayout({
 
             </PushNotificationProvider>
 
-            {/* ✅ Los botones van FUERA de PushNotificationProvider y de StatusBar,
-                pero DENTRO de LoaderProvider para tener acceso al contexto.
-                El createPortal interno los monta en document.body. */}
-            <ThemeToggle />
-            <BotonMusica />
+            {/* ✅ Contenedor único de botones flotantes.
+                Se monta en document.body vía portal, fuera de cualquier
+                contexto de apilamiento o desborde. */}
+            <BotonesFlotantes />
 
           </LoaderProvider>
         </ThemeProvider>
