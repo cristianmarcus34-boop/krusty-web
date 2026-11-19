@@ -15,9 +15,8 @@ export default function BotonesFlotantes() {
     if (!montado) return null;
 
     return createPortal(
-        // ✅ inset-x-0 ocupa todo el ancho del viewport.
-        // justify-end alinea los botones a la derecha.
-        // El padding-right simula el "right-4" que tenías antes.
+        // inset-x-0 ocupa todo el ancho del viewport.
+        // justify-end alinea a la derecha con flex.
         <div className="fixed bottom-28 inset-x-0 z-[99999] flex justify-end pr-4 pointer-events-none">
             <div className="flex flex-col gap-3 pointer-events-auto">
                 <ThemeToggle />

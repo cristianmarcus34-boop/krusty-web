@@ -145,7 +145,7 @@ export default function Home() {
     if (id === 'bebidas' && categoriaActual !== 'bebidas') {
       const audio = referenciaEfectoDuff.current;
       if (audio) {
-        audio.currentTime = 0; // reinicia por si ya sonó antes
+        audio.currentTime = 0;
         audio.play().catch((error) => {
           console.warn('No se pudo reproducir hombre-duff:', error);
         });
@@ -199,7 +199,6 @@ export default function Home() {
 
           <div className={`relative flex justify-center items-center w-full ${screen.spacing}`}>
             <div className={`relative ${screen.isSquare ? 'w-48 h-48 md:w-56 md:h-56' : screen.logoSize} animate-float`}>
-              {/* Glow contenido, solo detrás del logo */}
               <div
                 className="absolute inset-0 bg-[#FFCA28]/40 blur-2x1 rounded-full pointer-events-none"
                 aria-hidden="true"
@@ -300,9 +299,10 @@ export default function Home() {
           willChange: 'transform'
         }}
       >
-        <div className="max-w-7xl mx-auto overflow-x-auto no-scrollbar">
-          {/* ✅ Sin min-w-max: los botones se ajustan al ancho del viewport */}
-          <div className="flex gap-2 md:gap-4 px-4 sm:px-6 py-3 md:py-4 md:justify-center">
+        {/* ✅ Sin overflow-x-auto: los botones se envuelven con flex-wrap
+            y no generan scroll horizontal en el documento */}
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-wrap gap-2 md:gap-4 px-4 sm:px-6 py-3 md:py-4 justify-center">
             {categorias.map((cat) => (
               <button
                 type="button"

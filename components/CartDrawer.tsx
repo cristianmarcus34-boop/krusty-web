@@ -1094,12 +1094,11 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       />
 
       {/* DRAWER */}
-      <div
-        className={`fixed inset-y-0 right-0 z-70 bg-white dark:bg-[#1a1a1a] shadow-2xl transform transition-transform duration-500 ease-in-out ${isOpen ? 'translate-x-0' : 'translate-x-full'
-          } w-full sm:max-w-105 lg:max-w-100 xl:max-w-100`}
-      >
-        <div className="flex flex-col h-dvh max-h-dvh bg-white dark:bg-[#1a1a1a] overflow-hidden">
-
+      <div className="fixed inset-0 z-70 overflow-hidden pointer-events-none">
+        <div
+          className={`absolute inset-y-0 right-0 flex flex-col h-dvh max-h-dvh overflow-hidden bg-white dark:bg-[#1a1a1a] shadow-2xl transform transition-transform duration-500 ease-in-out pointer-events-auto ${isOpen ? 'translate-x-0' : 'translate-x-full'
+            } w-full sm:max-w-105 lg:max-w-100 xl:max-w-100`}
+        >
           {/* ========================================================== */}
           {/* HEADER - OPTIMIZADO PARA MÓVIL */}
           {/* ========================================================== */}

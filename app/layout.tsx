@@ -86,9 +86,9 @@ export default function RootLayout({
 
             </PushNotificationProvider>
 
-            {/* ✅ Contenedor único de botones flotantes.
-                Se monta en document.body vía portal, fuera de cualquier
-                contexto de apilamiento o desborde. */}
+            {/* ✅ DENTRO de LoaderProvider (para el contexto de useLoader)
+                pero FUERA de PushNotificationProvider.
+                El createPortal interno lo monta en document.body. */}
             <BotonesFlotantes />
 
           </LoaderProvider>
