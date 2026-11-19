@@ -203,7 +203,7 @@ export default function Home() {
             </div>
           </div>
 
-          <h1 className={`font-krusty ${screen.titleSize} text-black mb-2 sm:mb-3 leading-none uppercase px-2 text-center w-full`}>
+          <h1 className={`font-krusty font-krusty-bold ${screen.titleSize} text-black mb-2 sm:mb-3 leading-none uppercase px-2 text-center w-full`}>
             El sabor que te <span className="text-[#D32F2F]">hace reír</span>
           </h1>
 
@@ -235,7 +235,7 @@ export default function Home() {
           </div>
 
           <div className="flex flex-col items-center text-center">
-            <h2 className="font-krusty text-4xl md:text-5xl lg:text-6xl text-black uppercase drop-shadow-[2px_2px_0px_#FF6B00] leading-none mb-4">
+            <h2 className="font-krusty font-krusty-bold text-4xl md:text-5xl lg:text-6xl text-black uppercase drop-shadow-[2px_2px_0px_#FF6B00] leading-none mb-4">
               Hechas con <span className="text-[#FF6B00]">amor</span>
               <br />
               y <span className="text-[#FF6B00]">explosivos</span>
@@ -309,7 +309,7 @@ export default function Home() {
       <section id="menu-section" className={`${screen.isSquare ? 'w-full max-w-full' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 mt-10 md:mt-20`}>
         <div className="flex flex-col items-center justify-center mb-8 md:mb-12 gap-4">
           <div className="flex flex-col items-center">
-            <h2 className="font-krusty text-3xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase text-center">
+            <h2 className="font-krusty font-krusty-bold text-3xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase text-center">
               <span className="text-[#D32F2F]">El</span> Menú
             </h2>
             <div className="w-16 sm:w-20 h-2 bg-[#FFCA28] border border-black mt-2" />

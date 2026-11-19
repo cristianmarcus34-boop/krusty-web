@@ -27,6 +27,9 @@ interface LoaderProviderProps {
 const LOADER_KEY = 'krusty-loader-shown';
 
 export default function LoaderProvider({ children }: LoaderProviderProps) {
+    // ✅ Etapas: 'portada' (botón), 'cargando' (loader), 'app' (contenido)
+    const [etapa, setEtapa] = useState<'portada' | 'cargando' | 'app'>('portada');
+
     const [isLoading, setIsLoading] = useState(true);
     const [isClient, setIsClient] = useState(false);
     const [isFirstVisit, setIsFirstVisit] = useState(true);
@@ -34,6 +37,9 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
 
     // ✅ REF para saber si el loader ya se cerró
     const loaderClosed = useRef(false);
+
+    // ✅ REF para el audio
+    const referenciaAudio = useRef<HTMLAudioElement>(null);
 
     // ✅ Obtener estado de autenticación
     const { isAuthenticated, isLoading: authLoading, user, inicializarSesion } = useAuthStore();
@@ -68,20 +74,15 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
 
     // ✅ Cuando la autenticación esté lista, ocultar el loader
     useEffect(() => {
-        // Solo proceder si el cliente está listo y la autenticación ya se verificó
         if (!isClient || !authCheckDone) return;
-
-        // Si ya se cerró el loader, no hacer nada
         if (loaderClosed.current) return;
 
-        // Si la autenticación está completa (tiene usuario o sesión)
         if (user || isAuthenticated) {
             loaderClosed.current = true;
             setIsLoading(false);
             return;
         }
 
-        // Si la autenticación falló o no hay sesión, igual cerramos el loader después de un tiempo
         if (authCheckDone && !authLoading) {
             loaderClosed.current = true;
             setIsLoading(false);
@@ -102,11 +103,24 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
         return () => clearTimeout(timeoutId);
     }, [isClient, isLoading]);
 
-    // ✅ Función para forzar el cierre del loader (fallback por si el usuario hace clic)
+    // ✅ Función para forzar el cierre del loader
     const handleLoaderComplete = () => {
         if (loaderClosed.current) return;
         loaderClosed.current = true;
         setIsLoading(false);
+        setEtapa('app'); // <-- nuevo: pasamos a la app
+    };
+
+    // ✅ Función del botón de ingreso
+    const manejarIngreso = () => {
+        // Intentamos reproducir el audio (el clic lo permite)
+        if (referenciaAudio.current) {
+            referenciaAudio.current.play().catch((error) => {
+                console.warn('No se pudo iniciar el audio:', error);
+            });
+        }
+        // Pasamos a la etapa de carga
+        setEtapa('cargando');
     };
 
     if (!isClient) {
@@ -120,12 +134,45 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
         );
     }
 
-    // ✅ Mostrar el loader solo si isLoading es true y no se cerró
-    if (isLoading && !loaderClosed.current) {
-        // ✅ Duración más larga para primera visita, más corta si ya visitó
+    // ✅ ETAPA 1: Portada con botón de ingreso
+    if (etapa === 'portada') {
+        return (
+            <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#FFCA28] text-black p-6 text-center">
+                <div className="mb-8 animate-float">
+                    <img
+                        src="/images/Krustyburgerheader.webp"
+                        alt="Krusty Burger"
+                        className="w-32 h-32 rounded-full border-4 border-black shadow-[6px_6px_0px_0px_black]"
+                    />
+                </div>
+                <h1 className="font-krusty font-krusty-bold text-4xl md:text-6xl mb-4 text-black drop-shadow-[3px_3px_0px_#D32F2F]">
+                    ¡Bienvenido a Krusty Burger!
+                </h1>
+                <p className="text-lg md:text-xl font-bold mb-10 max-w-md">
+                    Para una experiencia completa (y un poco de música de Springfield), presioná el botón.
+                </p>
+                <button
+                    onClick={manejarIngreso}
+                    className="bg-[#D32F2F] text-white font-krusty font-krusty-bold text-2xl md:text-3xl px-10 py-4 rounded-full border-4 border-black shadow-[8px_8px_0px_0px_black] transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[6px_6px_0px_0px_black] active:shadow-none active:translate-x-[8px] active:translate-y-[8px]"
+                >
+                    🍔 ¡Ingresar! 🍔
+                </button>
+            </div>
+        );
+    }
+
+    // ✅ ETAPA 2: Loader (solo si todavía no se cerró)
+    if (etapa === 'cargando' && isLoading && !loaderClosed.current) {
         const duracion = isFirstVisit ? 12000 : 8000;
         return <KrustyLoader onComplete={handleLoaderComplete} duracion={duracion} />;
     }
 
-    return <>{children}</>;
+    // ✅ ETAPA 3: La app real
+    return (
+        <>
+            {/* El audio vive acá, fuera de las condiciones, para que no se corte */}
+            <audio ref={referenciaAudio} loop src="/audio/simpsons-intro.mp3" />
+            {children}
+        </>
+    );
 }

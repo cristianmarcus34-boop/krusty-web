@@ -84,6 +84,11 @@ h4,
   text-shadow: none;
 }
 
+/* ✅ NUEVO: Utilidad para dar más "peso" visual a la Simpsonfont */
+.font-krusty-bold {
+  text-shadow: 0.5px 0 0 currentColor, -0.5px 0 0 currentColor;
+}
+
 /* 3. Utilidades */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
