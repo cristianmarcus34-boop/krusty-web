@@ -15,8 +15,8 @@ import AppInitializer from '../components/AppInitializer';
 import { Toaster } from 'react-hot-toast';
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import BotonMusica from '@/components/BotonMusica';
 
-// ✅ Metadata y viewport ahora funcionan porque es Server Component
 export { metadata, viewport } from './metadata';
 
 const inter = Inter({
@@ -45,14 +45,10 @@ export default function RootLayout({
 
         <ThemeProvider>
           <LoaderProvider>
-
             <PushNotificationProvider>
 
-              {/* ✅ Toda la lógica de cliente aislada acá */}
               <AppInitializer />
-
               <VersionUpdater />
-              <ThemeToggle />
               <GestorDeActualizaciones />
               <Navbar />
               <ActiveOrderFloating />
@@ -62,7 +58,6 @@ export default function RootLayout({
               </main>
 
               <Footer />
-
               <StatusBar />
 
               <div className="fixed bottom-0 right-0 w-[40vw] h-[40vw] bg-[#FFCA28]/5 -z-10 rounded-full blur-[80px] pointer-events-none" />
@@ -81,14 +76,8 @@ export default function RootLayout({
                     fontFamily: 'inherit',
                     maxWidth: '400px',
                   },
-                  success: {
-                    style: { borderColor: '#22c55e' },
-                    icon: '✅',
-                  },
-                  error: {
-                    style: { borderColor: '#ef4444' },
-                    icon: '❌',
-                  },
+                  success: { style: { borderColor: '#22c55e' }, icon: '✅' },
+                  error: { style: { borderColor: '#ef4444' }, icon: '❌' },
                 }}
               />
 
@@ -97,8 +86,15 @@ export default function RootLayout({
 
             </PushNotificationProvider>
 
+            {/* ✅ Los botones van FUERA de PushNotificationProvider y de StatusBar,
+                pero DENTRO de LoaderProvider para tener acceso al contexto.
+                El createPortal interno los monta en document.body. */}
+            <ThemeToggle />
+            <BotonMusica />
+
           </LoaderProvider>
         </ThemeProvider>
+
       </body>
     </html>
   );

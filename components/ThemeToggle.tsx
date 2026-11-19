@@ -3,6 +3,7 @@
 
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function ThemeToggle() {
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -26,19 +27,9 @@ export default function ThemeToggle() {
         document.documentElement.classList.toggle('dark', newTheme === 'dark');
     };
 
-    if (!mounted) {
-        return (
-            <button
-                type="button"
-                className="fixed bottom-20 right-6 z-50 p-3.5 rounded-full border-2 border-black bg-black text-white text-xl opacity-0"
-                aria-label="Cargando tema..."
-            >
-                🌙
-            </button>
-        );
-    }
+    if (!mounted) return null;
 
-    return (
+    return createPortal(
         <motion.button
             type="button"
             onClick={toggleTheme}
@@ -47,7 +38,7 @@ export default function ThemeToggle() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className={`fixed bottom-20 right-6 z-50 p-3.5 rounded-full border-2 transition-all text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5
+            className={`fixed bottom-28 right-4 md:bottom-20 md:right-6 z-[99999] p-3 md:p-3.5 rounded-full border-2 transition-all text-lg md:text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5
                 ${theme === 'light'
                     ? 'bg-black text-white border-black'
                     : 'bg-white text-black border-white'
@@ -56,6 +47,7 @@ export default function ThemeToggle() {
             aria-label={theme === 'light' ? 'Activar modo oscuro' : 'Activar modo claro'}
         >
             {theme === 'light' ? '🌙' : '☀️'}
-        </motion.button>
+        </motion.button>,
+        document.body
     );
 }

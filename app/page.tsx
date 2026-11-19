@@ -1,7 +1,7 @@
 // app/page.tsx
 // deno-lint-ignore-file no-sloppy-imports
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import BurgerCard from '../components/BurgerCard';
 import { Burger } from '../types/index';
 import { supabase } from '../lib/supabase';
@@ -15,6 +15,9 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+
+  // ✅ Referencia al efecto de sonido de Duff
+  const referenciaEfectoDuff = useRef<HTMLAudioElement>(null);
 
   const categorias = [
     { id: 'todos', label: 'Todo', icon: '🍟' },
@@ -137,6 +140,20 @@ export default function Home() {
     }
   };
 
+  // ✅ Maneja el cambio de categoría y reproduce el efecto de Duff al entrar a Bebidas
+  const manejarCambioCategoria = (id: string) => {
+    if (id === 'bebidas' && categoriaActual !== 'bebidas') {
+      const audio = referenciaEfectoDuff.current;
+      if (audio) {
+        audio.currentTime = 0; // reinicia por si ya sonó antes
+        audio.play().catch((error) => {
+          console.warn('No se pudo reproducir hombre-duff:', error);
+        });
+      }
+    }
+    setCategoriaActual(id);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -147,6 +164,9 @@ export default function Home() {
 
   return (
     <main className="min-h-screen pb-32 bg-white selection:bg-[#FFCA28]/30 text-[#292929]">
+
+      {/* ✅ Efecto de sonido para la categoría Bebidas */}
+      <audio ref={referenciaEfectoDuff} src="/audio/hombre-duff.mp3" preload="auto" />
 
       <script
         type="application/ld+json"
@@ -286,7 +306,7 @@ export default function Home() {
               <button
                 type="button"
                 key={cat.id}
-                onClick={() => setCategoriaActual(cat.id)}
+                onClick={() => manejarCambioCategoria(cat.id)}
                 className={`
                   flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 rounded-full font-black uppercase text-[9px] sm:text-[10px] md:text-[11px] transition-all border-2 whitespace-nowrap
                   ${categoriaActual === cat.id
