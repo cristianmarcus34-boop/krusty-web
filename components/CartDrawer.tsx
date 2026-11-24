@@ -526,12 +526,10 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     return MINIMO_PARA_PUNTOS - subtotal;
   }, [subtotal]);
 
-  // El descuento total de nivel + puntos nunca puede superar el 25%.
   const maxDescuentoTotalPermitido = useMemo(() => {
     return Math.floor(subtotal * MAX_DESCUENTO_TOTAL);
   }, [subtotal]);
 
-  // Lo que queda disponible para puntos después del descuento de nivel.
   const maxDescuentoDisponibleParaPuntos = useMemo(() => {
     return Math.max(
       0,
@@ -604,7 +602,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     setDescuentoPorPuntos(0);
   }, []);
 
-  // Si cambia el carrito y baja el límite de puntos, ajustamos automáticamente.
   useEffect(() => {
     if (puntosAUsar <= maxPuntosPermitidos) return;
 
@@ -622,7 +619,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   // 🧮 MONTOS Y VALIDACIONES
   // ============================================================
 
-  // El nivel y los puntos se acumulan, pero respetando el tope global del 25%.
   const descuentoFinalAplicado = useMemo(() => {
     return Math.min(
       descuentoNivelAplicado + descuentoPorPuntos,
@@ -719,11 +715,38 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     }
   }, [items.length, clearCart, isAuthenticated, user?.id, guardarCarritoEnDB]);
 
+  const irAIniciarSesion = useCallback(() => {
+    localStorage.setItem('krusty-carrito-abierto', 'true');
+    onClose();
+    setTimeout(() => router.push('/login'), 300);
+  }, [onClose, router]);
+
+  const obtenerUsuarioParaPedido = async (): Promise<string | null> => {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      if (!session?.user?.id) {
+        irAIniciarSesion();
+        return null;
+      }
+
+      return session.user.id;
+    } catch (error) {
+      console.error('❌ Error verificando sesión antes del pedido:', error);
+      alert('No pudimos verificar tu sesión. Iniciá sesión y volvé a intentar.');
+      return null;
+    }
+  };
+
   // ============================================================
   // 💳 FUNCIONES DE PAGO
   // ============================================================
 
   const handlePagarConMP = async () => {
+    const userId = await obtenerUsuarioParaPedido();
+    if (!userId) return;
+
     if (!isFormValid) {
       alert('🤡 ¡Completá tus datos y verificá la ubicación de entrega!');
       return;
@@ -734,9 +757,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     try {
       localStorage.setItem('krusty-customer-v5', JSON.stringify(customer));
       localStorage.setItem('krusty_user_telefono', customer.telefono);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
 
       const direccionCompleta =
         customer.tipoEntrega === 'Delivery'
@@ -877,6 +897,9 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
       return handlePagarConMP();
     }
 
+    const userId = await obtenerUsuarioParaPedido();
+    if (!userId) return;
+
     if (!isFormValid) {
       alert('🤡 ¡Krusty dice que faltan datos o tu ubicación no tiene cobertura!');
       return;
@@ -887,9 +910,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     try {
       localStorage.setItem('krusty-customer-v5', JSON.stringify(customer));
       localStorage.setItem('krusty_user_telefono', customer.telefono);
-
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id || null;
 
       const direccionCompleta =
         customer.tipoEntrega === 'Delivery'
@@ -948,9 +968,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
         throw new Error(`Error al guardar pedido: ${error.message}`);
       }
 
-      // Los puntos se consumen después de guardar correctamente el pedido.
-      // En efectivo se pueden descontar inmediatamente porque el pedido se confirma.
-      // En transferencia/Mercado Pago deben descontarse al confirmar el pago.
       if (
         puntosAUsar > 0 &&
         userId &&
@@ -1083,32 +1100,43 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   if (!mounted) return null;
 
   const isAuthLoading = isLoading && !isAuthenticated;
+  const checkoutDisabled =
+    items.length === 0 ||
+    isSending ||
+    procesandoPagoMP ||
+    isAuthLoading ||
+    (isAuthenticated && !isFormValid);
 
   return (
     <>
       {/* OVERLAY */}
+      {/* FIX: z-60 → z-[60] (z-60 no existe en Tailwind) */}
       <div
-        className={`fixed inset-0 bg-stone-900/40 dark:bg-black/70 z-60 backdrop-blur-md transition-all duration-500 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+        className={`fixed inset-0 bg-stone-900/40 dark:bg-black/70 z-[60] backdrop-blur-md transition-all duration-500 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
           }`}
         onClick={onClose}
       />
 
       {/* DRAWER */}
-      <div className="fixed inset-0 z-70 overflow-hidden pointer-events-none">
+      {/* FIX: z-70 → z-[70] */}
+      <div className="fixed inset-0 z-[70] overflow-hidden pointer-events-none">
         <div
+          // FIX #1: max-w-105/max-w-100 no existen → max-w-md/lg
+          // Ahora el drawer en desktop mide 448-512px en vez de 100% del viewport
           className={`absolute inset-y-0 right-0 flex flex-col h-dvh max-h-dvh overflow-hidden bg-white dark:bg-[#1a1a1a] shadow-2xl transform transition-transform duration-500 ease-in-out pointer-events-auto ${isOpen ? 'translate-x-0' : 'translate-x-full'
-            } w-full sm:max-w-105 lg:max-w-100 xl:max-w-100`}
+            } w-full sm:max-w-md lg:max-w-lg`}
         >
           {/* ========================================================== */}
-          {/* HEADER - OPTIMIZADO PARA MÓVIL */}
+          {/* HEADER - OPTIMIZADO PARA MÓVIL Y DESKTOP */}
           {/* ========================================================== */}
-          <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-stone-100 dark:border-stone-800 px-3 sm:px-5 pt-3 sm:pt-4 pb-3 sm:pb-4">
+          <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-stone-100 dark:border-stone-800 px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 lg:pt-5 pb-3 sm:pb-4 lg:pb-5">
             <div className="flex justify-between items-start gap-2">
               <div className="flex-1 min-w-0">
-                <h2 className="text-base sm:text-xl font-black text-stone-900 dark:text-[#FAD02C] tracking-tighter uppercase leading-none truncate">
+                {/* FIX #3: título más grande en desktop */}
+                <h2 className="text-base sm:text-xl lg:text-2xl font-black text-stone-900 dark:text-[#FAD02C] tracking-tighter uppercase leading-none truncate">
                   🛒 Tu Carrito
                 </h2>
-                <p className="text-[8px] sm:text-[10px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mt-0.5">
+                <p className="text-[8px] sm:text-[10px] lg:text-[11px] font-bold text-stone-400 dark:text-stone-500 uppercase tracking-widest mt-0.5">
                   {isAuthLoading
                     ? 'Cargando...'
                     : `${items.length} ${items.length === 1 ? 'producto' : 'productos'}`}
@@ -1136,7 +1164,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         }
                       }, 300);
                     }}
-                    className="px-2 sm:px-3 py-2 sm:py-1.5 rounded-full bg-emerald-500 text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-emerald-700 transition-colors active:scale-95 min-h-8.5 sm:min-h-8"
+                    // FIX: min-h-8.5 no existe → min-h-9
+                    className="px-2 sm:px-3 py-2 sm:py-1.5 rounded-full bg-emerald-500 text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-emerald-700 transition-colors active:scale-95 min-h-9"
                   >
                     <span className="text-sm sm:text-xs">🛍️</span>
                     <span className="hidden min-[370px]:inline text-[9px] sm:text-[10px]">Seguir</span>
@@ -1147,7 +1176,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 {items.length > 0 && (
                   <button
                     onClick={handleClearCart}
-                    className="px-2 sm:px-3 py-2 sm:py-1.5 rounded-full bg-red-500 text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-red-700 transition-colors active:scale-95 min-h-8.5 sm:min-h-8"
+                    className="px-2 sm:px-3 py-2 sm:py-1.5 rounded-full bg-red-500 text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-red-700 transition-colors active:scale-95 min-h-9"
                   >
                     <span className="text-sm sm:text-xs">🗑️</span>
                     <span className="hidden min-[370px]:inline text-[9px] sm:text-[10px]">Vaciar</span>
@@ -1158,7 +1187,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-2 sm:px-3 py-2 sm:py-1.5 rounded-full bg-[#D32F2F] text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-black transition-colors active:scale-95 min-h-8.5 sm:min-h-8"
+                  className="px-2 sm:px-3 py-2 sm:py-1.5 rounded-full bg-[#D32F2F] text-white border-2 border-black flex items-center justify-center gap-0.5 sm:gap-1 font-black text-[9px] sm:text-[10px] cursor-pointer hover:bg-black transition-colors active:scale-95 min-h-9"
                 >
                   <span className="text-sm sm:text-xs">✕</span>
                   <span className="hidden min-[370px]:inline text-[9px] sm:text-[10px]">Cerrar</span>
@@ -1169,8 +1198,9 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
           {/* ========================================================== */}
           {/* CONTENIDO */}
+          {/* FIX #2: padding más generoso en desktop */}
           {/* ========================================================== */}
-          <div className="flex-1 overflow-y-auto px-3 sm:px-5 py-3 sm:py-4 space-y-4 sm:space-y-5 dark:bg-[#1a1a1a] no-scrollbar">
+          <div className="flex-1 overflow-y-auto px-3 sm:px-5 lg:px-6 py-3 sm:py-4 lg:py-5 space-y-4 sm:space-y-5 dark:bg-[#1a1a1a] no-scrollbar">
             {isAuthLoading ? (
               <div className="flex items-center justify-center py-20">
                 <div className="text-center">
@@ -1246,7 +1276,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   </div>
                 )}
 
-                {/* LISTA DE PRODUCTOS - OPTIMIZADA */}
+                {/* LISTA DE PRODUCTOS */}
                 <div className="space-y-3 sm:space-y-4">
                   {items.length === 0 ? (
                     <button
@@ -1327,7 +1357,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 {items.length > 0 &&
                   customer.tipoEntrega === 'Delivery' &&
                   !envioGratisAplicado && (
-                    <div className="bg-linear-to-r from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5">
+                    <div className="bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950/30 dark:to-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3.5">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-base sm:text-lg">🚚</span>
@@ -1346,7 +1376,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
                       <div className="w-full h-2 bg-blue-100 dark:bg-blue-900/30 rounded-full mt-2 overflow-hidden">
                         <div
-                          className="h-full bg-linear-to-r from-[#FAD02C] to-[#FFCA28] rounded-full transition-all duration-700 ease-out"
+                          className="h-full bg-gradient-to-r from-[#FAD02C] to-[#FFCA28] rounded-full transition-all duration-700 ease-out"
                           style={{ width: `${Math.min(progresoEnvioGratis, 99)}%` }}
                         />
                       </div>
@@ -1369,7 +1399,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     </div>
                   )}
 
-                {/* FORMULARIO - OPTIMIZADO */}
+                {/* FORMULARIO */}
                 {items.length > 0 && (
                   <div className="space-y-4 sm:space-y-5 border-t border-stone-100 dark:border-stone-800 pt-4 sm:pt-5">
                     {/* TIPO DE ENTREGA */}
@@ -1478,7 +1508,7 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                         </div>
                       )}
 
-                      {/* SECCIÓN DE CANJE DE PUNTOS - NUEVA LÓGICA */}
+                      {/* SECCIÓN DE CANJE DE PUNTOS */}
                       {items.length > 0 && (
                         <>
                           {cargandoPuntos && (
@@ -1497,7 +1527,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             </div>
                           )}
 
-                          {/* ✅ CASO 1: Tiene puntos Y supera el mínimo → muestra selector */}
                           {!cargandoPuntos &&
                             !errorPuntos &&
                             isAuthenticated &&
@@ -1596,7 +1625,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                               </div>
                             )}
 
-                          {/* ✅ CASO 2: Tiene puntos pero NO supera el mínimo → muestra mensaje */}
                           {!cargandoPuntos &&
                             !errorPuntos &&
                             isAuthenticated &&
@@ -1612,7 +1640,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                               </div>
                             )}
 
-                          {/* ✅ CASO 3: No tiene puntos */}
                           {!cargandoPuntos &&
                             !errorPuntos &&
                             isAuthenticated &&
@@ -1627,25 +1654,18 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                               </div>
                             )}
 
-                          {/* ✅ CASO 4: No está autenticado */}
                           {!cargandoPuntos &&
                             !errorPuntos &&
                             !isAuthenticated && (
                               <button
-                                onClick={() => {
-                                  localStorage.setItem('krusty-carrito-abierto', 'true');
-                                  onClose();
-                                  setTimeout(() => {
-                                    router.push('/login');
-                                  }, 300);
-                                }}
+                                onClick={irAIniciarSesion}
                                 className="w-full bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 border-2 border-blue-400 hover:border-blue-500 rounded-xl p-2 text-center transition-all duration-300 cursor-pointer group"
                               >
                                 <p className="text-[9px] sm:text-[10px] font-bold text-blue-700 dark:text-blue-400 group-hover:text-blue-800 dark:group-hover:text-blue-300">
-                                  🔑 Iniciá sesión para acumular y canjear puntos
+                                  🔑 Iniciá sesión para confirmar el pedido y sumar puntos
                                 </p>
                                 <p className="text-[7px] sm:text-[8px] font-bold text-blue-400/70 dark:text-blue-500/70 mt-0.5 group-hover:text-blue-500 transition-colors">
-                                  👆 Tocá para iniciar sesión
+                                  👆 Ingresá o creá una cuenta
                                 </p>
                               </button>
                             )}
@@ -1749,17 +1769,16 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
           </div>
 
           {/* ========================================================== */}
-          {/* FOOTER - DESCUENTO ACUMULADO CON TOPE DEL 25% */}
+          {/* FOOTER */}
           {/* ========================================================== */}
           {!isAuthLoading && items.length > 0 && (
-            <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-t border-stone-100 dark:border-stone-800 px-3 sm:px-5 pt-3 sm:pt-4 pb-[max(env(safe-area-inset-bottom),12px)] sm:pb-[max(env(safe-area-inset-bottom),16px)] shadow-[0_-10px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
+            <div className="shrink-0 bg-white dark:bg-[#1a1a1a] border-t border-stone-100 dark:border-stone-800 px-3 sm:px-5 lg:px-6 pt-3 sm:pt-4 pb-[max(env(safe-area-inset-bottom),12px)] sm:pb-[max(env(safe-area-inset-bottom),16px)] shadow-[0_-10px_20px_rgba(0,0,0,0.02)] dark:shadow-[0_-10px_20px_rgba(0,0,0,0.5)]">
               <div className="space-y-1.5 sm:space-y-2 mb-3 sm:mb-4">
                 <div className="flex justify-between items-center text-stone-400 dark:text-stone-500 font-bold text-[10px] sm:text-[12px] uppercase tracking-tighter">
                   <span>Subtotal</span>
                   <span>${subtotal.toLocaleString('es-AR')}</span>
                 </div>
 
-                {/* 🎯 Descuento por nivel */}
                 {descuentoNivelAplicado > 0 && (
                   <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold text-[10px] sm:text-[12px] uppercase tracking-tighter">
                     <span>🎯 Descuento {nivel?.nombre} ({beneficios?.descuento}%)</span>
@@ -1767,7 +1786,6 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   </div>
                 )}
 
-                {/* ⭐ Descuento por puntos */}
                 {descuentoPorPuntos > 0 && (
                   <div className="flex justify-between items-center text-[#FAD02C] font-bold text-[10px] sm:text-[12px] uppercase tracking-tighter">
                     <span>⭐ Puntos ({puntosAUsar} pts)</span>
@@ -1824,13 +1842,13 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
               <button
                 type="button"
-                disabled={
-                  items.length === 0 || isSending || procesandoPagoMP || !isFormValid
-                }
+                disabled={checkoutDisabled}
                 onClick={handleCheckout}
-                className={`w-full py-3.5 sm:py-4 rounded-2xl font-black uppercase text-[10px] sm:text-[11px] tracking-[0.15em] transition-all duration-300 active:scale-[0.98] cursor-pointer shadow-lg ${!isFormValid || items.length === 0
+                className={`w-full py-3.5 sm:py-4 rounded-2xl font-black uppercase text-[10px] sm:text-[11px] tracking-[0.15em] transition-all duration-300 active:scale-[0.98] cursor-pointer shadow-lg ${checkoutDisabled
                   ? 'bg-stone-100 dark:bg-stone-800 text-stone-500 dark:text-stone-600 cursor-not-allowed shadow-none'
-                  : customer.metodoPago === 'Mercado Pago'
+                  : !isAuthenticated
+                    ? 'bg-[#D32F2F] text-white hover:bg-black'
+                    : customer.metodoPago === 'Mercado Pago'
                     ? 'bg-[#009EE3] text-white hover:bg-[#0083c4]'
                     : customer.metodoPago === 'Transferencia'
                       ? 'bg-emerald-600 text-white hover:bg-emerald-700'
@@ -1839,7 +1857,9 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               >
                 {isSending || procesandoPagoMP
                   ? 'PROCESANDO...'
-                  : !isFormValid
+                  : !isAuthenticated
+                    ? 'Iniciá sesión para confirmar ➔'
+                    : !isFormValid
                     ? customer.metodoPago === 'Efectivo' &&
                       (!montoEfectivo || parseFloat(montoEfectivo) < montoTotalFinal)
                       ? '💰 Monto insuficiente'
@@ -1863,7 +1883,8 @@ export default function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
       {/* MODAL DE WHATSAPP */}
       {mostrarModalWhatsApp && (
-        <div className="fixed inset-0 bg-black/70 z-9999 flex items-center justify-center p-4 animate-fadeIn">
+        // FIX: z-9999 no existe → z-[9999]
+        <div className="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center p-4 animate-fadeIn">
           <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 sm:p-6 max-w-md w-full shadow-2xl border-2 border-[#25D366] max-h-[90vh] overflow-y-auto">
             <div className="text-center mb-4">
               <div className="text-4xl sm:text-5xl mb-3">📱</div>

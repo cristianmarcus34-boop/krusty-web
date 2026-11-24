@@ -82,3 +82,8 @@ export async function getProductoById(id: string) {
   }
   return data;
 }
+
+// ⚠️ SOLO PARA DEBUG EN DESARROLLO — borrar antes de producción
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).supabase = supabase;
+}
