@@ -204,7 +204,7 @@ export default function LoaderProvider({ children }: LoaderProviderProps) {
             {etapa === 'cargando' && (
                 <KrustyLoader
                     onComplete={handleLoaderComplete}
-                    duracion={isFirstVisit ? 12000 : 8000}
+                    duracion={isFirstVisit ? 2500 : 1000}
                 />
             )}
 

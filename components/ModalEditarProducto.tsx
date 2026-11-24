@@ -1,4 +1,5 @@
 "use client";
+import { createPortal } from 'react-dom';
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
@@ -42,6 +43,14 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
   useEffect(() => {
     cargarDatosPrevios();
   }, [cargarDatosPrevios]);
+
+  useEffect(() => {
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,11 +120,11 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
     }
   };
 
-  if (!producto) return null;
+  if (!producto || typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-150 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-sm">
-      <div className="bg-[#4CAF50] border-t-8 sm:border-10 border-black p-4 sm:p-8 rounded-t-[3rem] sm:rounded-[4rem] w-full max-w-lg h-[92vh] sm:h-auto overflow-y-auto no-scrollbar shadow-[0px_-10px_0px_0px_rgba(0,0,0,1)] sm:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]">
+  return createPortal(
+    <div className="fixed inset-0 z-[100000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/90 backdrop-blur-sm">
+      <div className="bg-[#4CAF50] border-t-8 sm:border-10 border-black p-4 sm:p-8 rounded-t-[3rem] sm:rounded-[4rem] w-full max-w-lg h-[92dvh] max-h-[92dvh] sm:h-auto sm:max-h-[calc(100dvh-2rem)] overflow-y-auto no-scrollbar shadow-[0px_-10px_0px_0px_rgba(0,0,0,1)] sm:shadow-[20px_20px_0px_0px_rgba(0,0,0,1)]">
 
         <h2 className="text-3xl sm:text-4xl font-black uppercase italic mb-6 text-center text-white drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] leading-tight">
           EDITAR ITEM ✏️
@@ -208,6 +217,7 @@ export default function ModalEditarProducto({ producto, onClose, onSuccess }: Mo
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

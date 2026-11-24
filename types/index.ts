@@ -4,6 +4,7 @@ export interface Adicional {
   id: string | number;
   nombre: string;
   precio: number;
+  descripcion?: string | null;
 }
 
 export interface Burger {

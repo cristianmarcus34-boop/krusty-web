@@ -89,7 +89,7 @@ export default function AdminPage() {
         );
       case 'adicionales':
         return (
-          <div className="bg-white border-[6px] border-black rounded-[3rem] p-2 md:p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+          <div className="bg-white border-4 sm:border-[6px] border-black rounded-[2rem] sm:rounded-[3rem] p-2 sm:p-4 md:p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
             <TabAdicionales />
           </div>
         );

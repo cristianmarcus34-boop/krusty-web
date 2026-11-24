@@ -4,10 +4,22 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { domToPng } from 'modern-screenshot';
 import { useRouter } from 'next/navigation';
+import { normalizarEstadoPedido } from '@/lib/estadoPedido';
+
+interface PedidoTicket {
+  id: number;
+  estado: string;
+  estado_pago?: string | null;
+  metodo_pago?: string | null;
+  creado_en?: string | null;
+  resumenes_de_elementos?: string | null;
+  total?: number | null;
+  direccion?: string | null;
+}
 
 export default function GraciasPage() {
   const router = useRouter();
-  const [pedido, setPedido] = useState<any>(null);
+  const [pedido, setPedido] = useState<PedidoTicket | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const ticketRef = useRef<HTMLDivElement>(null);
@@ -76,6 +88,29 @@ export default function GraciasPage() {
     router.push('/');
   };
 
+  if (!loading && pedido && normalizarEstadoPedido(pedido.estado) === 'cancelado') {
+    return (
+      <main className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center p-6 text-center">
+        <span className="text-6xl mb-4" aria-hidden="true">❌</span>
+        <h1 className="text-3xl font-black uppercase mb-2">Pedido cancelado</h1>
+        <p className="font-bold text-stone-700 mb-6">No se generó un ticket para este pedido.</p>
+        <Link
+          href={`/pedido/${pedido.id}`}
+          className="bg-white border-4 border-black px-6 py-3 rounded-xl font-black uppercase shadow-[4px_4px_0px_0px_black]"
+        >
+          Ver estado del pedido
+        </Link>
+      </main>
+    );
+  }
+
+  const metodoPago = pedido?.metodo_pago?.toLowerCase() || '';
+  const etiquetaPago = pedido?.estado_pago?.toLowerCase() === 'aprobado'
+    ? 'PAGADO'
+    : metodoPago.includes('efectivo')
+      ? 'PAGO AL RECIBIR'
+      : 'PAGO PENDIENTE';
+
   if (loading) return (
     <div className="min-h-screen bg-[#FFCA28] flex flex-col items-center justify-center font-sans p-6">
       <div className="w-16 h-16 border-8 border-stone-900 border-t-[#D32F2F] rounded-full animate-spin mb-6 shadow-xl" />
@@ -98,7 +133,7 @@ export default function GraciasPage() {
             disabled={isDownloading}
             className="flex items-center gap-3 px-6 sm:px-8 py-3 rounded-2xl border-4 border-stone-900 bg-white text-stone-900 text-[10px] sm:text-xs font-black uppercase tracking-widest shadow-[6px_6px_0px_0px_rgba(28,25,23,1)] hover:translate-y-1 hover:translate-x-1 hover:shadow-none transition-all disabled:opacity-50 w-full justify-center sm:w-auto"
           >
-            {isDownloading ? 'Generando...' : '📥 ¡Imprimir Cupón!'}
+            {isDownloading ? 'Generando...' : '📥 Descargar ticket'}
           </button>
         </div>
 
@@ -151,7 +186,7 @@ export default function GraciasPage() {
 
             {/* Listado de Productos */}
             <div className="space-y-4 mb-8">
-              {pedido?.items_resumen?.split(', ').map((item: string, i: number) => (
+              {pedido?.resumenes_de_elementos?.split(', ').filter(Boolean).map((item, i) => (
                 <div key={i} className="flex justify-between items-center text-xs font-black text-stone-900 uppercase italic">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 bg-[#D32F2F] rotate-45 flex-shrink-0" />
@@ -165,11 +200,11 @@ export default function GraciasPage() {
             {/* Caja de Total */}
             <div className="bg-white border-4 border-stone-900 p-5 sm:p-6 mb-8 relative shadow-[6px_6px_0px_0px_rgba(255,202,40,1)]">
               <div className="absolute -top-4 -right-2 bg-[#D32F2F] text-white text-[10px] font-black px-3 py-1 border-2 border-stone-900 uppercase -rotate-6 shadow-md z-20">
-                PAGADO
+                {etiquetaPago}
               </div>
               <div className="flex justify-between items-center text-[10px] font-bold text-stone-400 uppercase mb-2">
                 <span>Vía: {pedido?.metodo_pago?.split('(')[0]}</span>
-                <span>{new Date(pedido?.created_at).toLocaleDateString()}</span>
+                <span>{pedido?.creado_en ? new Date(pedido.creado_en).toLocaleDateString('es-AR') : '—'}</span>
               </div>
               <div className="flex justify-between items-end border-t-2 border-stone-100 pt-4 gap-2">
                 <span className="font-black text-sm text-stone-900 uppercase tracking-tighter flex-shrink-0">Total:</span>

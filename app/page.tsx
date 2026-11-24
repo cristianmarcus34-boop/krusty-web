@@ -13,6 +13,7 @@ export default function Home() {
   const [items, setItems] = useState<Burger[]>([]);
   const [categoriaActual, setCategoriaActual] = useState('todos');
   const [loading, setLoading] = useState(true);
+  const [errorCarga, setErrorCarga] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
@@ -55,6 +56,7 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
+      setErrorCarga(false);
 
       const { data, error } = await supabase
         .from('productos')
@@ -74,6 +76,7 @@ export default function Home() {
 
       if (error) {
         console.error('Error fetching productos:', error);
+        setErrorCarga(true);
         return;
       }
 
@@ -95,6 +98,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error cargando el menú:', error);
+      setErrorCarga(true);
     } finally {
       setLoading(false);
     }
@@ -166,6 +170,25 @@ export default function Home() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="w-12 h-12 border-4 border-[#D32F2F] border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  if (errorCarga) {
+    return (
+      <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center">
+        <span className="text-6xl mb-4" aria-hidden="true">🍔</span>
+        <h1 className="font-krusty text-3xl text-black mb-2">No pudimos cargar el menú</h1>
+        <p className="text-sm font-bold text-stone-500 mb-6">
+          Revisá tu conexión e intentá nuevamente.
+        </p>
+        <button
+          type="button"
+          onClick={fetchData}
+          className="bg-[#FFCA28] border-2 border-black px-6 py-3 rounded-xl font-black uppercase text-sm shadow-[4px_4px_0px_0px_black] active:translate-y-0.5 active:shadow-none"
+        >
+          Reintentar
+        </button>
+      </main>
     );
   }
 

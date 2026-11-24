@@ -119,56 +119,100 @@ export const suscribirNotificaciones = async (userId: string) => {
 // 📦 GUARDAR SUSCRIPCIÓN EN DB (MULTI-DISPOSITIVO)
 // ============================================================
 
-const guardarSuscripcionEnDB = async (userId: string, subscription: PushSubscription, deviceName: string) => {
+const guardarSuscripcionEnDB = async (
+    userId: string,
+    subscription: PushSubscription,
+    deviceName: string
+) => {
     try {
         const endpoint = subscription.endpoint;
 
-        // ✅ Verificar si ya existe esta suscripción
-        const { data: existing } = await supabase
-            .from('push_subscriptions')
-            .select('id')
-            .eq('usuario_id', userId)
-            .eq('subscription->>endpoint', endpoint)
-            .maybeSingle();
+        // Convertir PushSubscription a JSON plano (sin métodos)
+        const subscriptionJSON =
+            typeof subscription.toJSON === 'function'
+                ? subscription.toJSON()
+                : {
+                    endpoint,
+                    keys: {
+                        p256dh: subscription.getKey
+                            ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')!)))
+                            : '',
+                        auth: subscription.getKey
+                            ? btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth')!)))
+                            : '',
+                    },
+                };
 
-        if (existing) {
-            // ✅ Actualizar existente
+        // 1. Traer TODAS las suscripciones del usuario
+        const { data: existentes, error: selectError } = await supabase
+            .from('push_subscriptions')
+            .select('id, subscription')
+            .eq('usuario_id', userId);
+
+        if (selectError) {
+            console.error('❌ [Push] Error en select:', {
+                code: selectError.code,
+                message: selectError.message,
+                details: selectError.details,
+                hint: selectError.hint,
+            });
+            throw selectError;
+        }
+
+        // 2. Buscar si ya existe ESTE dispositivo (por endpoint)
+        const yaExiste = existentes?.find(
+            (row: any) => row.subscription?.endpoint === endpoint
+        );
+
+        if (yaExiste) {
+            // 3a. Actualizar la suscripción de este dispositivo
             const { error } = await supabase
                 .from('push_subscriptions')
                 .update({
+                    subscription: subscriptionJSON,
                     updated_at: new Date().toISOString(),
                     last_used_at: new Date().toISOString(),
                     is_active: true,
-                    device_name: deviceName
+                    device_name: deviceName,
                 })
-                .eq('id', existing.id);
+                .eq('id', yaExiste.id);
 
             if (error) {
-                console.error('❌ [Push] Error actualizando suscripción:', error);
+                console.error('❌ [Push] Error actualizando:', {
+                    code: error.code,
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                });
                 throw error;
             }
-            console.log('✅ [Push] Suscripción actualizada');
+            console.log('✅ [Push] Suscripción actualizada (dispositivo existente)');
             return;
         }
 
-        // ✅ Insertar nueva suscripción
+        // 3b. Insertar nueva suscripción (nuevo dispositivo)
         const { error } = await supabase
             .from('push_subscriptions')
             .insert({
                 usuario_id: userId,
-                subscription: subscription,
+                subscription: subscriptionJSON,
                 device_name: deviceName,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
                 last_used_at: new Date().toISOString(),
-                is_active: true
+                is_active: true,
             });
 
         if (error) {
-            console.error('❌ [Push] Error guardando suscripción:', error);
+            console.error('❌ [Push] Error insertando:', {
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+            });
             throw error;
         }
-        console.log('✅ [Push] Nueva suscripción guardada en DB');
+        console.log('✅ [Push] Nueva suscripción guardada (nuevo dispositivo)');
 
     } catch (error) {
         console.error('❌ [Push] Error en guardarSuscripcionEnDB:', error);
@@ -177,22 +221,57 @@ const guardarSuscripcionEnDB = async (userId: string, subscription: PushSubscrip
 };
 
 // ============================================================
-// 📦 DESUSCRIBIR NOTIFICACIONES
+// 📦 DESUSCRIBIR NOTIFICACIONES (SOLO ESTE DISPOSITIVO)
 // ============================================================
 
 export const desuscribirNotificaciones = async (userId: string) => {
     try {
-        await supabase
-            .from('push_subscriptions')
-            .delete()
-            .eq('usuario_id', userId);
-
         const registration = await navigator.serviceWorker.ready;
         const subscription = await registration.pushManager.getSubscription();
 
         if (subscription) {
+            // 1. Traer las del usuario
+            const { data: existentes, error: selectError } = await supabase
+                .from('push_subscriptions')
+                .select('id, subscription')
+                .eq('usuario_id', userId);
+
+            if (selectError) {
+                console.error('❌ [Push] Error en select:', {
+                    code: selectError.code,
+                    message: selectError.message,
+                    details: selectError.details,
+                    hint: selectError.hint,
+                });
+                throw selectError;
+            }
+
+            // 2. Encontrar la de ESTE dispositivo (por endpoint)
+            const target = existentes?.find(
+                (row: any) => row.subscription?.endpoint === subscription.endpoint
+            );
+
+            // 3. Borrar solo esa
+            if (target) {
+                const { error } = await supabase
+                    .from('push_subscriptions')
+                    .delete()
+                    .eq('id', target.id);
+
+                if (error) {
+                    console.error('❌ [Push] Error borrando suscripción:', {
+                        code: error.code,
+                        message: error.message,
+                        details: error.details,
+                        hint: error.hint,
+                    });
+                    throw error;
+                }
+                console.log('✅ [Push] Suscripción de este dispositivo eliminada');
+            }
+
             await subscription.unsubscribe();
-            console.log('✅ [Push] Desuscripción exitosa');
+            console.log('✅ [Push] Desuscripción exitosa (solo este dispositivo)');
         }
 
         return true;

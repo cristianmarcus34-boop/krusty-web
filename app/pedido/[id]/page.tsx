@@ -132,7 +132,7 @@ export default function SeguimientoPedido() {
                         const estadoAnterior = estadoAnteriorPedido?.estado;
 
                         if (nuevoEstado !== estadoAnterior) {
-                            if (nuevoEstado === 'en camino') {
+                            if (nuevoEstado === 'en_camino') {
                                 try {
                                     const beep = new Audio('/sounds/correcaminos-bip.mp3');
                                     beep.volume = 0.5;
@@ -263,10 +263,13 @@ export default function SeguimientoPedido() {
                 {/* NAVEGACIÓN */}
                 <div className="flex justify-between items-center mb-6 gap-4">
                     <button onClick={() => router.push('/')} className="flex-1 bg-white border-4 border-black p-3 rounded-2xl font-black italic uppercase text-[10px] shadow-[4px_4px_0px_black] active:scale-95 transition-all cursor-pointer">← Menú</button>
-                    <button onClick={handleVerTicket} className="flex-1 bg-[#FFCA28] border-4 border-black p-3 rounded-2xl font-black italic uppercase text-[10px] shadow-[4px_4px_0px_black] active:scale-95 transition-all cursor-pointer">Ver Ticket 🎫</button>
+                    {estadoActual !== 'cancelado' && (
+                        <button onClick={handleVerTicket} className="flex-1 bg-[#FFCA28] border-4 border-black p-3 rounded-2xl font-black italic uppercase text-[10px] shadow-[4px_4px_0px_black] active:scale-95 transition-all cursor-pointer">Ver Ticket 🎫</button>
+                    )}
                 </div>
 
                 {/* MAPA DE SPRINGFIELD */}
+                {!['pago_pendiente', 'cancelado'].includes(estadoActual) && (
                 <div className="relative w-full h-56 bg-stone-300 rounded-[2.5rem] border-4 border-black mb-8 overflow-hidden shadow-[8px_8px_0px_black]">
                     <img
                         src="/images/springfield-map.jpg"
@@ -297,27 +300,30 @@ export default function SeguimientoPedido() {
                         Live Tracking Springfield
                     </div>
                 </div>
+                )}
 
                 {/* BARRA DE PROGRESO */}
-                <div className="relative mb-14 px-2">
-                    <div className="absolute top-4 left-0 w-full h-3 bg-stone-200 -translate-y-1/2 rounded-full border-[3px] border-black shadow-inner" />
-                    <motion.div
-                        className="absolute top-4 left-0 h-3 bg-[#4DB6AC] -translate-y-1/2 rounded-full border-[3px] border-black z-10"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${(indiceActual / (estados.length - 1)) * 100}%` }}
-                        transition={{ duration: 1, ease: "backOut" }}
-                    />
-                    <div className="relative flex justify-between z-20">
-                        {estados.map((est, index) => (
-                            <div key={est} className="flex flex-col items-center">
-                                <div className={`w-9 h-9 rounded-full border-4 border-black flex items-center justify-center transition-all duration-500 ${index <= indiceActual ? 'bg-[#FFCA28] scale-110 shadow-[3px_3px_0px_black]' : 'bg-white text-stone-300'}`}>
-                                    <span className="text-[11px] font-black">{index + 1}</span>
+                {!['pago_pendiente', 'cancelado'].includes(estadoActual) && (
+                    <div className="relative mb-14 px-2">
+                        <div className="absolute top-4 left-0 w-full h-3 bg-stone-200 -translate-y-1/2 rounded-full border-[3px] border-black shadow-inner" />
+                        <motion.div
+                            className="absolute top-4 left-0 h-3 bg-[#4DB6AC] -translate-y-1/2 rounded-full border-[3px] border-black z-10"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(indiceActual / (estados.length - 1)) * 100}%` }}
+                            transition={{ duration: 1, ease: "backOut" }}
+                        />
+                        <div className="relative flex justify-between z-20">
+                            {estados.map((est, index) => (
+                                <div key={est} className="flex flex-col items-center">
+                                    <div className={`w-9 h-9 rounded-full border-4 border-black flex items-center justify-center transition-all duration-500 ${index <= indiceActual ? 'bg-[#FFCA28] scale-110 shadow-[3px_3px_0px_black]' : 'bg-white text-stone-300'}`}>
+                                        <span className="text-[11px] font-black">{index + 1}</span>
+                                    </div>
+                                    <p className={`text-[8px] font-black uppercase mt-3 text-center max-w-15 leading-tight ${index <= indiceActual ? 'text-black' : 'text-stone-300'}`}>{est}</p>
                                 </div>
-                                <p className={`text-[8px] font-black uppercase mt-3 text-center max-w-15 leading-tight ${index <= indiceActual ? 'text-black' : 'text-stone-300'}`}>{est}</p>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* TARJETA DE ESTADO */}
                 <AnimatePresence mode="wait">
