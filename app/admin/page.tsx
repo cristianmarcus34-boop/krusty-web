@@ -9,7 +9,7 @@ import TabAdicionales from '../../components/TabAdicionales';
 import Link from 'next/link';
 
 export default function AdminPage() {
-  const [activeTab, setActiveTab] = useState<'pedidos' | 'productos' | 'adicionales' | 'recompensas'>('pedidos');
+  const [activeTab, setActiveTab] = useState<'pedidos' | 'productos' | 'adicionales' | 'recompensas' | 'sugerencias'>('pedidos');
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userRol, setUserRol] = useState<string | null>(null);
@@ -18,7 +18,6 @@ export default function AdminPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        console.log('🔍 1. Obteniendo sesión...');
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
@@ -27,17 +26,12 @@ export default function AdminPage() {
 
         const email = session?.user?.email ?? null;
         setUserEmail(email);
-        console.log('🔍 2. Sesión obtenida:', email || 'No hay sesión');
 
         if (!session || !email) {
-          console.log('❌ 3. No hay sesión o email, redirigiendo...');
           router.push('/admin/login');
           return;
         }
 
-        console.log('🔍 4. Verificando permisos para:', email);
-
-        // ✅ VERIFICAR EN LA TABLA perfiles SI EL ROL ES 'admin'
         const { data: perfil, error: perfilError } = await supabase
           .from('perfiles')
           .select('rol')
@@ -48,18 +42,12 @@ export default function AdminPage() {
           console.error('❌ Error consultando perfil:', perfilError);
         }
 
-        console.log('🔍 4a. Resultado de perfiles:', perfil);
-
-        // ✅ Si tiene rol 'admin' en perfiles, es administrador
         if (perfil && perfil.rol === 'admin') {
           setUserRol(perfil.rol);
-          console.log('✅ Es administrador (rol en perfiles)');
           setLoading(false);
           return;
         }
 
-        // ❌ Si no es admin, cerrar sesión y redirigir
-        console.log('❌ 5. No es administrador, cerrando sesión...');
         await supabase.auth.signOut();
         router.push('/admin/login');
 
@@ -99,6 +87,12 @@ export default function AdminPage() {
             <AdminRecompensas />
           </div>
         );
+      case 'sugerencias':
+        return (
+          <div className="bg-white border-[6px] border-black rounded-[3rem] p-2 md:p-6 shadow-[12px_12px_0px_0px_rgba(0,0,0,1)]">
+            <AdminSugerencias />
+          </div>
+        );
       default:
         return null;
     }
@@ -120,7 +114,7 @@ export default function AdminPage() {
 
       <button
         onClick={() => router.push('/')}
-        className="fixed bottom-6 right-6 z-100 bg-black text-white border-4 border-white flex items-center gap-3 px-6 py-4 rounded-full font-black uppercase text-sm italic shadow-[6px_6px_0px_0px_rgba(211,47,47,1)] hover:scale-105 active:scale-95 transition-all group"
+        className="fixed bottom-6 right-6 z-[100] bg-black text-white border-4 border-white flex items-center gap-3 px-6 py-4 rounded-full font-black uppercase text-sm italic shadow-[6px_6px_0px_0px_rgba(211,47,47,1)] hover:scale-105 active:scale-95 transition-all group"
       >
         <span className="text-xl group-hover:rotate-12 transition-transform">🏠</span>
         <span className="hidden md:inline">Ver Menú Público</span>
@@ -150,7 +144,314 @@ export default function AdminPage() {
 }
 
 // ============================================================
-// 📋 COMPONENTE ADMIN RECOMPENSAS (integrado)
+// 📋 COMPONENTE ADMIN SUGERENCIAS (integrado)
+// ============================================================
+function AdminSugerencias() {
+  const [sugerencias, setSugerencias] = useState<any[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [filtroEstado, setFiltroEstado] = useState<string>('todos');
+  const [filtroTipo, setFiltroTipo] = useState<string>('todos');
+  const [busqueda, setBusqueda] = useState('');
+  const [expandida, setExpandida] = useState<string | null>(null);
+
+  const ESTADOS = [
+    { value: 'pendiente', label: '⏳ Pendiente', color: 'bg-yellow-100 border-yellow-400 text-yellow-800' },
+    { value: 'en_revision', label: '🔍 En revisión', color: 'bg-blue-100 border-blue-400 text-blue-800' },
+    { value: 'resuelto', label: '✅ Resuelto', color: 'bg-green-100 border-green-400 text-green-800' },
+    { value: 'rechazado', label: '❌ Rechazado', color: 'bg-red-100 border-red-400 text-red-800' },
+  ];
+
+  const TIPOS_LABEL: Record<string, string> = {
+    mejora: '✨ Mejora',
+    bug: '🐛 Bug',
+    sugerencia: '💡 Sugerencia',
+    otro: '📝 Otro',
+  };
+
+  useEffect(() => {
+    cargarSugerencias();
+  }, []);
+
+  const cargarSugerencias = async () => {
+    setCargando(true);
+    try {
+      const { data, error } = await supabase
+        .from('sugerencias')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setSugerencias(data || []);
+    } catch (error) {
+      console.error('Error cargando sugerencias:', error);
+      alert('Error al cargar las sugerencias');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const cambiarEstado = async (id: string, nuevoEstado: string) => {
+    try {
+      const { error } = await supabase
+        .from('sugerencias')
+        .update({ estado: nuevoEstado })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setSugerencias((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, estado: nuevoEstado } : s))
+      );
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al actualizar el estado');
+    }
+  };
+
+  const metricas = {
+    total: sugerencias.length,
+    pendientes: sugerencias.filter((s) => s.estado === 'pendiente').length,
+    enRevision: sugerencias.filter((s) => s.estado === 'en_revision').length,
+    resueltos: sugerencias.filter((s) => s.estado === 'resuelto').length,
+    bugs: sugerencias.filter((s) => s.tipo === 'bug').length,
+  };
+
+  const filtradas = sugerencias.filter((s) => {
+    if (filtroEstado !== 'todos' && s.estado !== filtroEstado) return false;
+    if (filtroTipo !== 'todos' && s.tipo !== filtroTipo) return false;
+    if (busqueda) {
+      const q = busqueda.toLowerCase();
+      return (
+        s.titulo?.toLowerCase().includes(q) ||
+        s.descripcion?.toLowerCase().includes(q) ||
+        s.email?.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  if (cargando) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-[#FAD02C] border-t-transparent mx-auto mb-4" />
+          <p className="text-stone-500 font-bold">Cargando sugerencias...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-2xl font-black text-stone-900">💡 Sugerencias y Reportes</h2>
+          <p className="text-stone-500 text-sm">
+            {metricas.total} {metricas.total === 1 ? 'mensaje' : 'mensajes'} ·{' '}
+            {metricas.pendientes} pendientes · {metricas.bugs} bugs reportados
+          </p>
+        </div>
+        <button
+          onClick={cargarSugerencias}
+          className="bg-[#FAD02C] hover:bg-black hover:text-white font-black py-2 px-4 rounded-xl border-4 border-black shadow-[4px_4px_0px_0px_black] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all text-sm"
+        >
+          🔄 Recargar
+        </button>
+      </div>
+
+      {/* Métricas */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        <div className="bg-white border-2 border-black rounded-2xl p-3 text-center">
+          <p className="text-xl font-black">{metricas.total}</p>
+          <p className="text-[10px] font-black uppercase text-stone-500">Total</p>
+        </div>
+        <div className="bg-yellow-50 border-2 border-yellow-400 rounded-2xl p-3 text-center">
+          <p className="text-xl font-black text-yellow-800">{metricas.pendientes}</p>
+          <p className="text-[10px] font-black uppercase text-yellow-700">Pendientes</p>
+        </div>
+        <div className="bg-blue-50 border-2 border-blue-400 rounded-2xl p-3 text-center">
+          <p className="text-xl font-black text-blue-800">{metricas.enRevision}</p>
+          <p className="text-[10px] font-black uppercase text-blue-700">En revisión</p>
+        </div>
+        <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-3 text-center">
+          <p className="text-xl font-black text-green-800">{metricas.resueltos}</p>
+          <p className="text-[10px] font-black uppercase text-green-700">Resueltos</p>
+        </div>
+        <div className="bg-red-50 border-2 border-red-400 rounded-2xl p-3 text-center">
+          <p className="text-xl font-black text-red-800">{metricas.bugs}</p>
+          <p className="text-[10px] font-black uppercase text-red-700">Bugs</p>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white border-2 border-black rounded-2xl p-4 mb-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <label className="block text-[10px] font-black uppercase text-stone-400 mb-1">
+              Buscar
+            </label>
+            <input
+              type="text"
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Título, descripción o email..."
+              className="w-full bg-stone-50 border-2 border-black p-2 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-[#FFCA28]/50"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase text-stone-400 mb-1">
+              Estado
+            </label>
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="bg-stone-50 border-2 border-black p-2 rounded-xl font-bold text-sm outline-none"
+            >
+              <option value="todos">Todos</option>
+              {ESTADOS.map((e) => (
+                <option key={e.value} value={e.value}>{e.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] font-black uppercase text-stone-400 mb-1">
+              Tipo
+            </label>
+            <select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+              className="bg-stone-50 border-2 border-black p-2 rounded-xl font-bold text-sm outline-none"
+            >
+              <option value="todos">Todos</option>
+              {Object.entries(TIPOS_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista */}
+      {filtradas.length === 0 ? (
+        <div className="bg-white border-2 border-dashed border-stone-200 rounded-2xl p-12 text-center">
+          <span className="text-6xl block mb-4">🍔</span>
+          <p className="font-black text-xl uppercase text-black">
+            No hay sugerencias
+          </p>
+          <p className="text-sm text-stone-500 mt-2">
+            {busqueda || filtroEstado !== 'todos' || filtroTipo !== 'todos'
+              ? 'Probá con otros filtros'
+              : 'Cuando llegue la primera, la vas a ver acá'}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtradas.map((sugerencia) => {
+            const estadoConfig = ESTADOS.find((e) => e.value === sugerencia.estado);
+            const estaExpandida = expandida === sugerencia.id;
+
+            return (
+              <div
+                key={sugerencia.id}
+                className="bg-white border-4 border-black rounded-2xl overflow-hidden shadow-[4px_4px_0px_0px_black]"
+              >
+                <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-[10px] font-black uppercase bg-stone-100 border border-stone-300 px-2 py-0.5 rounded-full">
+                        {TIPOS_LABEL[sugerencia.tipo] || sugerencia.tipo}
+                      </span>
+                      <span className={`text-[10px] font-black uppercase border-2 px-2 py-0.5 rounded-full ${estadoConfig?.color}`}>
+                        {estadoConfig?.label}
+                      </span>
+                      <span className="text-[10px] text-stone-400 font-bold">
+                        {new Date(sugerencia.created_at).toLocaleDateString('es-AR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                    </div>
+                    <h3 className="font-black text-sm sm:text-base break-words">
+                      {sugerencia.titulo}
+                    </h3>
+                    <p className={`text-xs text-stone-500 mt-1 ${estaExpandida ? '' : 'line-clamp-1'}`}>
+                      {sugerencia.descripcion}
+                    </p>
+                    {sugerencia.email && (
+                      <p className="text-[10px] text-stone-400 mt-1">
+                        📧 {sugerencia.email}
+                      </p>
+                    )}
+                    {sugerencia.pagina && (
+                      <p className="text-[10px] text-stone-400">
+                        📍 {sugerencia.pagina}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setExpandida(estaExpandida ? null : sugerencia.id)}
+                      className="px-3 py-2 bg-stone-100 border-2 border-black rounded-xl font-black text-[10px] uppercase hover:bg-stone-200 transition-all"
+                    >
+                      {estaExpandida ? '▲ Menos' : '▼ Ver todo'}
+                    </button>
+                    <select
+                      value={sugerencia.estado}
+                      onChange={(e) => cambiarEstado(sugerencia.id, e.target.value)}
+                      className="bg-white border-2 border-black rounded-xl px-2 py-2 font-black text-[10px] uppercase cursor-pointer"
+                    >
+                      {ESTADOS.map((e) => (
+                        <option key={e.value} value={e.value}>{e.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {estaExpandida && (
+                  <div className="border-t-2 border-stone-200 bg-stone-50 p-4">
+                    <p className="text-[10px] font-black uppercase text-stone-400 mb-1">
+                      Descripción completa
+                    </p>
+                    <p className="text-sm text-stone-700 whitespace-pre-wrap break-words">
+                      {sugerencia.descripcion}
+                    </p>
+                    <div className="flex flex-wrap gap-3 mt-3 text-[10px] text-stone-400 font-bold">
+                      <span>ID: {sugerencia.id.slice(0, 8)}...</span>
+                      {sugerencia.usuario_id && (
+                        <span>Usuario: {sugerencia.usuario_id.slice(0, 8)}...</span>
+                      )}
+                      {sugerencia.updated_at !== sugerencia.created_at && (
+                        <span>
+                          Actualizado: {new Date(sugerencia.updated_at).toLocaleDateString('es-AR')}
+                        </span>
+                      )}
+                    </div>
+                    {sugerencia.email && (
+                      <a
+                        href={`mailto:${sugerencia.email}?subject=Re: ${encodeURIComponent(sugerencia.titulo)}`}
+                        className="inline-block mt-3 px-3 py-2 bg-[#FFCA28] border-2 border-black rounded-xl font-black text-[10px] uppercase shadow-[2px_2px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none transition-all"
+                      >
+                        ✉️ Responder por email
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// 📋 COMPONENTE ADMIN RECOMPENSAS (integrado, sin cambios)
 // ============================================================
 function AdminRecompensas() {
   const [recompensas, setRecompensas] = useState<any[]>([]);
@@ -159,7 +460,6 @@ function AdminRecompensas() {
   const [recompensaEditando, setRecompensaEditando] = useState<any>(null);
   const [guardando, setGuardando] = useState(false);
 
-  // Estado del formulario
   const [nombre, setNombre] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [puntosNecesarios, setPuntosNecesarios] = useState('');
@@ -306,7 +606,6 @@ function AdminRecompensas() {
     if (!confirm(`¿Eliminar "${nombre}"?`)) return;
 
     try {
-      // Verificar si tiene canjes asociados
       const { count, error: countError } = await supabase
         .from('canjes')
         .select('*', { count: 'exact', head: true })
@@ -365,7 +664,6 @@ function AdminRecompensas() {
 
   return (
     <div>
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-black text-stone-900">🎁 Gestionar Recompensas</h2>
@@ -384,7 +682,6 @@ function AdminRecompensas() {
         </button>
       </div>
 
-      {/* Lista */}
       <div className="grid gap-4">
         {recompensas.length === 0 ? (
           <div className="bg-white rounded-2xl p-12 text-center border-2 border-dashed border-stone-200">
@@ -429,7 +726,6 @@ function AdminRecompensas() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* Toggle Activa/Inactiva */}
                   <button
                     onClick={() => handleToggleActiva(recompensa.id, recompensa.activa)}
                     className={`w-12 h-7 rounded-full border-2 border-black transition-all ${recompensa.activa ? 'bg-[#43A047]' : 'bg-stone-300'
@@ -441,7 +737,6 @@ function AdminRecompensas() {
                     />
                   </button>
 
-                  {/* Editar */}
                   <button
                     onClick={() => abrirModal(recompensa)}
                     className="bg-[#FAD02C]/20 hover:bg-[#FAD02C]/40 p-2 rounded-xl border-2 border-[#FAD02C]/30 transition-colors"
@@ -449,7 +744,6 @@ function AdminRecompensas() {
                     <span className="text-lg">✏️</span>
                   </button>
 
-                  {/* Eliminar */}
                   <button
                     onClick={() => handleEliminar(recompensa.id, recompensa.nombre)}
                     className="bg-red-500/20 hover:bg-red-500/40 p-2 rounded-xl border-2 border-red-500/30 transition-colors"
@@ -463,11 +757,9 @@ function AdminRecompensas() {
         )}
       </div>
 
-      {/* Modal */}
       {modalAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
           <div className="bg-white border-4 border-black rounded-4xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-[12px_12px_0px_0px_black]">
-            {/* Header */}
             <div className="bg-[#FAD02C] border-b-4 border-black p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -480,9 +772,7 @@ function AdminRecompensas() {
               </div>
             </div>
 
-            {/* Body */}
             <div className="p-6 overflow-y-auto max-h-[60vh] space-y-4">
-              {/* Nombre */}
               <div>
                 <label className="block text-xs font-black uppercase text-stone-400 mb-1">📌 Nombre *</label>
                 <input
@@ -494,7 +784,6 @@ function AdminRecompensas() {
                 />
               </div>
 
-              {/* Descripción */}
               <div>
                 <label className="block text-xs font-black uppercase text-stone-400 mb-1">📝 Descripción</label>
                 <textarea
@@ -506,7 +795,6 @@ function AdminRecompensas() {
                 />
               </div>
 
-              {/* Puntos */}
               <div>
                 <label className="block text-xs font-black uppercase text-stone-400 mb-1">⭐ Puntos necesarios *</label>
                 <input
@@ -519,7 +807,6 @@ function AdminRecompensas() {
                 />
               </div>
 
-              {/* Tipo */}
               <div>
                 <label className="block text-xs font-black uppercase text-stone-400 mb-1">🏷️ Tipo de recompensa *</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -532,8 +819,8 @@ function AdminRecompensas() {
                       key={t.id}
                       onClick={() => setTipo(t.id as any)}
                       className={`py-3 rounded-xl border-4 font-black text-xs uppercase transition-all ${tipo === t.id
-                          ? 'bg-black text-white border-black'
-                          : 'bg-stone-50 text-stone-400 border-stone-200 hover:border-stone-300'
+                        ? 'bg-black text-white border-black'
+                        : 'bg-stone-50 text-stone-400 border-stone-200 hover:border-stone-300'
                         }`}
                     >
                       {t.label}
@@ -542,7 +829,6 @@ function AdminRecompensas() {
                 </div>
               </div>
 
-              {/* Valor descuento */}
               {tipo === 'DESCUENTO' && (
                 <div>
                   <label className="block text-xs font-black uppercase text-stone-400 mb-1">💰 Porcentaje de descuento *</label>
@@ -558,7 +844,6 @@ function AdminRecompensas() {
                 </div>
               )}
 
-              {/* Activa */}
               <div className="flex items-center justify-between pt-2 border-t-2 border-stone-100">
                 <label className="block text-xs font-black uppercase text-stone-400">✅ Activa</label>
                 <button
@@ -574,7 +859,6 @@ function AdminRecompensas() {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="border-t-4 border-black p-4 flex gap-3">
               <button
                 onClick={cerrarModal}

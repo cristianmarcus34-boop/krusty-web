@@ -143,6 +143,11 @@ export default function Footer() {
                                 </Link>
                             </li>
                             <li>
+                                <Link href="/sugerencias" className="text-stone-400 hover:text-white transition-colors">
+                                    💡 Sugerencias
+                                </Link>
+                            </li>
+                            <li>
                                 <Link href="/defensa" className="text-stone-400 hover:text-white transition-colors">
                                     Defensa Consumidor
                                 </Link>
