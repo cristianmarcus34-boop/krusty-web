@@ -8,6 +8,16 @@ import { supabase } from '../lib/supabase';
 import Link from 'next/link';
 import { useAspectRatio } from './hooks/useAspectRatio';
 
+// ✅ Helper: normaliza categorías de la DB a los IDs de los filtros
+const normalizarCategoria = (cat: string | null | undefined): string => {
+  const c = (cat || '').toLowerCase().trim();
+  if (['burgers', 'burger', 'hamburguesas', 'hamburguesa'].includes(c)) return 'burgers';
+  if (['bebidas', 'bebida', 'drinks'].includes(c)) return 'bebidas';
+  if (['postres', 'postre', 'desserts', 'helados'].includes(c)) return 'postres';
+  if (['acompañamientos', 'acompanamientos', 'extras', 'sides', 'papas'].includes(c)) return 'acompañamientos';
+  return c;
+};
+
 export default function Home() {
   const screen = useAspectRatio();
   const [items, setItems] = useState<Burger[]>([]);
@@ -24,6 +34,7 @@ export default function Home() {
     { id: 'todos', label: 'Todo', icon: '🍟' },
     { id: 'burgers', label: 'Burgers', icon: '🍔' },
     { id: 'bebidas', label: 'Bebidas', icon: '🥤' },
+    { id: 'acompañamientos', label: 'Acompañamientos', icon: '🍟' }, // ✅ NUEVA
     { id: 'postres', label: 'Postres', icon: '🍦' },
   ];
 
@@ -91,7 +102,7 @@ export default function Home() {
             producto_adicionales: item.producto_adicionales || [],
             adicionales: adicionales,
             imagen: item.imagen || '/images/placeholder-krusty.webp',
-            categoria: item.categoria?.toLowerCase() || 'burgers'
+            categoria: normalizarCategoria(item.categoria) // ✅ normalizado
           };
         });
         setItems(processedData as Burger[]);
@@ -128,12 +139,10 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
+  // ✅ Filtro usando normalizarCategoria
   const filtrados = categoriaActual === 'todos'
     ? items
-    : items.filter(item => {
-      const cat = item.categoria?.toLowerCase() || '';
-      return cat === categoriaActual.toLowerCase();
-    });
+    : items.filter(item => normalizarCategoria(item.categoria) === categoriaActual);
 
   const handleVerMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -204,7 +213,7 @@ export default function Home() {
       />
 
       {isAdmin && (
-        <Link href="/admin" className="fixed bottom-28 left-4 z-110 active:scale-90 transition-transform">
+        <Link href="/admin" className="fixed bottom-28 left-4 z-[110] active:scale-90 transition-transform">
           <div className="bg-black text-[#FFCA28] p-4 rounded-2xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-[#FFCA28]">
             <span className="text-xl">⚙️</span>
           </div>
