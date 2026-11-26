@@ -1,4 +1,4 @@
-// store/cartStore.ts - VERSIÓN CORREGIDA Y ROBUSTA (SIN LOGS)
+// store/cartStore.ts
 "use client";
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
@@ -57,6 +57,12 @@ export const useCartStore = create<CartState>()(
       },
 
       addItem: (burger, extras = []) => set((state) => {
+        // ✅ Bloquear productos sin stock (defensa en profundidad)
+        if (burger.disponible === false) {
+          console.warn('Producto sin stock, no se agrega:', burger.nombre);
+          return state;
+        }
+
         const precioExtras = extras.reduce((acc, curr) => acc + Number(curr.precio || 0), 0);
         const precioBase = Number(burger.precio || 0);
         const precioUnitarioTotal = precioBase + precioExtras;

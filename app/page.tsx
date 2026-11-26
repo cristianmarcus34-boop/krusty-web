@@ -27,14 +27,13 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
-  // ✅ Referencia al efecto de sonido de Duff
   const referenciaEfectoDuff = useRef<HTMLAudioElement>(null);
 
   const categorias = [
     { id: 'todos', label: 'Todo', icon: '🍟' },
     { id: 'burgers', label: 'Burgers', icon: '🍔' },
     { id: 'bebidas', label: 'Bebidas', icon: '🥤' },
-    { id: 'acompañamientos', label: 'Acompañamientos', icon: '🍟' }, // ✅ NUEVA
+    { id: 'acompañamientos', label: 'Acompañamientos', icon: '🍟' },
     { id: 'postres', label: 'Postres', icon: '🍦' },
   ];
 
@@ -82,7 +81,7 @@ export default function Home() {
             )
           )
         `)
-        .eq('disponible', true)
+        // ✅ SIN filtro de disponible: traemos todos
         .order('nombre', { ascending: true });
 
       if (error) {
@@ -102,9 +101,14 @@ export default function Home() {
             producto_adicionales: item.producto_adicionales || [],
             adicionales: adicionales,
             imagen: item.imagen || '/images/placeholder-krusty.webp',
-            categoria: normalizarCategoria(item.categoria) // ✅ normalizado
+            categoria: normalizarCategoria(item.categoria)
           };
+        }).sort((a: any, b: any) => {
+          // ✅ Disponibles primero, sin stock al final
+          if (a.disponible === b.disponible) return 0;
+          return a.disponible ? -1 : 1;
         });
+
         setItems(processedData as Burger[]);
       }
     } catch (error) {
@@ -139,7 +143,6 @@ export default function Home() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
-  // ✅ Filtro usando normalizarCategoria
   const filtrados = categoriaActual === 'todos'
     ? items
     : items.filter(item => normalizarCategoria(item.categoria) === categoriaActual);
@@ -160,7 +163,6 @@ export default function Home() {
     }
   };
 
-  // ✅ Maneja el cambio de categoría y reproduce el efecto de Duff al entrar a Bebidas
   const manejarCambioCategoria = (id: string) => {
     if (id === 'bebidas' && categoriaActual !== 'bebidas') {
       const audio = referenciaEfectoDuff.current;
@@ -204,7 +206,6 @@ export default function Home() {
   return (
     <main className="min-h-screen pb-32 bg-white selection:bg-[#FFCA28]/30 text-[#292929]">
 
-      {/* ✅ Efecto de sonido para la categoría Bebidas */}
       <audio ref={referenciaEfectoDuff} src="/audio/hombre-duff.mp3" preload="auto" />
 
       <script
@@ -220,9 +221,6 @@ export default function Home() {
         </Link>
       )}
 
-      {/* ============================================
-          HERO SECTION - ANCHO COMPLETO EN 5:4
-          ============================================ */}
       <header className={`relative z-30 overflow-hidden bg-white border-b-4 border-black transition-all duration-700 w-full
         ${isScrolled
           ? `pt-0 ${screen.paddingBottom} px-4 sm:px-6`
@@ -283,9 +281,6 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ============================================
-          SECCIÓN ESPECIAL - ESTILO KRUSTY
-          ============================================ */}
       <section className="relative z-20 overflow-hidden bg-white border-y-4 border-black py-16 md:py-20 px-6">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-0 left-0 w-full h-1/2 bg-linear-to-b from-[#FF6B00]/20 to-transparent" />
@@ -338,9 +333,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ============================================
-          NAV DE CATEGORÍAS
-          ============================================ */}
       <nav
         className={`sticky z-40 transition-all duration-300 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
           ${isScrolled ? 'top-14 shadow-md' : 'top-20 md:top-24'}`}
@@ -372,9 +364,6 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* ============================================
-          SECCIÓN DE PRODUCTOS
-          ============================================ */}
       <section id="menu-section" className={`${screen.isSquare ? 'w-full max-w-full' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 mt-10 md:mt-20`}>
         <div className="flex flex-col items-center justify-center mb-8 md:mb-12 gap-4">
           <div className="flex flex-col items-center">
@@ -388,7 +377,6 @@ export default function Home() {
           </p>
         </div>
 
-        {/* ✅ Grid BK: 1 col mobile / 2 tablet / 3 desktop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filtrados.length > 0 ? (
             filtrados.map((item, index) => (
@@ -409,9 +397,6 @@ export default function Home() {
           )}
         </div>
       </section>
-
-      {/* ✅ ELIMINADO: <style jsx global> duplicado.
-          `animate-float` y `no-scrollbar` ya están en globals.css */}
     </main>
   );
 }
