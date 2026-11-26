@@ -48,8 +48,6 @@ export default function BurgerCard({
     precio: rel.adicionales?.precio
   })).filter((a: any) => a.id) || [];
 
-  // FIX #11: un solo Audio compartido por instancia, pero reutilizable.
-  //       En la práctica, si tenés MUCHAS cards, mové esto a un módulo/context.
   useEffect(() => {
     const audio = new Audio('/sounds/cash-register.mp3');
     audio.volume = 0.3;
@@ -84,16 +82,24 @@ export default function BurgerCard({
     maximumFractionDigits: 0,
   });
 
+  // ✅ Precio sin impuestos (BK lo muestra como línea secundaria)
+  // Si tenés el campo en tu DB, usalo. Si no, se calcula como precio / 1.21 (IVA 21%)
+  const precioSinImpuestos = burger?.precio_sin_impuestos
+    ? Number(burger.precio_sin_impuestos)
+    : Math.round((Number(burger?.precio) || 0) / 1.21);
+
+  const precioSinImpuestosFormateado = precioSinImpuestos.toLocaleString('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+
   return (
     <Link
       href={`/producto/${burger.id}`}
-      // FIX #1: rounded-4x1 -> rounded-[1.25rem] (válido y consistente)
-      // FIX #3: h-full + flex para que crezca dentro de la grilla (auto-rows-fr en el padre)
       className="group relative flex flex-col h-full w-full bg-white rounded-[1.25rem] overflow-hidden transition-all duration-300 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-[#D32F2F]"
     >
 
       {/* Etiqueta de Categoría */}
-      {/* FIX #5: limitar ancho y truncar para no chocar con el botón flotante */}
       <div className="absolute top-3 left-3 z-20 max-w-[60%]">
         <span className="inline-block bg-[#FFCA28] text-black text-[10px] font-black uppercase px-3 py-1.5 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_black] tracking-wide truncate">
           {burger?.categoria || 'General'}
@@ -116,14 +122,14 @@ export default function BurgerCard({
         {isAdding ? '✓' : '+'}
       </button>
 
-      {/* CONTENEDOR DE IMAGEN */}
-      <div className="relative aspect-square w-full bg-stone-100 overflow-hidden border-b-4 border-black">
+      {/* CONTENEDOR DE IMAGEN — ✅ BK usa 3:2 */}
+      <div className="relative aspect-[3/2] w-full bg-stone-100 overflow-hidden border-b-4 border-black">
         <Image
           src={imageUrl}
           alt={burger?.nombre || 'Producto Krusty'}
           fill
-          // FIX #9: sizes ajustado a grilla real (asumo 1 col mobile / 2 sm / 3 md / 4 lg)
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          // ✅ sizes coincide con el grid nuevo: 1 col mobile / 2 sm / 3 lg
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className={`object-cover transition-all duration-500 will-change-transform
             ${isAdding ? 'scale-110 blur-sm' : 'group-hover:scale-105'}
           `}
@@ -133,7 +139,6 @@ export default function BurgerCard({
         />
 
         {/* Overlay "¡D'OH!" */}
-        {/* FIX #8: pointer-events-none siempre, para no bloquear el tap al detalle */}
         <div
           className={`absolute inset-0 z-10 flex items-center justify-center bg-[#FFCA28]/90 transition-all duration-300 pointer-events-none
             ${isAdding ? 'opacity-100' : 'opacity-0'}
@@ -153,34 +158,38 @@ export default function BurgerCard({
         </div>
       </div>
 
-      {/* CONTENIDO */}
-      <div className="p-5 flex flex-col grow bg-white text-center items-center">
+      {/* CONTENIDO — ✅ padding 4px como BK */}
+      <div className="p-1 flex flex-col grow bg-white text-center items-center">
 
         <div className="mb-2 w-full">
-          {/* FIX #4: min-h más flexible + break-words para títulos largos en mobile */}
-          <h3 className="font-krusty font-black text-lg sm:text-xl md:text-2xl text-[#181818] leading-[1.1] line-clamp-2 min-h-[2.75rem] flex items-center justify-center transition-colors group-hover:text-[#D32F2F] break-words [-webkit-text-stroke:0.6px_#181818] md:[-webkit-text-stroke:0.9px_#181818]">
+          {/* ✅ Nombre 18px / 20px (BK headerTwo) */}
+          <h3 className="font-krusty font-black text-[18px] leading-[20px] text-[#181818] line-clamp-2 min-h-[2.5rem] flex items-center justify-center transition-colors group-hover:text-[#D32F2F] break-words [-webkit-text-stroke:0.6px_#181818] md:[-webkit-text-stroke:0.9px_#181818]">
             {burger?.nombre || 'Sin Nombre'}
           </h3>
         </div>
 
-        {/* Precio */}
-        <div className="mb-3">
-          <span className="font-krusty text-2xl sm:text-3xl text-[#D32F2F] tracking-normal">
+        {/* ✅ Precio 15px / 20px (BK copyOne) */}
+        <div className="mb-2">
+          <span className="font-krusty text-[15px] leading-[20px] text-[#D32F2F] tracking-normal">
             ${precioFormateado}
+          </span>
+          {/* ✅ Precio sin impuestos 12px / 16px (BK copyTwo) */}
+          <span className="block text-[12px] leading-[16px] text-stone-500 font-bold mt-0.5">
+            ${precioSinImpuestosFormateado} sin impuestos
           </span>
         </div>
 
-        <p className="text-[11px] text-[#71717a] font-bold leading-[1.4] line-clamp-2 mb-3 min-h-[2.2rem]">
+        {/* ✅ Descripción 12px / 16px (BK copyTwo) */}
+        <p className="text-[12px] leading-[16px] text-[#71717a] font-bold line-clamp-2 mb-2 min-h-[2rem]">
           {burger?.descripcion || 'Una delicia de Springfield directamente a tu mesa.'}
         </p>
 
         {/* EXTRAS */}
         {adicionales.length > 0 && (
-          <div className="w-full mb-3 pt-3 border-t-2 border-dashed border-stone-200">
+          <div className="w-full mb-2 pt-2 border-t-2 border-dashed border-stone-200">
             <p className="text-[8px] font-black uppercase text-stone-400 mb-2 tracking-[0.15em]">
               Extras Disponibles
             </p>
-            {/* FIX #7: chips con truncate y max-w para no desbordar en mobile */}
             <div className="flex flex-wrap justify-center gap-1.5">
               {adicionales.slice(0, 3).map((extra) => (
                 <span
@@ -201,8 +210,6 @@ export default function BurgerCard({
         )}
 
         {/* Botón móvil */}
-        {/* FIX #2: border-3 -> border-2 */}
-        {/* FIX: mt-auto para que quede pegado abajo en cards de distinta altura */}
         <button
           onClick={handleAdd}
           disabled={isAdding}
