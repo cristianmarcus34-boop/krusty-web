@@ -18,7 +18,6 @@ function getImageUrl(imagen?: string | null): string {
 
 export default function ProductoDetalle() {
     const params = useParams();
-    // FIX #17: normalizar id a string (puede venir como array en rutas catch-all)
     const id = params?.id ? String(params.id) : undefined;
     const router = useRouter();
     const addItem = useCartStore((state) => state.addItem);
@@ -27,17 +26,14 @@ export default function ProductoDetalle() {
     const [adicionalesDisponibles, setAdicionalesDisponibles] = useState<Adicional[]>([]);
     const [extrasSeleccionados, setExtrasSeleccionados] = useState<Adicional[]>([]);
     const [loading, setLoading] = useState(true);
-    // FIX #18: estado de error visible
     const [error, setError] = useState<string | null>(null);
     const [isAdding, setIsAdding] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [imageError, setImageError] = useState(false);
 
     const cashAudioRef = useRef<HTMLAudioElement | null>(null);
-    // FIX #2: ref para limpiar el setTimeout de isAdding
     const addingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    // FIX #1: audio en su propio effect con cleanup
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const audio = new Audio('/sounds/cash-register.mp3');
@@ -51,7 +47,6 @@ export default function ProductoDetalle() {
         };
     }, []);
 
-    // FIX #2: cleanup del timeout al desmontar
     useEffect(() => {
         return () => {
             if (addingTimeoutRef.current) clearTimeout(addingTimeoutRef.current);
@@ -69,7 +64,6 @@ export default function ProductoDetalle() {
         };
     }, [showModal]);
 
-    // FIX #1 + #8: fetch con AbortController y flag de cancelación
     useEffect(() => {
         if (!id) {
             setLoading(false);
@@ -118,7 +112,6 @@ export default function ProductoDetalle() {
         return () => controller.abort();
     }, [id]);
 
-    // FIX #3: memoizar precio total
     const precioTotal = useMemo(() => {
         const base = Number(producto?.precio) || 0;
         const extras = extrasSeleccionados.reduce(
@@ -144,7 +137,6 @@ export default function ProductoDetalle() {
     const handleAdd = () => {
         if (!producto) return;
 
-        // FIX #22: resetear currentTime antes de reproducir
         if (cashAudioRef.current) {
             cashAudioRef.current.currentTime = 0;
             cashAudioRef.current.play().catch(() => { });
@@ -153,7 +145,6 @@ export default function ProductoDetalle() {
         setIsAdding(true);
         addItem(producto, extrasSeleccionados);
 
-        // FIX #2: guardar el timeout para poder limpiarlo
         if (addingTimeoutRef.current) clearTimeout(addingTimeoutRef.current);
         addingTimeoutRef.current = setTimeout(() => setIsAdding(false), 800);
     };
@@ -162,7 +153,6 @@ export default function ProductoDetalle() {
 
     const imageUrl = getImageUrl(producto?.imagen);
 
-    // FIX #18: pantalla de error
     if (error) {
         return (
             <main className="min-h-dvh flex flex-col items-center justify-center bg-white px-6 text-center">
@@ -193,20 +183,18 @@ export default function ProductoDetalle() {
     if (!producto) return null;
 
     return (
-        // FIX #16: 100dvh en vez de min-h-screen (iOS Safari)
         <main className="min-h-dvh bg-white font-sans relative pb-8">
             {/* MODAL PANTALLA COMPLETA */}
             {showModal && createPortal(
                 <div
-                    role="dialog"               // FIX #19
+                    role="dialog"
                     aria-modal="true"
                     aria-label="Imagen del producto"
                     className="fixed inset-0 z-[100000] bg-black flex items-center justify-center animate-in fade-in duration-300"
                     onClick={closeModal}
                 >
-                    {/* FIX #4 + #5: botón × con onClick propio, stopPropagation y safe-area */}
                     <div
-                        className="absolute right-6 z-110"
+                        className="absolute right-6 z-[110]"
                         style={{ top: 'max(1.5rem, env(safe-area-inset-top))' }}
                     >
                         <button
@@ -221,14 +209,13 @@ export default function ProductoDetalle() {
                         </button>
                     </div>
 
-                    {/* FIX #12: contenedor con touch-action pinch-zoom + stopPropagation en la imagen */}
                     <div
                         className="w-full h-full flex items-center justify-center p-4 overflow-auto"
                         style={{ touchAction: 'pinch-zoom' }}
                         onClick={(e) => e.stopPropagation()}
                     >
                         <img
-                            src={imageUrl}           // FIX #6
+                            src={imageUrl}
                             alt={producto.nombre}
                             className="max-w-full max-h-full w-auto h-auto object-contain drop-shadow-2xl animate-in zoom-in duration-300"
                         />
@@ -241,9 +228,8 @@ export default function ProductoDetalle() {
                 document.body
             )}
 
-            {/* BOTÓN VOLVER */}
-            {/* FIX #10: en mobile arriba a la izquierda, en desktop a media pantalla */}
-            <div className="fixed z-60 top-4 left-4 md:top-1/2 md:-translate-y-1/2 md:left-0 md:-ml-1">
+            {/* ✅ BOTÓN VOLVER — z-[200] por encima del navbar (z-100), top-[92px] debajo de barrita+nav */}
+            <div className="fixed z-[200] top-[92px] left-4 md:top-1/2 md:-translate-y-1/2 md:left-0 md:-ml-1">
                 <div className="relative">
                     <div className="absolute inset-0 bg-[#FFCA28] rounded-full animate-ping opacity-25" />
                     <button
@@ -256,7 +242,6 @@ export default function ProductoDetalle() {
                 </div>
             </div>
 
-            {/* FIX #9: items-start → md:items-center para que la imagen no quede pegada arriba */}
             <div className="max-w-5xl mx-auto pt-16 md:pt-24 px-6 grid grid-cols-1 md:grid-cols-2 gap-8 md:items-center">
 
                 {/* IMAGEN PRINCIPAL */}
@@ -269,7 +254,6 @@ export default function ProductoDetalle() {
                             setShowModal(true);
                         }}
                     >
-                        {/* FIX #6: fallback si la imagen falla */}
                         <img
                             src={imageError ? '/images/placeholder-krusty.webp' : imageUrl}
                             alt={producto.nombre}
@@ -290,7 +274,6 @@ export default function ProductoDetalle() {
                         </span>
                     </div>
 
-                    {/* FIX #13: título responsive, leading más seguro */}
                     <h1 className="text-2xl sm:text-3xl md:text-5xl font-black uppercase italic leading-[0.95] tracking-tight mb-4 text-black wrap-break-word">
                         {producto.nombre}
                     </h1>
@@ -299,7 +282,6 @@ export default function ProductoDetalle() {
                         "{producto.descripcion}"
                     </p>
 
-                    {/* FIX #15: en mobile centrada, en desktop alineada a la izquierda */}
                     <div className="bg-stone-50 p-4 rounded-2xl border-2 border-black shadow-[4px_4px_0px_0px_black] w-fit mb-8 flex items-center gap-4 self-center md:self-start">
                         <div className="flex flex-col">
                             <span className="text-[8px] font-black text-stone-400 uppercase leading-none mb-1">
@@ -324,18 +306,15 @@ export default function ProductoDetalle() {
                             <div className="flex flex-wrap gap-2">
                                 {adicionalesDisponibles.map((extra, i) => {
                                     const isSelected = extrasSeleccionados.some((e) => e.id === extra.id);
-                                    // FIX #21: formatear precio del extra
                                     const precioExtra = (Number(extra.precio) || 0).toLocaleString('es-AR');
                                     return (
                                         <button
-                                            // FIX #20: fallback de key
                                             key={extra.id ?? `extra-${i}`}
                                             onClick={() => toggleExtra(extra)}
-                                            // FIX #14: tap target mínimo 44px + text-xs legible
                                             className={`min-h-11 px-4 py-2 rounded-xl border-2 text-xs font-black transition-all flex items-center gap-2 uppercase active:scale-95
                       ${isSelected
-                                                ? 'bg-black text-[#FFCA28] border-black shadow-[2px_2px_0px_0px_#FFCA28]'
-                                                : 'bg-white text-black border-stone-200'}`}
+                                                    ? 'bg-black text-[#FFCA28] border-black shadow-[2px_2px_0px_0px_#FFCA28]'
+                                                    : 'bg-white text-black border-stone-200'}`}
                                         >
                                             <span>{extra.nombre}</span>
                                             <span className={isSelected ? 'text-white' : 'text-stone-400'}>
@@ -350,7 +329,6 @@ export default function ProductoDetalle() {
 
                     {/* BOTÓN "AÑADIR" */}
                     <div className="w-full">
-                        {/* FIX #7: mostrar el total en el botón */}
                         <button
                             onClick={handleAdd}
                             disabled={isAdding}

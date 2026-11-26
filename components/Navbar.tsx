@@ -1,46 +1,50 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useCartStore } from '@/store/cartStore';
-import { supabase } from '@/lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { useAuthStore } from '@/store/authStore';
 import CartDrawer from './CartDrawer';
 import Link from 'next/link';
 import Image from 'next/image';
 
-const ADMIN_EMAILS = ['cristianmarcus34@gmail.com', 'marianajuarez99@gmail.com'];
+// ✅ Audio singleton para el sonido de risa (solo se crea al primer click)
+let krustyLaughAudio: HTMLAudioElement | null = null;
+
+function playKrustyLaugh() {
+  if (typeof window === 'undefined') return;
+  if (!krustyLaughAudio) {
+    krustyLaughAudio = new Audio('/sounds/risa-krusty.mp3');
+    krustyLaughAudio.volume = 0.4;
+    krustyLaughAudio.preload = 'auto';
+  }
+  krustyLaughAudio.currentTime = 0;
+  krustyLaughAudio.play().catch(() => { });
+}
 
 export default function Navbar() {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { isAuthenticated, cerrarSesion } = useAuthStore();
 
   const items = useCartStore((state) => state.items);
   const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
 
   // ============================================================
-  // 🔄 EFECTO: ABRIR CARRITO AUTOMÁTICAMENTE DESPUÉS DEL LOGIN
+  // 🛒 ABRIR CARRITO AUTOMÁTICAMENTE DESPUÉS DEL LOGIN
   // ============================================================
-
   useEffect(() => {
-    // ✅ Verificar si el carrito estaba abierto antes del login
     const carritoEstabaAbierto = localStorage.getItem('krusty-carrito-abierto') === 'true';
 
-    if (carritoEstabaAbierto && user) {
-      // ✅ Limpiar el flag
+    if (carritoEstabaAbierto && isAuthenticated) {
       localStorage.removeItem('krusty-carrito-abierto');
-      // ✅ Abrir el carrito
       setIsCartOpen(true);
     }
-  }, [user]);
+  }, [isAuthenticated]);
 
   // ============================================================
-  // 🔄 EFECTO: INICIALIZACIÓN
+  // 🔄 INICIALIZACIÓN: hash, scroll
   // ============================================================
-
   useEffect(() => {
     const handleHashOpenCart = () => {
       if (window.location.hash === '#carrito') {
@@ -51,48 +55,25 @@ export default function Navbar() {
     handleHashOpenCart();
     window.addEventListener('hashchange', handleHashOpenCart);
 
-    audioRef.current = new Audio('/sounds/risa-krusty.mp3');
-    audioRef.current.volume = 0.4;
-
+    let lastScrolled = false;
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      setIsScrolled(scrollY > 10);
+      const next = window.scrollY > 10;
+      if (next !== lastScrolled) {
+        lastScrolled = next;
+        setIsScrolled(next);
+      }
     };
 
-    const handleUserData = (currentUser: User | null) => {
-      setUser(currentUser);
-      const email = currentUser?.email?.toLowerCase().trim();
-      setIsAdmin(!!email && ADMIN_EMAILS.includes(email));
-    };
-
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      handleUserData(session?.user ?? null);
-    };
-
-    initAuth();
     window.addEventListener('scroll', handleScroll, { passive: true });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleUserData(session?.user ?? null);
-    });
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('hashchange', handleHashOpenCart);
-      subscription.unsubscribe();
     };
   }, []);
 
-  const playKrustyLaugh = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => { });
-    }
-  };
-
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await cerrarSesion();
     window.location.href = '/';
   };
 
@@ -104,52 +85,56 @@ export default function Navbar() {
 
   return (
     <>
-      <div className={`fixed top-0 left-0 right-0 z-100 flex flex-col transition-all duration-500 transform
-        ${isCartOpen ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}
+      <div
+        className={`fixed top-0 left-0 right-0 z-[100] flex flex-col transition-all duration-500 transform
+          ${isCartOpen ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'}`}
       >
-        {/* BARRITA SUPERIOR - SE OCULTA COMPLETAMENTE CON SCROLL */}
-        <div className={`
-          bg-[#FFCA28] text-black text-[10px] md:text-xs font-black text-center uppercase tracking-widest border-b border-black/10 
-          transition-all duration-500 overflow-hidden
-          ${isScrolled
-            ? 'h-0 opacity-0 py-0 border-0 -translate-y-full'
-            : 'h-auto opacity-100 py-1 translate-y-0'
-          }
-        `}>
+        {/* BARRITA SUPERIOR - ✅ más fina */}
+        <div
+          className={`
+            bg-[#FFCA28] text-black text-[10px] md:text-xs font-black text-center uppercase tracking-widest border-b border-black/10
+            transition-all duration-500 overflow-hidden
+            ${isScrolled
+              ? 'h-0 opacity-0 py-0 border-0 -translate-y-full'
+              : 'h-auto opacity-100 py-0.5 translate-y-0'
+            }
+          `}
+        >
           🍟 ¡Todas nuestras hamburguesas incluyen papas fritas! 🍟
         </div>
 
-        {/* NAVBAR */}
-        <nav className={`transition-all duration-700 px-4 md:px-8 transform
-          ${isNavbarActive
-            ? 'h-14 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-md'
-            : 'h-20 bg-white border-b border-transparent'}`}
+        {/* NAVBAR - ✅ h-16 / h-12 */}
+        <nav
+          className={`transition-all duration-700 px-4 md:px-8 transform
+            ${isNavbarActive
+              ? 'h-12 bg-white/95 backdrop-blur-md border-b border-stone-200 shadow-md'
+              : 'h-16 bg-white border-b border-transparent'}`}
         >
           <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
 
-            {/* LOGO - Se oculta y aparece con scroll */}
+            {/* LOGO */}
             <div className="flex items-center transition-all duration-700">
               <Link
                 href="/"
                 onClick={playKrustyLaugh}
+                aria-label="Ir al inicio"
                 className={`relative transition-all duration-700 hover:rotate-12 active:scale-95
                   ${isNavbarActive
-                    ? 'w-8 h-8 opacity-100 scale-100'
+                    ? 'w-7 h-7 opacity-100 scale-100'
                     : 'w-0 h-0 opacity-0 scale-50 pointer-events-none'}`}
               >
                 <Image
                   src="/images/Krustyburgerheader.webp"
                   alt="Krusty Logo"
-                  width={32}
-                  height={32}
+                  width={28}
+                  height={28}
                   className="object-cover rounded-full"
                   priority
-
-
                 />
               </Link>
             </div>
 
+            {/* TÍTULO CENTRAL */}
             <div
               className={`absolute left-1/2 -translate-x-1/2 flex items-center transition-all duration-700
                 ${isNavbarActive
@@ -162,26 +147,31 @@ export default function Navbar() {
               </h1>
             </div>
 
+            {/* ACCIONES - ✅ botones más bajos */}
             <div className="flex items-center gap-1.5 md:gap-3">
+
+              {/* PERFIL / LOGIN */}
               <Link
-                href={user ? '/perfil' : '/login'}
-                className={`flex items-center gap-1 md:gap-2 h-9 md:h-10 px-2 md:px-3 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isNavbarActive
-                  ? 'bg-[#FFCA28] text-black border-black shadow-md hover:bg-[#f5b800]'
-                  : 'bg-[#FFCA28] text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'
+                href={isAuthenticated ? '/perfil' : '/login'}
+                className={`flex items-center gap-1 md:gap-2 h-8 md:h-9 px-2 md:px-3 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isNavbarActive
+                    ? 'bg-[#FFCA28] text-black border-black shadow-md hover:bg-[#f5b800]'
+                    : 'bg-[#FFCA28] text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'
                   }`}
               >
-                <span className="text-sm md:text-lg">{user ? '👤' : '🔑'}</span>
+                <span className="text-sm md:text-lg">{isAuthenticated ? '👤' : '🔑'}</span>
                 <span className="hidden md:inline font-black uppercase tracking-tighter">
-                  {user ? 'Perfil' : 'Ingresar'}
+                  {isAuthenticated ? 'Perfil' : 'Ingresar'}
                 </span>
               </Link>
 
-              {user && (
+              {/* LOGOUT */}
+              {isAuthenticated && (
                 <button
                   onClick={handleLogout}
-                  className={`flex items-center gap-1 md:gap-2 h-9 md:h-10 px-2 md:px-3 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isNavbarActive
-                    ? 'bg-[#D32F2F] text-white border-[#D32F2F] shadow-md hover:bg-[#b0151a]'
-                    : 'bg-[#D32F2F] text-white border-black shadow-[4px_4px_0px_0px_black] hover:bg-[#b0151a] hover:translate-x-px hover:translate-y-px hover:shadow-none'
+                  aria-label="Cerrar sesión"
+                  className={`flex items-center gap-1 md:gap-2 h-8 md:h-9 px-2 md:px-3 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isNavbarActive
+                      ? 'bg-[#D32F2F] text-white border-[#D32F2F] shadow-md hover:bg-[#b0151a]'
+                      : 'bg-[#D32F2F] text-white border-black shadow-[4px_4px_0px_0px_black] hover:bg-[#b0151a] hover:translate-x-px hover:translate-y-px hover:shadow-none'
                     }`}
                 >
                   <span className="text-sm md:text-lg">🚪</span>
@@ -189,11 +179,13 @@ export default function Navbar() {
                 </button>
               )}
 
+              {/* CARRITO */}
               <button
                 onClick={() => setIsCartOpen(true)}
-                className={`relative flex items-center gap-1 md:gap-2 h-9 md:h-10 px-2 md:px-3 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isNavbarActive
-                  ? 'bg-[#D32F2F] text-white border-[#D32F2F] shadow-md hover:bg-[#b0151a]'
-                  : 'bg-white text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'
+                aria-label={`Abrir carrito${totalItems > 0 ? `, ${totalItems} items` : ''}`}
+                className={`relative flex items-center gap-1 md:gap-2 h-8 md:h-9 px-2 md:px-3 rounded-2xl font-black text-xs transition-all active:scale-95 border-2 ${isNavbarActive
+                    ? 'bg-[#D32F2F] text-white border-[#D32F2F] shadow-md hover:bg-[#b0151a]'
+                    : 'bg-white text-black border-black shadow-[4px_4px_0px_0px_black] hover:translate-x-px hover:translate-y-px hover:shadow-none'
                   }`}
               >
                 <span className="text-sm md:text-lg">🛒</span>
@@ -208,12 +200,12 @@ export default function Navbar() {
                 )}
               </button>
             </div>
-
           </div>
         </nav>
       </div>
 
-      <div className={`transition-all duration-700 ${isNavbarActive ? 'h-14' : 'h-20'} w-full`} />
+      {/* Espaciador - ✅ h-16 / h-12 para coincidir con el navbar */}
+      <div className={`transition-all duration-700 ${isNavbarActive ? 'h-12' : 'h-16'} w-full`} />
 
       <CartDrawer isOpen={isCartOpen} onClose={handleCloseCart} />
     </>

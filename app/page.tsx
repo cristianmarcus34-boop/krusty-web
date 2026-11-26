@@ -340,8 +340,6 @@ export default function Home() {
           willChange: 'transform'
         }}
       >
-        {/* ✅ Sin overflow-x-auto: los botones se envuelven con flex-wrap
-            y no generan scroll horizontal en el documento */}
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-wrap gap-2 md:gap-4 px-4 sm:px-6 py-3 md:py-4 justify-center">
             {categorias.map((cat) => (
@@ -381,10 +379,11 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-x-6 md:gap-y-10 justify-items-center">
+        {/* ✅ Grid BK: 1 col mobile / 2 tablet / 3 desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {filtrados.length > 0 ? (
             filtrados.map((item, index) => (
-              <div key={item.id} className="transition-opacity duration-500 w-full max-w-60">
+              <div key={item.id} className="transition-opacity duration-500 w-full">
                 <BurgerCard
                   burger={item}
                   isFirst={index === 0}
@@ -402,21 +401,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ESTILOS GLOBALES */}
-      <style jsx global>{`
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-
-        .animate-float {
-          animation: float 4s ease-in-out infinite;
-          will-change: transform;
-        }
-      `}</style>
+      {/* ✅ ELIMINADO: <style jsx global> duplicado.
+          `animate-float` y `no-scrollbar` ya están en globals.css */}
     </main>
   );
 }
