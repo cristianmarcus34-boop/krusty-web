@@ -16,7 +16,6 @@ export default function TabProductos() {
 
     const fetchProductos = useCallback(async () => {
         try {
-            // ✅ Ahora con producto_adicionales y adicionales
             const { data, error } = await supabase
                 .from('productos')
                 .select(`
@@ -38,7 +37,6 @@ export default function TabProductos() {
             }
 
             if (data) {
-                // Procesar los datos para tener un array de adicionales más fácil de usar
                 const processedData = data.map((prod: any) => {
                     const adicionales = prod.producto_adicionales
                         ?.map((pa: any) => pa.adicionales)
@@ -70,12 +68,17 @@ export default function TabProductos() {
                     nombre: prod.nombre,
                     precio: Number(prod.precio),
                     descripcion: prod.descripcion,
-                    disponible: prod.disponible,
+                    disponible: Boolean(prod.disponible),
                     categoria: prod.categoria,
                     imagen: prod.imagen
                 }).eq('id', prod.id)
             );
-            await Promise.all(promesas);
+            const resultados = await Promise.all(promesas);
+            const conError = resultados.find(r => r.error);
+            if (conError?.error) {
+                throw conError.error;
+            }
+
             setIdsModificados(new Set());
             alert("✅ ¡Cambios rápidos guardados!");
         } catch (err) {
@@ -110,7 +113,6 @@ export default function TabProductos() {
         }
     };
 
-    // Mostrar adicionales de un producto
     const mostrarAdicionales = (producto: any) => {
         if (!producto.adicionales || producto.adicionales.length === 0) {
             return <span className="text-stone-400 text-xs italic">Sin adicionales</span>;
@@ -132,7 +134,7 @@ export default function TabProductos() {
             </button>
 
             {idsModificados.size > 0 && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+                <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
                     <button
                         onClick={guardarCambiosRapidos}
                         disabled={isSaving}
@@ -145,7 +147,11 @@ export default function TabProductos() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {productos.map((prod) => (
-                    <div key={prod.id} className={`relative bg-white border-4 border-black p-6 rounded-[3rem] shadow-[8px_8px_0px_0px_black] flex flex-col gap-4 transition-all ${idsModificados.has(prod.id) ? 'ring-8 ring-green-400' : ''}`}>
+                    <div
+                        key={prod.id}
+                        className={`relative bg-white border-4 border-black p-6 rounded-[3rem] shadow-[8px_8px_0px_0px_black] flex flex-col gap-4 transition-all ${idsModificados.has(prod.id) ? 'ring-8 ring-green-400' : ''
+                            } ${prod.disponible === false ? 'opacity-75 bg-stone-50' : ''}`}
+                    >
 
                         <button
                             onClick={() => setProductoAEditar(prod)}
@@ -202,7 +208,6 @@ export default function TabProductos() {
                             </div>
                         </div>
 
-                        {/* Mostrar adicionales del producto */}
                         <div className="flex flex-wrap gap-1">
                             {mostrarAdicionales(prod)}
                         </div>
@@ -213,15 +218,18 @@ export default function TabProductos() {
                             className="w-full border-4 border-black p-3 rounded-2xl font-bold text-xs h-20 resize-none outline-none focus:bg-stone-50"
                             placeholder="Descripción del producto..."
                         />
-                        <div className="flex items-center gap-2">
+
+                        <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
                             <input
                                 type="checkbox"
-                                checked={prod.disponible !== false}
-                                onChange={(e) => handleLocalChange(prod.id, 'disponible', e.target.value)}
-                                className="w-5 h-5"
+                                checked={Boolean(prod.disponible)}
+                                onChange={(e) => handleLocalChange(prod.id, 'disponible', e.target.checked)}
+                                className="w-5 h-5 cursor-pointer accent-[#D32F2F]"
                             />
-                            <span className="font-bold text-xs uppercase">Disponible</span>
-                        </div>
+                            <span className={`font-black text-xs uppercase ${prod.disponible ? 'text-green-700' : 'text-red-600'}`}>
+                                {prod.disponible ? '✅ Disponible' : '⛔ Sin stock'}
+                            </span>
+                        </label>
                     </div>
                 ))}
             </div>
