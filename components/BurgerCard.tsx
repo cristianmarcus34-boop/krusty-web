@@ -102,23 +102,23 @@ export default function BurgerCard({
         if (!disponible) e.preventDefault();
       }}
       aria-disabled={!disponible}
-      className={`group relative flex flex-col h-full w-full bg-white rounded-2xl sm:rounded-[1.25rem] overflow-hidden transition-all duration-200 border-2 sm:border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]
+      className={`group relative flex flex-row sm:flex-col h-full w-full bg-white rounded-2xl sm:rounded-[1.25rem] overflow-hidden transition-all duration-200 border-2 sm:border-4 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] sm:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]
         ${disponible
           ? 'hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 sm:hover:translate-x-1 sm:hover:translate-y-1 hover:border-[#D32F2F] cursor-pointer'
           : 'opacity-60 grayscale cursor-not-allowed'
         }`}
     >
-      {/* Etiqueta de Categoría */}
-      <div className="absolute top-2 left-2 sm:top-3 sm:left-3 z-20 max-w-[65%]">
-        <span className="inline-block bg-[#FFCA28] text-black text-[8px] sm:text-[10px] font-black uppercase px-2 py-0.5 sm:px-3 sm:py-1.5 rounded-full border border-black sm:border-2 shadow-[1.5px_1.5px_0px_0px_black] sm:shadow-[2px_2px_0px_0px_black] tracking-wide truncate">
+      {/* Etiqueta de Categoría (solo sm+ en esquina superior izquierda) */}
+      <div className="hidden sm:block absolute top-3 left-3 z-20 max-w-[60%]">
+        <span className="inline-block bg-[#FFCA28] text-black text-[10px] font-black uppercase px-3 py-1.5 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_black] tracking-wide truncate">
           {burger?.categoria || 'General'}
         </span>
       </div>
 
-      {/* ✅ Badge SIN STOCK o botón Agregar */}
+      {/* ✅ Badge SIN STOCK o botón Agregar (solo sm+ en esquina superior derecha) */}
       {!disponible ? (
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20">
-          <span className="inline-block bg-red-600 text-white text-[8px] sm:text-[10px] font-black uppercase px-2 py-0.5 sm:px-3 sm:py-1.5 rounded-full border border-black sm:border-2 shadow-[1.5px_1.5px_0px_0px_black] sm:shadow-[2px_2px_0px_0px_black] tracking-wide">
+        <div className="hidden sm:block absolute top-3 right-3 z-20">
+          <span className="inline-block bg-red-600 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_black] tracking-wide">
             🚫 Sin stock
           </span>
         </div>
@@ -128,7 +128,7 @@ export default function BurgerCard({
           onClick={handleAdd}
           disabled={isAdding}
           className={`
-            absolute top-2 right-2 sm:top-3 sm:right-3 z-20 w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-black text-xs sm:text-sm transition-all duration-200 border border-black sm:border-2 shadow-[2px_2px_0px_0px_black] sm:shadow-[3px_3px_0px_0px_black]
+            hidden sm:flex absolute top-3 right-3 z-20 w-10 h-10 rounded-full items-center justify-center font-black text-sm transition-all duration-200 border-2 border-black shadow-[3px_3px_0px_0px_black]
             ${isAdding
               ? 'bg-green-500 text-white shadow-none translate-y-0.5'
               : 'bg-[#FFCA28] text-black hover:bg-[#D32F2F] hover:text-white hover:scale-110'
@@ -140,13 +140,13 @@ export default function BurgerCard({
         </button>
       )}
 
-      {/* CONTENEDOR DE IMAGEN */}
-      <div className="relative aspect-4/3 sm:aspect-3/2 w-full bg-stone-100 overflow-hidden border-b-2 sm:border-b-4 border-black">
+      {/* CONTENEDOR DE IMAGEN (horizontal compacto en mobile, superior en sm+) */}
+      <div className="relative w-28 h-28 shrink-0 sm:w-full sm:h-auto sm:aspect-3/2 bg-stone-100 overflow-hidden border-r-2 sm:border-r-0 border-b-0 sm:border-b-4 border-black">
         <Image
           src={imageUrl}
           alt={burger?.nombre || 'Producto Krusty'}
           fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 50vw, 33vw"
+          sizes="(max-width: 640px) 120px, (max-width: 1024px) 50vw, 33vw"
           className={`object-cover transition-all duration-300 will-change-transform
             ${isAdding ? 'scale-110 blur-sm' : disponible ? 'group-hover:scale-105' : ''}
           `}
@@ -157,9 +157,9 @@ export default function BurgerCard({
 
         {/* ✅ Overlay SIN STOCK */}
         {!disponible && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/40">
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45">
             <div className="flex flex-col items-center">
-              <span className="text-2xl sm:text-4xl mb-0.5 sm:mb-1">🚫</span>
+              <span className="text-xl sm:text-4xl mb-0.5 sm:mb-1">🚫</span>
               <span className="bg-red-600 text-white text-[8px] sm:text-[10px] font-black uppercase px-2 py-0.5 sm:px-3 sm:py-1 rounded-full border border-white sm:border-2">
                 Sin stock
               </span>
@@ -175,8 +175,8 @@ export default function BurgerCard({
             `}
           >
             <div className="flex flex-col items-center animate-bounce">
-              <span className="font-krusty text-xl sm:text-3xl text-black">¡D'OH!</span>
-              <span className="text-[10px] sm:text-xs font-black text-black/70">Agregado</span>
+              <span className="font-krusty text-base sm:text-3xl text-black">¡D'OH!</span>
+              <span className="text-[9px] sm:text-xs font-black text-black/70">Agregado</span>
             </div>
           </div>
         )}
@@ -191,34 +191,61 @@ export default function BurgerCard({
         )}
       </div>
 
-      {/* CONTENIDO */}
-      <div className="p-2 sm:p-3 flex flex-col grow bg-white text-center items-center">
-        <div className="mb-1 sm:mb-2 w-full">
-          <h3 className="font-krusty font-black text-[14px] sm:text-[18px] leading-4 sm:leading-5 text-[#181818] line-clamp-2 min-h-8 sm:min-h-10 flex items-center justify-center transition-colors group-hover:text-[#D32F2F] wrap-break-words [-webkit-text-stroke:0.4px_#181818] sm:[-webkit-text-stroke:0.6px_#181818] md:[-webkit-text-stroke:0.9px_#181818]">
-            {burger?.nombre || 'Sin Nombre'}
-          </h3>
-        </div>
+      {/* CONTENIDO (a la derecha en mobile tipo fila BK, abajo en sm+) */}
+      <div className="p-2.5 sm:p-3 flex flex-col justify-between grow min-w-0 bg-white text-left sm:text-center items-start sm:items-center">
+        <div className="w-full min-w-0">
+          <div className="flex items-start justify-between gap-2 sm:block mb-1 sm:mb-2">
+            <h3 className="font-krusty font-black text-[15px] sm:text-[18px] leading-4 sm:leading-5 text-[#181818] line-clamp-1 sm:line-clamp-2 sm:min-h-10 flex items-center justify-start sm:justify-center transition-colors group-hover:text-[#D32F2F] wrap-break-words [-webkit-text-stroke:0.4px_#181818] md:[-webkit-text-stroke:0.9px_#181818]">
+              {burger?.nombre || 'Sin Nombre'}
+            </h3>
 
-        <div className="mb-1 sm:mb-2">
-          <span className="font-krusty text-[13px] sm:text-[15px] leading-4 sm:leading-5 text-[#D32F2F] tracking-normal">
-            ${precioFormateado}
-          </span>
-          <span className="block text-[10px] sm:text-[12px] leading-3.25 sm:leading-4 text-stone-500 font-bold mt-0.5">
-            ${precioSinImpuestosFormateado} sin imp.
-          </span>
-        </div>
+            {/* Botón rápido "+" en mobile */}
+            <div className="sm:hidden shrink-0">
+              {!disponible ? (
+                <span className="inline-block bg-red-600 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-full border border-black">
+                  Sin stock
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  disabled={isAdding}
+                  aria-label={`Agregar ${burger?.nombre || 'producto'} al carrito`}
+                  className={`
+                    w-7 h-7 rounded-full flex items-center justify-center font-black text-sm border-2 border-black shadow-[2px_2px_0px_0px_black] active:translate-y-0.5 active:shadow-none
+                    ${isAdding
+                      ? 'bg-green-500 text-white'
+                      : 'bg-[#FFCA28] text-black hover:bg-[#D32F2F] hover:text-white'
+                    }
+                  `}
+                >
+                  {isAdding ? '✓' : '+'}
+                </button>
+              )}
+            </div>
+          </div>
 
-        <p className="text-[10px] sm:text-[12px] leading-3.25 sm:leading-4 text-[#71717a] font-bold line-clamp-2 mb-2 min-h-[1.6rem] sm:min-h-8">
-          {burger?.descripcion || 'Una delicia de Springfield directamente a tu mesa.'}
-        </p>
+          <div className="mb-1 sm:mb-2 flex items-baseline gap-2 sm:block">
+            <span className="font-krusty text-[14px] sm:text-[15px] leading-4 sm:leading-5 text-[#D32F2F] tracking-normal">
+              ${precioFormateado}
+            </span>
+            <span className="text-[10px] sm:text-[12px] leading-3.25 sm:leading-4 text-stone-500 font-bold sm:block sm:mt-0.5">
+              ${precioSinImpuestosFormateado} sin imp.
+            </span>
+          </div>
+
+          <p className="text-[11px] sm:text-[12px] leading-3.5 sm:leading-4 text-[#71717a] font-bold line-clamp-2 sm:mb-2 min-h-7 sm:min-h-8">
+            {burger?.descripcion || 'Una delicia de Springfield directamente a tu mesa.'}
+          </p>
+        </div>
 
         {/* EXTRAS (solo si disponible) */}
         {disponible && adicionales.length > 0 && (
-          <div className="w-full mb-2 pt-1.5 sm:pt-2 border-t border-dashed sm:border-t-2 border-stone-200">
-            <p className="text-[7px] sm:text-[8px] font-black uppercase text-stone-400 mb-1 sm:mb-2 tracking-[0.12em] sm:tracking-[0.15em]">
+          <div className="w-full mt-1.5 sm:mt-0 sm:mb-2 pt-1.5 sm:pt-2 border-t border-dashed sm:border-t-2 border-stone-200">
+            <p className="hidden sm:block text-[8px] font-black uppercase text-stone-400 mb-2 tracking-[0.15em]">
               Extras
             </p>
-            <div className="flex flex-wrap justify-center gap-1">
+            <div className="flex flex-wrap justify-start sm:justify-center gap-1">
               {adicionales.slice(0, 2).map((extra) => (
                 <span
                   key={extra.id}
@@ -234,29 +261,6 @@ export default function BurgerCard({
                 </span>
               )}
             </div>
-          </div>
-        )}
-
-        {/* Botón móvil o aviso sin stock */}
-        {disponible ? (
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={isAdding}
-            className={`
-              w-full mt-auto py-2 sm:py-3 rounded-lg sm:rounded-xl flex items-center justify-center font-black uppercase text-[10px] sm:text-xs transition-all duration-200 border-2 border-black active:translate-y-0.5 active:shadow-none
-              md:hidden
-              ${isAdding
-                ? 'bg-green-500 text-white shadow-none translate-y-0.5'
-                : 'bg-[#FFCA28] text-black shadow-[2px_2px_0px_0px_black] sm:shadow-[4px_4px_0px_0px_black] hover:bg-[#D32F2F] hover:text-white'
-              }
-            `}
-          >
-            {isAdding ? "¡AGREGADO!" : "AGREGAR"}
-          </button>
-        ) : (
-          <div className="w-full mt-auto py-2 sm:py-3 rounded-lg sm:rounded-xl flex items-center justify-center font-black uppercase text-[10px] sm:text-xs border border-stone-300 sm:border-2 bg-stone-100 text-stone-400 md:hidden">
-            🚫 Sin stock
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 // app/page.tsx
 // deno-lint-ignore-file no-sloppy-imports
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import BurgerCard from '../components/BurgerCard';
 import { Burger } from '../types/index';
 import { supabase } from '../lib/supabase';
@@ -18,24 +18,31 @@ const normalizarCategoria = (cat: string | null | undefined): string => {
   return c;
 };
 
+const CATEGORIAS_CONFIG = [
+  { id: 'burgers', label: 'Burgers', icon: '🍔' },
+  { id: 'bebidas', label: 'Bebidas', icon: '🥤' },
+  { id: 'acompañamientos', label: 'Acompañamientos', icon: '🍟' },
+  { id: 'postres', label: 'Postres', icon: '🍦' },
+];
+
 export default function Home() {
   const screen = useAspectRatio();
   const [items, setItems] = useState<Burger[]>([]);
-  const [categoriaActual, setCategoriaActual] = useState('todos');
+  const [categoriaActiva, setCategoriaActiva] = useState('todos');
   const [loading, setLoading] = useState(true);
   const [errorCarga, setErrorCarga] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
 
   const referenciaEfectoDuff = useRef<HTMLAudioElement>(null);
+  const seccionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const bloqueoScrollAutoRef = useRef(false);
+  const timeoutScrollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const categorias = [
-    { id: 'todos', label: 'Todo', icon: '🍟' },
-    { id: 'burgers', label: 'Burgers', icon: '🍔' },
-    { id: 'bebidas', label: 'Bebidas', icon: '🥤' },
-    { id: 'acompañamientos', label: 'Acompañamientos', icon: '🍟' },
-    { id: 'postres', label: 'Postres', icon: '🍦' },
-  ];
+  const categoriasFiltro = useMemo(
+    () => [{ id: 'todos', label: 'Todo', icon: '🍽️' }, ...CATEGORIAS_CONFIG],
+    []
+  );
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -126,24 +133,114 @@ export default function Home() {
     }
   }, []);
 
+  const gruposCategorias = useMemo(() => {
+    const mapa = new Map<string, Burger[]>();
+
+    for (const item of items) {
+      const catId = normalizarCategoria(item.categoria) || 'general';
+      const listaActual = mapa.get(catId) || [];
+      listaActual.push(item);
+      mapa.set(catId, listaActual);
+    }
+
+    const ordenadas = CATEGORIAS_CONFIG.map((cfg) => ({
+      id: cfg.id,
+      label: cfg.label,
+      icon: cfg.icon,
+      productos: mapa.get(cfg.id) || [],
+    })).filter((grupo) => grupo.productos.length > 0);
+
+    const idsConocidos = new Set(CATEGORIAS_CONFIG.map((c) => c.id));
+    for (const [catId, productos] of mapa.entries()) {
+      if (!idsConocidos.has(catId) && productos.length > 0) {
+        ordenadas.push({
+          id: catId,
+          label: catId.charAt(0).toUpperCase() + catId.slice(1),
+          icon: '🍔',
+          productos,
+        });
+      }
+    }
+
+    return ordenadas;
+  }, [items]);
+
   useEffect(() => {
     fetchData();
     checkAdminSession();
-
-    const handleScroll = () => {
-      if (typeof window !== 'undefined') {
-        const scrollY = window.scrollY;
-        setIsScrolled(scrollY > 50);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
   }, [fetchData, checkAdminSession]);
 
-  const filtrados = categoriaActual === 'todos'
-    ? items
-    : items.filter(item => normalizarCategoria(item.categoria) === categoriaActual);
+  // Detectar scroll solo para sombra/estado header usando rAF sin re-renders innecesarios
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let rafId: number | null = null;
+
+    const onScroll = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(() => {
+        const nextScrolled = window.scrollY > 60;
+        setIsScrolled((prev) => (prev === nextScrolled ? prev : nextScrolled));
+        rafId = null;
+      });
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+      if (timeoutScrollRef.current) clearTimeout(timeoutScrollRef.current);
+    };
+  }, []);
+
+  // Observer estable para actualizar la categoría activa al bajar por el menú
+  useEffect(() => {
+    if (loading || gruposCategorias.length === 0 || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+
+    const visibles = new Set<string>();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (bloqueoScrollAutoRef.current) return;
+
+        for (const entry of entries) {
+          const catId = (entry.target as HTMLElement).dataset.categoriaId;
+          if (!catId) continue;
+
+          if (entry.isIntersecting) {
+            visibles.add(catId);
+          } else {
+            visibles.delete(catId);
+          }
+        }
+
+        if (window.scrollY < 180) {
+          setCategoriaActiva((prev) => (prev === 'todos' ? prev : 'todos'));
+          return;
+        }
+
+        // Prioriza la primera categoría visible según el orden definido
+        for (const grupo of gruposCategorias) {
+          if (visibles.has(grupo.id)) {
+            setCategoriaActiva((prev) => (prev === grupo.id ? prev : grupo.id));
+            break;
+          }
+        }
+      },
+      {
+        rootMargin: '-120px 0px -55% 0px',
+        threshold: 0.05,
+      }
+    );
+
+    for (const grupo of gruposCategorias) {
+      const el = seccionRefs.current[grupo.id];
+      if (el) observer.observe(el);
+    }
+
+    return () => observer.disconnect();
+  }, [loading, gruposCategorias]);
 
   const handleIrAppFooter = () => {
     const playStoreCard = document.getElementById('footer-play-store');
@@ -152,8 +249,8 @@ export default function Home() {
     }
   };
 
-  const manejarCambioCategoria = (id: string) => {
-    if (id === 'bebidas' && categoriaActual !== 'bebidas') {
+  const manejarSeleccionCategoria = (id: string) => {
+    if (id === 'bebidas' && categoriaActiva !== 'bebidas') {
       const audio = referenciaEfectoDuff.current;
       if (audio) {
         audio.currentTime = 0;
@@ -162,8 +259,37 @@ export default function Home() {
         });
       }
     }
-    setCategoriaActual(id);
+
+    setCategoriaActiva(id);
+    bloqueoScrollAutoRef.current = true;
+
+    if (timeoutScrollRef.current) {
+      clearTimeout(timeoutScrollRef.current);
+    }
+
+    timeoutScrollRef.current = setTimeout(() => {
+      bloqueoScrollAutoRef.current = false;
+    }, 650);
+
+    if (id === 'todos') {
+      const menuSection = document.getElementById('menu-section');
+      if (menuSection) {
+        const y = menuSection.getBoundingClientRect().top + window.scrollY - 120;
+        window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+      }
+      return;
+    }
+
+    const targetEl = seccionRefs.current[id];
+    if (targetEl) {
+      const y = targetEl.getBoundingClientRect().top + window.scrollY - 125;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    }
   };
+
+  const setSeccionRef = useCallback((id: string) => (el: HTMLElement | null) => {
+    seccionRefs.current[id] = el;
+  }, []);
 
   if (loading) {
     return (
@@ -192,6 +318,8 @@ export default function Home() {
     );
   }
 
+  let globalIndex = 0;
+
   return (
     <main className="min-h-screen pb-28 bg-white selection:bg-[#FFCA28]/30 text-[#292929]">
 
@@ -210,11 +338,8 @@ export default function Home() {
         </Link>
       )}
 
-      <header className={`relative z-30 overflow-hidden bg-white border-b-4 border-black transition-all duration-700 w-full
-        ${isScrolled
-          ? `pt-0 ${screen.paddingBottom} px-4 sm:px-6`
-          : `${screen.paddingTop} ${screen.paddingBottom} px-4 sm:px-6`
-        }`}
+      <header
+        className={`relative z-30 overflow-hidden bg-white border-b-4 border-black w-full ${screen.paddingTop} ${screen.paddingBottom} px-4 sm:px-6`}
       >
         <div className={`w-full px-4 sm:px-6 lg:px-8 mx-auto relative z-10 flex flex-col items-center text-center
           ${screen.isSquare ? 'max-w-full' : 'max-w-7xl'}`}
@@ -227,7 +352,7 @@ export default function Home() {
             type="button"
             onClick={handleIrAppFooter}
             aria-label="Ir a la descarga de la app en Google Play"
-            className="mb-3 inline-flex items-center gap-1.5 bg-stone-100 hover:bg-[#FFCA28] text-black text-[10px] sm:text-xs font-black uppercase tracking-wider px-3.5 py-1 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_black] transition-all active:translate-y-0.5 cursor-pointer"
+            className="mb-3 inline-flex items-center gap-1.5 bg-stone-100 hover:bg-[#FFCA28] text-black text-[10px] sm:text-xs font-black uppercase tracking-wider px-3.5 py-1 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_black] active:translate-y-0.5 cursor-pointer"
           >
             <span>📱</span>
             <span>App en Google Play</span>
@@ -322,25 +447,21 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Barra de categorías compacta con scroll horizontal en mobile */}
       <nav
-        className={`sticky z-40 transition-all duration-300 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
-          ${isScrolled ? 'top-14 shadow-md' : 'top-20 md:top-24'}`}
-        style={{
-          transform: 'translateZ(0)',
-          willChange: 'transform'
-        }}
+        aria-label="Categorías del menú"
+        className={`sticky top-14 md:top-16 z-40 bg-white/95 backdrop-blur-md border-b-2 border-stone-200 ${isScrolled ? 'shadow-md' : ''
+          }`}
       >
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-nowrap lg:flex-wrap gap-1.5 sm:gap-2 md:gap-3 px-3 sm:px-6 py-2 md:py-3 overflow-x-auto lg:overflow-visible no-scrollbar justify-start lg:justify-center">
-            {categorias.map((cat) => (
+            {categoriasFiltro.map((cat) => (
               <button
                 type="button"
                 key={cat.id}
-                onClick={() => manejarCambioCategoria(cat.id)}
+                onClick={() => manejarSeleccionCategoria(cat.id)}
                 className={`
-                  shrink-0 flex items-center gap-1 px-3 py-1.5 md:px-4 md:py-2 rounded-full font-black uppercase text-[10px] md:text-[11px] transition-all border-2 whitespace-nowrap cursor-pointer
-                  ${categoriaActual === cat.id
+                  shrink-0 flex items-center gap-1 px-3 py-1.5 md:px-4 md:py-2 rounded-full font-black uppercase text-[10px] md:text-[11px] border-2 whitespace-nowrap cursor-pointer
+                  ${categoriaActiva === cat.id
                     ? 'bg-[#FFCA28] text-black border-black shadow-[2px_2px_0px_0px_black]'
                     : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
                   }
@@ -354,12 +475,11 @@ export default function Home() {
         </div>
       </nav>
 
-      {/* Menú compacto en celular (2 columnas) */}
       <section
         id="menu-section"
         className={`${screen.isSquare ? 'w-full max-w-full' : 'max-w-7xl'} mx-auto px-3 sm:px-6 lg:px-8 mt-6 sm:mt-10 md:mt-16`}
       >
-        <div className="flex items-center justify-between mb-4 sm:mb-8">
+        <div className="flex items-center justify-between mb-5 sm:mb-8">
           <div className="flex items-center gap-2.5">
             <h2 className="font-krusty font-krusty-bold text-2xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase leading-none">
               <span className="text-[#D32F2F]">El</span> Menú
@@ -367,29 +487,57 @@ export default function Home() {
             <div className="hidden sm:block w-14 h-1.5 bg-[#FFCA28] border border-black" />
           </div>
           <span className="text-[9px] sm:text-[10px] font-black text-[#52525b] uppercase tracking-wider bg-stone-100 px-2.5 py-1 rounded-full border border-stone-200">
-            {filtrados.length} opciones
+            {items.length} opciones
           </span>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-6">
-          {filtrados.length > 0 ? (
-            filtrados.map((item, index) => (
-              <div key={item.id} className="w-full min-w-0">
-                <BurgerCard
-                  burger={item}
-                  isFirst={index === 0}
-                />
+        {gruposCategorias.length > 0 ? (
+          <div className="space-y-8 sm:space-y-12">
+            {gruposCategorias.map((grupo) => (
+              <div
+                key={grupo.id}
+                id={`categoria-${grupo.id}`}
+                data-categoria-id={grupo.id}
+                ref={setSeccionRef(grupo.id)}
+                className="scroll-mt-32"
+              >
+                <div className="flex items-center justify-between gap-2 pb-2 mb-3 sm:mb-4 border-b-2 border-black">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg sm:text-2xl" aria-hidden="true">{grupo.icon}</span>
+                    <h3 className="font-krusty font-krusty-bold text-xl sm:text-2xl md:text-3xl text-black uppercase leading-none">
+                      {grupo.label}
+                    </h3>
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase text-stone-500 bg-[#FFCA28]/30 border border-black px-2 py-0.5 rounded-full">
+                    {grupo.productos.length}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-6">
+                  {grupo.productos.map((item) => {
+                    const isFirst = globalIndex === 0;
+                    globalIndex += 1;
+                    return (
+                      <div key={item.id} className="w-full min-w-0">
+                        <BurgerCard
+                          burger={item}
+                          isFirst={isFirst}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            ))
-          ) : (
-            <div className="col-span-full py-12 sm:py-20 text-center bg-white rounded-3xl border-4 border-black shadow-[6px_6px_0px_0px_black]">
-              <span className="text-5xl sm:text-7xl block mb-3">🤡</span>
-              <p className="font-krusty text-xl sm:text-3xl text-black px-4 uppercase">
-                ¡Ay caramba! No hay nada disponible.
-              </p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-12 sm:py-20 text-center bg-white rounded-3xl border-4 border-black shadow-[6px_6px_0px_0px_black]">
+            <span className="text-5xl sm:text-7xl block mb-3">🤡</span>
+            <p className="font-krusty text-xl sm:text-3xl text-black px-4 uppercase">
+              ¡Ay caramba! No hay nada disponible.
+            </p>
+          </div>
+        )}
       </section>
     </main>
   );
