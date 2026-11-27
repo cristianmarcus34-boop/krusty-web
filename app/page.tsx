@@ -81,7 +81,6 @@ export default function Home() {
             )
           )
         `)
-        // ✅ SIN filtro de disponible: traemos todos
         .order('nombre', { ascending: true });
 
       if (error) {
@@ -104,7 +103,6 @@ export default function Home() {
             categoria: normalizarCategoria(item.categoria)
           };
         }).sort((a: any, b: any) => {
-          // ✅ Disponibles primero, sin stock al final
           if (a.disponible === b.disponible) return 0;
           return a.disponible ? -1 : 1;
         });
@@ -146,15 +144,6 @@ export default function Home() {
   const filtrados = categoriaActual === 'todos'
     ? items
     : items.filter(item => normalizarCategoria(item.categoria) === categoriaActual);
-
-  const handleVerMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setCategoriaActual('todos');
-    const menuSection = document.getElementById('menu-section');
-    if (menuSection) {
-      menuSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
 
   const handleIrAppFooter = () => {
     const playStoreCard = document.getElementById('footer-play-store');
@@ -204,7 +193,7 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen pb-32 bg-white selection:bg-[#FFCA28]/30 text-[#292929]">
+    <main className="min-h-screen pb-28 bg-white selection:bg-[#FFCA28]/30 text-[#292929]">
 
       <audio ref={referenciaEfectoDuff} src="/audio/hombre-duff.mp3" preload="auto" />
 
@@ -281,7 +270,7 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="relative z-20 overflow-hidden bg-white border-y-4 border-black py-16 md:py-20 px-6">
+      <section className="relative z-20 overflow-hidden bg-white border-y-4 border-black py-12 md:py-16 px-4 sm:px-6">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute top-0 left-0 w-full h-1/2 bg-linear-to-b from-[#FF6B00]/20 to-transparent" />
           <div className="absolute bottom-0 left-0 w-full h-1/2 bg-linear-to-t from-[#FF6B00]/10 to-transparent" />
@@ -290,7 +279,7 @@ export default function Home() {
         </div>
 
         <div className="max-w-3xl mx-auto relative z-10 flex flex-col items-center text-center">
-          <div className="text-center mb-6">
+          <div className="text-center mb-5">
             <div className="inline-flex items-center gap-2 bg-[#FF6B00] text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-wider border-2 border-black shadow-[3px_3px_0px_0px_black]">
               <span className="w-2 h-2 bg-[#FFCA28] rounded-full animate-pulse" />
               ¡LA FÁBRICA DE LA RISA!
@@ -313,8 +302,8 @@ export default function Home() {
               </span>
             </p>
 
-            <div className="bg-[#FFF3E6] p-6 rounded-2xl border-2 border-[#FF6B00]/40 text-center mt-6 max-w-lg w-full">
-              <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="bg-[#FFF3E6] p-5 rounded-2xl border-2 border-[#FF6B00]/40 text-center mt-5 max-w-lg w-full">
+              <div className="flex items-center justify-center gap-2 mb-1.5">
                 <span className="text-[#FF6B00] text-xs font-black uppercase tracking-wider">
                   ¡Ingrediente Secreto Revelado!
                 </span>
@@ -322,7 +311,7 @@ export default function Home() {
               <h3 className="text-black text-2xl font-krusty">
                 ¿El secreto? <span className="text-[#FF6B00]">¡Risa!</span>
               </h3>
-              <p className="text-stone-700 text-sm mt-2">
+              <p className="text-stone-700 text-sm mt-1.5">
                 Y un toque de <span className="text-[#FF6B00] font-bold">explosivos</span>
                 {" "}que hacen cada bocado una <span className="text-[#FF6B00] font-bold">fiesta</span>.
                 <br />
@@ -333,6 +322,7 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Barra de categorías compacta con scroll horizontal en mobile */}
       <nav
         className={`sticky z-40 transition-all duration-300 bg-white/95 backdrop-blur-md border-b-2 border-stone-200
           ${isScrolled ? 'top-14 shadow-md' : 'top-20 md:top-24'}`}
@@ -342,21 +332,21 @@ export default function Home() {
         }}
       >
         <div className="max-w-7xl mx-auto">
-          <div className="flex flex-wrap gap-2 md:gap-4 px-4 sm:px-6 py-3 md:py-4 justify-center">
+          <div className="flex flex-nowrap lg:flex-wrap gap-1.5 sm:gap-2 md:gap-3 px-3 sm:px-6 py-2 md:py-3 overflow-x-auto lg:overflow-visible no-scrollbar justify-start lg:justify-center">
             {categorias.map((cat) => (
               <button
                 type="button"
                 key={cat.id}
                 onClick={() => manejarCambioCategoria(cat.id)}
                 className={`
-                  flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-2.5 rounded-full font-black uppercase text-[9px] sm:text-[10px] md:text-[11px] transition-all border-2 whitespace-nowrap
+                  shrink-0 flex items-center gap-1 px-3 py-1.5 md:px-4 md:py-2 rounded-full font-black uppercase text-[10px] md:text-[11px] transition-all border-2 whitespace-nowrap cursor-pointer
                   ${categoriaActual === cat.id
-                    ? 'bg-[#FFCA28] text-black border-black shadow-[3px_3px_0px_0px_black] -translate-y-0.5'
-                    : 'bg-white text-stone-500 border-transparent hover:bg-stone-100'
+                    ? 'bg-[#FFCA28] text-black border-black shadow-[2px_2px_0px_0px_black]'
+                    : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
                   }
                 `}
               >
-                <span className="text-sm sm:text-base md:text-lg">{cat.icon}</span>
+                <span className="text-xs sm:text-sm">{cat.icon}</span>
                 {cat.label}
               </button>
             ))}
@@ -364,23 +354,27 @@ export default function Home() {
         </div>
       </nav>
 
-      <section id="menu-section" className={`${screen.isSquare ? 'w-full max-w-full' : 'max-w-7xl'} mx-auto px-4 sm:px-6 lg:px-8 mt-10 md:mt-20`}>
-        <div className="flex flex-col items-center justify-center mb-8 md:mb-12 gap-4">
-          <div className="flex flex-col items-center">
-            <h2 className="font-krusty font-krusty-bold text-3xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase text-center">
+      {/* Menú compacto en celular (2 columnas) */}
+      <section
+        id="menu-section"
+        className={`${screen.isSquare ? 'w-full max-w-full' : 'max-w-7xl'} mx-auto px-3 sm:px-6 lg:px-8 mt-6 sm:mt-10 md:mt-16`}
+      >
+        <div className="flex items-center justify-between mb-4 sm:mb-8">
+          <div className="flex items-center gap-2.5">
+            <h2 className="font-krusty font-krusty-bold text-2xl sm:text-4xl md:text-5xl text-black tracking-normal uppercase leading-none">
               <span className="text-[#D32F2F]">El</span> Menú
             </h2>
-            <div className="w-16 sm:w-20 h-2 bg-[#FFCA28] border border-black mt-2" />
+            <div className="hidden sm:block w-14 h-1.5 bg-[#FFCA28] border border-black" />
           </div>
-          <p className="text-[10px] font-black text-[#52525b] uppercase tracking-[0.2em] bg-stone-100 px-3 py-1 rounded-full text-center">
-            {filtrados.length} OPCIONES DISPONIBLES
-          </p>
+          <span className="text-[9px] sm:text-[10px] font-black text-[#52525b] uppercase tracking-wider bg-stone-100 px-2.5 py-1 rounded-full border border-stone-200">
+            {filtrados.length} opciones
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 lg:gap-6">
           {filtrados.length > 0 ? (
             filtrados.map((item, index) => (
-              <div key={item.id} className="transition-opacity duration-500 w-full">
+              <div key={item.id} className="w-full min-w-0">
                 <BurgerCard
                   burger={item}
                   isFirst={index === 0}
@@ -388,9 +382,9 @@ export default function Home() {
               </div>
             ))
           ) : (
-            <div className="col-span-full py-20 sm:py-32 text-center bg-white rounded-[3rem] border-4 border-black shadow-[8px_8px_0px_0px_black]">
-              <span className="text-6xl sm:text-8xl block mb-6">🤡</span>
-              <p className="font-krusty text-2xl sm:text-3xl text-black px-6 uppercase">
+            <div className="col-span-full py-12 sm:py-20 text-center bg-white rounded-3xl border-4 border-black shadow-[6px_6px_0px_0px_black]">
+              <span className="text-5xl sm:text-7xl block mb-3">🤡</span>
+              <p className="font-krusty text-xl sm:text-3xl text-black px-4 uppercase">
                 ¡Ay caramba! No hay nada disponible.
               </p>
             </div>

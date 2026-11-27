@@ -55,15 +55,22 @@
 body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-/* Transiciones suaves para todos los elementos */
-* {
-  transition: background-color 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease;
+/* Transiciones suaves acotadas para mejor rendimiento en mobile */
+a,
+button,
+input,
+select,
+textarea,
+.sticker,
+.status-badge {
+  transition: background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 /* ✅ Eliminar sombra de texto en elementos específicos */
@@ -80,7 +87,7 @@ h4,
   font-weight: normal;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  line-height: 1;
+  line-height: 1.05;
   text-shadow: none;
 }
 
